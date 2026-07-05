@@ -32,7 +32,10 @@ NoraBar is a WPF application for Windows desktop. It usually waits as a thin 2px
 
 ## Screenshots
 
-Screenshots are not available yet. For now, run NoraBar and gently touch the top edge of the screen.
+| Minimal Floating Pill | Productivity Command Island |
+| --- | --- |
+| ![Minimal Floating Pill](docs/images/screenshot-1.png) | ![Productivity Command Island](docs/images/screenshot-2.png) |
+
 
 ## Requirements
 
