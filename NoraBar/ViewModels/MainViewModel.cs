@@ -142,12 +142,26 @@ namespace NoraBar.ViewModels
         public string ThirdPartyLicensesText => T(LocalizationKey.ThirdPartyLicenses);
         public string UpdateText => T(LocalizationKey.Update);
         public string DownloadText => T(LocalizationKey.Download);
+        public string ThirdPartyTabTitle => T(LocalizationKey.ThirdPartyTab);
 
         private bool _isLicenseDialogOpen;
         public bool IsLicenseDialogOpen
         {
             get => _isLicenseDialogOpen;
             set => SetProperty(ref _isLicenseDialogOpen, value);
+        }
+
+        private bool _isNoraBarLicenseTab = true;
+        public bool IsNoraBarLicenseTab
+        {
+            get => _isNoraBarLicenseTab;
+            set
+            {
+                if (SetProperty(ref _isNoraBarLicenseTab, value))
+                {
+                    OnPropertyChanged(nameof(CurrentLicenseText));
+                }
+            }
         }
 
         private bool _isUpdateDialogOpen;
@@ -191,6 +205,8 @@ namespace NoraBar.ViewModels
         public ICommand OpenReleasePageCommand { get; }
         public ICommand ShowLicenseCommand { get; }
         public ICommand CloseLicenseCommand { get; }
+        public ICommand SelectNoraBarLicenseCommand { get; }
+        public ICommand SelectThirdPartyLicenseCommand { get; }
         public ICommand CloseUpdateDialogCommand { get; }
 
         public MusicViewModel Music { get; } = new MusicViewModel();
@@ -235,6 +251,8 @@ namespace NoraBar.ViewModels
             });
             ShowLicenseCommand = new RelayCommand(_ => IsLicenseDialogOpen = true);
             CloseLicenseCommand = new RelayCommand(_ => IsLicenseDialogOpen = false);
+            SelectNoraBarLicenseCommand = new RelayCommand(_ => IsNoraBarLicenseTab = true);
+            SelectThirdPartyLicenseCommand = new RelayCommand(_ => IsNoraBarLicenseTab = false);
             CloseUpdateDialogCommand = new RelayCommand(_ => IsUpdateDialogOpen = false);
         }
 
@@ -272,7 +290,28 @@ namespace NoraBar.ViewModels
             }
         }
 
-        public string LicenseText =>
+        private string LoadLicenseResource()
+        {
+            try
+            {
+                var uri = new System.Uri("pack://application:,,,/Assets/LICENSE");
+                var info = System.Windows.Application.GetResourceStream(uri);
+                if (info != null)
+                {
+                    using var reader = new System.IO.StreamReader(info.Stream);
+                    return reader.ReadToEnd();
+                }
+            }
+            catch (System.Exception)
+            {
+                // Fallback in case loading from resources fails
+            }
+            return "GNU AFFERO GENERAL PUBLIC LICENSE Version 3, 19 November 2007 (Please refer to the LICENSE file in the installation directory.)";
+        }
+
+        public string NoraBarLicenseText => LoadLicenseResource();
+
+        public string ThirdPartyLicenseText =>
             T(LocalizationKey.LicenseIntroTitle) + "\n\n" +
             T(LocalizationKey.LicensePackageVersion) + "\n" +
             T(LocalizationKey.LicenseLabel) + "\n" +
@@ -295,6 +334,8 @@ namespace NoraBar.ViewModels
             "(C) If you distribute any portion of the software, you must retain all copyright, patent, trademark, and attribution notices that are present in the software.\n" +
             "(D) If you distribute any portion of the software in source code form, you may do so only under this license by including a complete copy of this license with your distribution. If you distribute any portion of the software in compiled or object code form, you may only do so under a license that complies with this license.\n" +
             "(E) The software is licensed \"as-is.\" You bear the risk of using it. The contributors give no express warranties, guarantees or conditions. You may have additional consumer rights under your local laws which this license cannot change. To the extent permitted under your local laws, the contributors exclude the implied warranties of merchantability, fitness for a particular purpose and non-infringement.";
+
+        public string CurrentLicenseText => IsNoraBarLicenseTab ? NoraBarLicenseText : ThirdPartyLicenseText;
 
         private class GitHubRelease
         {
@@ -380,7 +421,8 @@ namespace NoraBar.ViewModels
             OnPropertyChanged(nameof(ThirdPartyLicensesText));
             OnPropertyChanged(nameof(UpdateText));
             OnPropertyChanged(nameof(DownloadText));
-            OnPropertyChanged(nameof(LicenseText));
+            OnPropertyChanged(nameof(ThirdPartyTabTitle));
+            OnPropertyChanged(nameof(CurrentLicenseText));
         }
     }
 }

@@ -43,7 +43,8 @@ namespace NoraBar.Services
         LicenseIntroTitle,
         LicensePackageVersion,
         LicenseLabel,
-        LicenseDetails
+        LicenseDetails,
+        ThirdPartyTab
     }
 
     public static class LocalizationService
@@ -74,12 +75,12 @@ namespace NoraBar.Services
                     [LocalizationKey.GitHubRepository] = "GitHub リポジトリ",
                     [LocalizationKey.GitHubRepositoryDescription] = "ソースコードを公開しているリポジトリページを開きます。",
                     [LocalizationKey.OpenRepository] = "リポジトリを開く",
-                    [LocalizationKey.OpenSourceLicenses] = "オープンソース ライセンス",
-                    [LocalizationKey.OpenSourceLicensesDescription] = "使用しているサードパーティ製ライブラリのライセンスを表示します。",
+                    [LocalizationKey.OpenSourceLicenses] = "ライセンス情報",
+                    [LocalizationKey.OpenSourceLicensesDescription] = "NoraBar本体およびサードパーティ製ライブラリのライセンスを表示します。",
                     [LocalizationKey.ShowLicenses] = "ライセンスを表示",
                     [LocalizationKey.LivePreview] = "リアルタイムプレビュー",
                     [LocalizationKey.Close] = "閉じる",
-                    [LocalizationKey.ThirdPartyLicenses] = "サードパーティ ソフトウェアのライセンス",
+                    [LocalizationKey.ThirdPartyLicenses] = "ライセンス情報",
                     [LocalizationKey.Update] = "アップデート",
                     [LocalizationKey.Download] = "ダウンロード",
                     [LocalizationKey.SettingsMenu] = "設定...",
@@ -91,7 +92,8 @@ namespace NoraBar.Services
                     [LocalizationKey.LicenseIntroTitle] = "【使用しているサードパーティ ソフトウェア】",
                     [LocalizationKey.LicensePackageVersion] = "■ CSCore (バージョン 1.2.1.2)",
                     [LocalizationKey.LicenseLabel] = "   ライセンス: Microsoft Public License (MS-PL)",
-                    [LocalizationKey.LicenseDetails] = "   (詳細なライセンス条文は以下を参照してください)"
+                    [LocalizationKey.LicenseDetails] = "   (詳細なライセンス条文は以下を参照してください)",
+                    [LocalizationKey.ThirdPartyTab] = "サードパーティ"
                 },
                 [AppLanguage.English] = new Dictionary<LocalizationKey, string>
                 {
@@ -116,12 +118,12 @@ namespace NoraBar.Services
                     [LocalizationKey.GitHubRepository] = "GitHub Repository",
                     [LocalizationKey.GitHubRepositoryDescription] = "Opens the repository page where the source code is published.",
                     [LocalizationKey.OpenRepository] = "Open Repository",
-                    [LocalizationKey.OpenSourceLicenses] = "Open Source Licenses",
-                    [LocalizationKey.OpenSourceLicensesDescription] = "Shows licenses for the third-party libraries used by this app.",
+                    [LocalizationKey.OpenSourceLicenses] = "License Information",
+                    [LocalizationKey.OpenSourceLicensesDescription] = "Shows licenses for NoraBar and the third-party libraries used.",
                     [LocalizationKey.ShowLicenses] = "Show Licenses",
                     [LocalizationKey.LivePreview] = "Live Preview",
                     [LocalizationKey.Close] = "Close",
-                    [LocalizationKey.ThirdPartyLicenses] = "Third-party Software Licenses",
+                    [LocalizationKey.ThirdPartyLicenses] = "License Information",
                     [LocalizationKey.Update] = "Update",
                     [LocalizationKey.Download] = "Download",
                     [LocalizationKey.SettingsMenu] = "Settings...",
@@ -133,7 +135,8 @@ namespace NoraBar.Services
                     [LocalizationKey.LicenseIntroTitle] = "Third-party software used by NoraBar",
                     [LocalizationKey.LicensePackageVersion] = "CSCore (version 1.2.1.2)",
                     [LocalizationKey.LicenseLabel] = "   License: Microsoft Public License (MS-PL)",
-                    [LocalizationKey.LicenseDetails] = "   See the license text below for details."
+                    [LocalizationKey.LicenseDetails] = "   See the license text below for details.",
+                    [LocalizationKey.ThirdPartyTab] = "Third-party"
                 }
             };
 

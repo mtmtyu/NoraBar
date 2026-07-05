@@ -921,9 +921,89 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="0" Text="{Binding ThirdPartyLicensesText}" FontSize="16" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,16" FontFamily="Segoe UI Variable, Segoe UI"/>
+                    <Grid Grid.Row="0" Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{Binding OpenSourceLicensesText}" FontSize="16" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center" FontFamily="Segoe UI Variable, Segoe UI"/>
+                        <Border Grid.Column="1" Background="#0DFFFFFF" CornerRadius="4" Padding="2" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <Button Content="NoraBar" Command="{Binding SelectNoraBarLicenseCommand}" Width="80" Height="26" Cursor="Hand">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="Transparent" CornerRadius="3" x:Name="Brd">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Brd" Property="Background" Value="#10FFFFFF"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Foreground" Value="#8AFFFFFF"/>
+                                            <Setter Property="FontSize" Value="11"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsNoraBarLicenseTab}" Value="True">
+                                                    <Setter Property="Foreground" Value="White"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="Button">
+                                                                <Border Background="{StaticResource AccentBrush}" CornerRadius="3">
+                                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                </Border>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button Content="{Binding ThirdPartyTabTitle}" Command="{Binding SelectThirdPartyLicenseCommand}" Width="100" Height="26" Cursor="Hand" Margin="2,0,0,0">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="Transparent" CornerRadius="3" x:Name="Brd">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Brd" Property="Background" Value="#10FFFFFF"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Foreground" Value="#8AFFFFFF"/>
+                                            <Setter Property="FontSize" Value="11"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsNoraBarLicenseTab}" Value="False">
+                                                    <Setter Property="Foreground" Value="White"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="Button">
+                                                                <Border Background="{StaticResource AccentBrush}" CornerRadius="3">
+                                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                </Border>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
 
-                    <TextBox Grid.Row="1" Text="{Binding LicenseText, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Background="#0DFFFFFF" Foreground="#E3E3E3" BorderThickness="0" Padding="12" VerticalScrollBarVisibility="Auto" FontFamily="Consolas, Courier New" FontSize="11"/>
+                    <TextBox Grid.Row="1" Text="{Binding CurrentLicenseText, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Background="#0DFFFFFF" Foreground="#E3E3E3" BorderThickness="0" Padding="12" VerticalScrollBarVisibility="Auto" FontFamily="Consolas, Courier New" FontSize="11"/>
 
                     <Button Grid.Row="2" Content="{Binding CloseText}" Command="{Binding CloseLicenseCommand}" Width="80" Height="32" Margin="0,16,0,0" HorizontalAlignment="Right" Foreground="White" BorderThickness="0" Cursor="Hand">
                         <Button.Template>

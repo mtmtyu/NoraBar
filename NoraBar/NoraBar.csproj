@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <Resource Include="Assets\AppIcon.ico" />
+    <Resource Include="..\LICENSE" Link="Assets\LICENSE" />
   </ItemGroup>
 
   <ItemGroup>
