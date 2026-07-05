@@ -22,8 +22,6 @@ body:
           required: true
         - label: I have checked the README, Wiki, and settings to confirm this feature is not already available.
           required: true
-        - label: This request is related to NoraBar's purpose as a Windows top-edge music HUD.
-          required: true
 
   - type: textarea
     id: summary
