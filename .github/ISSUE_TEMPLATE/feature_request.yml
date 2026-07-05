@@ -1,0 +1,147 @@
+name: Feature request
+description: Suggest an idea or improvement for NoraBar
+title: "[Feature]: "
+labels: ["enhancement"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement for NoraBar.
+
+        NoraBar is designed to be a small, quiet music HUD at the top edge of the Windows desktop. Feature ideas are welcome, but please explain the problem, use case, and how the idea would fit without making the HUD distracting.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Before submitting
+      description: Please confirm the following.
+      options:
+        - label: I have searched existing issues and confirmed this feature has not already been requested.
+          required: true
+        - label: I have checked the README, Wiki, and settings to confirm this feature is not already available.
+          required: true
+        - label: This request is related to NoraBar's purpose as a Windows top-edge music HUD.
+          required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Feature summary
+      description: Briefly describe the feature or improvement you would like to see.
+      placeholder: "Example: Add an option to change the HUD width for ultrawide monitors."
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What problem would this solve? When would you use it?
+      placeholder: |
+        Example:
+        When using NoraBar on an ultrawide monitor, the default hover area can feel too small. A configurable width would make it easier to open the HUD without moving the mouse precisely.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed solution
+      description: Describe how you imagine the feature working.
+      placeholder: |
+        Example:
+        Add a setting that lets users choose the HUD trigger width:
+        - Small
+        - Medium
+        - Large
+        - Custom pixel value
+    validations:
+      required: true
+
+  - type: dropdown
+    id: affected_area
+    attributes:
+      label: Related area
+      description: Which part of NoraBar would this feature affect?
+      multiple: true
+      options:
+        - HUD display / hover behavior
+        - Music information / album art
+        - Playback controls
+        - Waveform visualizer
+        - Settings window
+        - Startup launch
+        - Update check
+        - Language / localization
+        - Installer / portable build
+        - Developer experience / build system
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: How important is this feature to you?
+      options:
+        - Nice to have
+        - Important
+        - Very important
+        - Blocking my use of NoraBar
+    validations:
+      required: true
+
+  - type: dropdown
+    id: design_style
+    attributes:
+      label: Related design style
+      description: If this is UI-related, which design style does it apply to?
+      options:
+        - Minimal Floating Pill
+        - Productivity Command Island
+        - Both styles
+        - Not sure
+        - Not UI-related
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe any alternative solutions, workarounds, or settings you already tried.
+      placeholder: "Example: I tried enabling/disabling the progress bar, but it does not solve the issue because..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: visual_ideas
+    attributes:
+      label: Visual references or mockups
+      description: If this is a UI/UX request, attach screenshots, sketches, mockups, or describe the visual behavior. Please do not request a direct copy of another app's design.
+      placeholder: "Drag and drop mockups or screenshots here, or describe the intended behavior."
+    validations:
+      required: false
+
+  - type: textarea
+    id: technical_notes
+    attributes:
+      label: Technical notes
+      description: If you have implementation ideas, APIs, constraints, or compatibility concerns, add them here.
+      placeholder: |
+        Example:
+        This may involve SettingsService, DesignVariant, MediaControlService, AudioVisualizerService, or Windows startup shortcut behavior.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Add any other context that may help us understand the request.
+      placeholder: "Example: This is especially useful on multi-monitor setups, touch devices, or when multiple music apps are running."
+    validations:
+      required: false
