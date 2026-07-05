@@ -1,0 +1,74 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Add Loading Message to Release
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view ${{ github.ref_name }} > /dev/null 2>&1; then
+            ORIGINAL_BODY=$(gh release view ${{ github.ref_name }} --json body -q .body)
+            echo "$ORIGINAL_BODY" > original_body.txt
+            echo "⏳ **現在実行ファイル（インストーラーおよびポータブル版）をビルド中です。完了まで1〜2分程度お待ちください...**" > temp_body.txt
+            echo "⏳ **Currently building executables (Installer and Portable versions). Please wait 1-2 minutes until they are available...**" >> temp_body.txt
+            echo "" >> temp_body.txt
+            echo "$ORIGINAL_BODY" >> temp_body.txt
+            gh release edit ${{ github.ref_name }} --notes-file temp_body.txt
+          else
+            echo "" > original_body.txt
+            echo "⏳ **現在実行ファイル（インストーラーおよびポータブル版）をビルド中です。完了まで1〜2分程度お待ちください...**" > temp_body.txt
+            echo "⏳ **Currently building executables (Installer and Portable versions). Please wait 1-2 minutes until they are available...**" >> temp_body.txt
+            gh release create ${{ github.ref_name }} --title "Release ${{ github.ref_name }}" --notes-file temp_body.txt
+          fi
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish Portable Build
+        run: dotnet publish NoraBar/NoraBar.csproj -c Release -r win-x64 --self-contained false -o out/portable
+
+      - name: Create Portable Zip
+        run: Compress-Archive -Path out/portable/* -DestinationPath out/NoraBar-Portable-win-x64.zip
+
+      - name: Build Installer (Inno Setup)
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
+        with:
+          path: setup.iss
+
+      - name: Release to GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            out/NoraBar-Portable-win-x64.zip
+            Output/NoraBar-Setup.exe
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove Loading Message
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -f original_body.txt ]; then
+            gh release edit ${{ github.ref_name }} --notes-file original_body.txt
+          fi
