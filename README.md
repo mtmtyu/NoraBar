@@ -96,6 +96,8 @@ Markdown files under `docs/wiki/` are synced to the GitHub Wiki when changes are
 
 NoraBar uses CSCore as a third-party library. License information is available from the settings window in the app.
 
+NoraBar is licensed under the GNU Affero General Public License v3.0. See [LICENSE](LICENSE) for details.
+
 ## About the Name
 
 NoraBar is designed as a small notch-like place at the top of the screen that offers only the information you need.
