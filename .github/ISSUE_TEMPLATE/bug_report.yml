@@ -1,0 +1,205 @@
+name: Bug report
+description: Report a reproducible problem in NoraBar
+title: "[Bug]: "
+labels: ["bug"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug in NoraBar.
+
+        NoraBar is a Windows desktop music HUD, so details about your Windows version, music app, audio device, and NoraBar settings are very helpful.
+
+        Before submitting, please check the troubleshooting guide if your issue is related to the HUD not appearing, track information, playback controls, waveform visualization, settings, startup launch, or update checks.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Before submitting
+      description: Please confirm the following.
+      options:
+        - label: I have searched existing issues and confirmed this is not a duplicate.
+          required: true
+        - label: I have tried the latest available version of NoraBar.
+          required: true
+        - label: I have checked the troubleshooting guide where applicable.
+          required: false
+        - label: I have removed any private or sensitive information from logs, screenshots, and settings files.
+          required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Bug summary
+      description: Briefly describe what went wrong.
+      placeholder: "Example: The HUD opens on hover, but the track title stays empty while Spotify is playing."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: affected_area
+    attributes:
+      label: Affected area
+      description: Which part of NoraBar is affected?
+      multiple: true
+      options:
+        - HUD display / hover behavior
+        - Music information / album art
+        - Playback controls
+        - Waveform visualizer
+        - Settings window
+        - Startup launch
+        - Update check
+        - Language / localization
+        - Installer / portable build
+        - Build from source
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Provide clear steps so the issue can be reproduced.
+      placeholder: |
+        1. Start NoraBar.
+        2. Play music in ...
+        3. Move the mouse near the center of the top edge of the screen.
+        4. Click ...
+        5. See the problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+      placeholder: "Example: The HUD should show the current track title, artist, album art, and playback position."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened?
+      placeholder: "Example: The HUD opened, but the title and artist were empty and the playback buttons did not respond."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install_type
+    attributes:
+      label: How did you run NoraBar?
+      options:
+        - Installer
+        - Portable zip
+        - Built from source
+        - I am not sure
+    validations:
+      required: true
+
+  - type: input
+    id: norabar_version
+    attributes:
+      label: NoraBar version
+      description: Enter the release version, build number, or commit SHA if known.
+      placeholder: "Example: v1.0.0 or commit abc1234"
+    validations:
+      required: false
+
+  - type: input
+    id: windows_version
+    attributes:
+      label: Windows version
+      description: Include Windows edition and build number if possible.
+      placeholder: "Example: Windows 11 24H2, build 26100.x"
+    validations:
+      required: true
+
+  - type: input
+    id: dotnet_runtime
+    attributes:
+      label: .NET Desktop Runtime version
+      description: NoraBar targets net10.0-windows. If you know your installed .NET Desktop Runtime version, enter it here.
+      placeholder: "Example: .NET Desktop Runtime 10.x"
+    validations:
+      required: false
+
+  - type: input
+    id: music_app
+    attributes:
+      label: Music app or media source
+      description: NoraBar reads media information from Windows media sessions. Tell us which app or browser was playing media.
+      placeholder: "Example: Spotify, Apple Music, YouTube in Chrome, foobar2000"
+    validations:
+      required: false
+
+  - type: input
+    id: audio_device
+    attributes:
+      label: Audio output device
+      description: This is especially useful for waveform visualizer issues that may involve WASAPI loopback capture.
+      placeholder: "Example: Realtek Speakers, Bluetooth headphones, USB audio interface"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: design_style
+    attributes:
+      label: Design style
+      description: Which NoraBar design style were you using?
+      options:
+        - Minimal Floating Pill
+        - Productivity Command Island
+        - I am not sure
+        - Not applicable
+    validations:
+      required: false
+
+  - type: textarea
+    id: settings
+    attributes:
+      label: Relevant settings
+      description: If settings seem related, describe them here. Do not paste private information. NoraBar settings are stored at %AppData%\NoraBar\settings.json.
+      placeholder: |
+        Example:
+        - Progress bar: enabled
+        - Run at startup: enabled
+        - Display language: English
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs_screenshots
+    attributes:
+      label: Logs, screenshots, or screen recordings
+      description: Attach anything that helps explain the problem. Please remove private information first.
+      placeholder: "Drag and drop screenshots, videos, or logs here."
+    validations:
+      required: false
+
+  - type: textarea
+    id: build_info
+    attributes:
+      label: Additional build information
+      description: If you built NoraBar from source, include the commands you used and any build or runtime output.
+      placeholder: |
+        dotnet restore NoraBar\NoraBar.csproj
+        dotnet build NoraBar\NoraBar.csproj
+        dotnet run --project NoraBar\NoraBar.csproj
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Add any other context that may help us understand the issue.
+      placeholder: "Example: The issue only happens after sleep/resume, when multiple monitors are connected, or when more than one music app is open."
+    validations:
+      required: false
