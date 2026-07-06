@@ -5,7 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:controls="clr-namespace:NoraBar.Views.Controls"
              mc:Ignorable="d" 
-             d:DesignHeight="96" d:DesignWidth="450">
+             d:DesignHeight="106" d:DesignWidth="450">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
     </UserControl.Resources>
@@ -95,15 +95,23 @@
             </Grid>
 
             <!-- Slim Progress Bar Row (Row 1, independent of Lyrics) -->
-            <ProgressBar Grid.Row="1" 
-                         Minimum="0" Maximum="100" 
-                         Value="{Binding Music.ProgressValue}" 
-                         Height="3" 
-                         Foreground="{StaticResource AccentBrush}" 
-                         Background="#1AFFFFFF" 
-                         BorderThickness="0" 
-                         Margin="0,8,0,0"
-                         Visibility="{Binding ShowProgressBar, Converter={StaticResource BoolToVisibilityConverter}}"/>
+            <Grid Grid.Row="1" Margin="0,8,0,0" Visibility="{Binding ShowProgressBar, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="{Binding Music.PositionText}" Style="{StaticResource CaptionText}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                <ProgressBar Grid.Column="1" 
+                             Minimum="0" Maximum="100" 
+                             Value="{Binding Music.ProgressValue}" 
+                             Height="3" 
+                             Foreground="{StaticResource AccentBrush}" 
+                             Background="#1AFFFFFF" 
+                             BorderThickness="0" 
+                             VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="2" Text="{Binding Music.DurationText}" Style="{StaticResource CaptionText}" Foreground="{StaticResource TextSecondaryBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+            </Grid>
 
             <!-- Lyrics Row (Row 2, independent of ProgressBar) -->
             <TextBlock Grid.Row="2"

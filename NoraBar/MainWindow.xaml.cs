@@ -179,7 +179,7 @@ namespace NoraBar
                 {
                     view = new DesignAMusicView();
                     targetWidth = 450;
-                    targetHeight = _viewModel.ShowProgressBar ? 96 : 80;
+                    targetHeight = _viewModel.ShowProgressBar ? 106 : 80;
                     if (_viewModel.ShowLyrics) targetHeight += 24;
                 }
             }
