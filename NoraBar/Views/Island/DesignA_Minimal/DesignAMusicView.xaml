@@ -15,9 +15,10 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- Main Contents Row -->
+            <!-- Main Contents Row (Row 0) -->
             <Grid Grid.Row="0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -93,7 +94,7 @@
                 </StackPanel>
             </Grid>
 
-            <!-- Slim Progress Bar Row (Shown when ShowProgressBar is true) -->
+            <!-- Slim Progress Bar Row (Row 1, independent of Lyrics) -->
             <ProgressBar Grid.Row="1" 
                          Minimum="0" Maximum="100" 
                          Value="{Binding Music.ProgressValue}" 
@@ -104,10 +105,11 @@
                          Margin="0,8,0,0"
                          Visibility="{Binding ShowProgressBar, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-            <!-- Lyrics Row (Shown when ShowLyrics is true) -->
-            <TextBlock Grid.Row="1"
-                       Margin="0,16,0,0"
-                       Text="{Binding Music.CurrentLyric}"
+            <!-- Lyrics Row (Row 2, independent of ProgressBar) -->
+            <TextBlock Grid.Row="2"
+                       Margin="0,8,0,0"
+                       Height="18"
+                       Text="{Binding Music.CurrentLyric, NotifyOnTargetUpdated=True}"
                        Foreground="#E0FFFFFF"
                        FontSize="13"
                        FontWeight="SemiBold"
@@ -115,15 +117,23 @@
                        TextAlignment="Center"
                        TextTrimming="CharacterEllipsis"
                        Visibility="{Binding ShowLyrics, Converter={StaticResource BoolToVisibilityConverter}}">
-                <TextBlock.Style>
-                    <Style TargetType="TextBlock">
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding ShowProgressBar}" Value="True">
-                                <Setter Property="Margin" Value="0,18,0,0"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </TextBlock.Style>
+                <TextBlock.RenderTransform>
+                    <TranslateTransform Y="0"/>
+                </TextBlock.RenderTransform>
+                <TextBlock.Triggers>
+                    <EventTrigger RoutedEvent="Binding.TargetUpdated">
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.3" />
+                                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" From="5" To="0" Duration="0:0:0.3">
+                                    <DoubleAnimation.EasingFunction>
+                                        <CubicEase EasingMode="EaseOut" />
+                                    </DoubleAnimation.EasingFunction>
+                                </DoubleAnimation>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </EventTrigger>
+                </TextBlock.Triggers>
             </TextBlock>
         </Grid>
     </Border>
