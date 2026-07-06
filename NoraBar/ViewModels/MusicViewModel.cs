@@ -121,7 +121,7 @@ namespace NoraBar.ViewModels
                     Title = string.IsNullOrEmpty(tTitle) ? "Unknown" : tTitle;
                     Artist = string.IsNullOrEmpty(tArtist) ? "Unknown" : tArtist;
                     AlbumArt = e.AlbumArt;
-                    CurrentLyric = ShowLyrics ? LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LoadingLyrics) : "";
+                    CurrentLyric = SettingsService.Load().ShowLyrics ? LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LoadingLyrics) : "";
                 });
 
                 // Wait for 2 seconds (to reduce API requests during consecutive skips)
@@ -129,6 +129,11 @@ namespace NoraBar.ViewModels
 
                 // Abort the process if the track is changed while waiting.
                 if (currentRequestId != _lyricsRequestId)
+                {
+                    return;
+                }
+
+                if (!SettingsService.Load().ShowLyrics)
                 {
                     return;
                 }
