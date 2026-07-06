@@ -90,8 +90,8 @@
                 </Grid>
 
                 <!-- Controls -->
-                <StackPanel Grid.Column="2" VerticalAlignment="Center" MinWidth="180" Margin="24,0,0,0">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,0">
+                <StackPanel Grid.Column="2" VerticalAlignment="Center" MinWidth="180" Margin="24,0,0,0" Height="80">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <controls:IconButton IconText="&#xE892;" Margin="0,0,8,0" Command="{Binding Music.PreviousCommand}" /> <!-- Previous -->
                         
                         <!-- Play/Pause Button styled with Design A to unify aesthetics -->
@@ -115,14 +115,33 @@
             <!-- Lyrics Row (Shown when ShowLyrics is true) -->
             <TextBlock Grid.Row="1"
                        Margin="0,12,0,0"
-                       Text="{Binding Music.CurrentLyric}"
+                       Height="20"
+                       Text="{Binding Music.CurrentLyric, NotifyOnTargetUpdated=True}"
                        Foreground="#E0FFFFFF"
                        FontSize="14"
                        FontWeight="SemiBold"
                        HorizontalAlignment="Center"
                        TextAlignment="Center"
                        TextTrimming="CharacterEllipsis"
-                       Visibility="{Binding ShowLyrics, Converter={StaticResource BoolToVisibilityConverter}}" />
+                       Visibility="{Binding ShowLyrics, Converter={StaticResource BoolToVisibilityConverter}}">
+                <TextBlock.RenderTransform>
+                    <TranslateTransform Y="0"/>
+                </TextBlock.RenderTransform>
+                <TextBlock.Triggers>
+                    <EventTrigger RoutedEvent="Binding.TargetUpdated">
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.3" />
+                                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" From="5" To="0" Duration="0:0:0.3">
+                                    <DoubleAnimation.EasingFunction>
+                                        <CubicEase EasingMode="EaseOut" />
+                                    </DoubleAnimation.EasingFunction>
+                                </DoubleAnimation>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </EventTrigger>
+                </TextBlock.Triggers>
+            </TextBlock>
         </Grid>
     </Border>
 </UserControl>
