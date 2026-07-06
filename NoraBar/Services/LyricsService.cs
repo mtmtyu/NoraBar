@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
@@ -82,6 +83,14 @@ namespace NoraBar.Services
 
                 string url = $"https://lrclib.net/api/get?{string.Join("&", queryParams)}";
                 var response = await _httpClient.GetAsync(url);
+
+                // duration が原因で見つからなかった場合（404 NotFound）、duration を外して再検索（フォールバック）
+                if (!response.IsSuccessStatusCode && response.StatusCode == System.Net.HttpStatusCode.NotFound && durationInSeconds > 0)
+                {
+                    var fallbackParams = queryParams.Where(q => !q.StartsWith("duration=")).ToList();
+                    string fallbackUrl = $"https://lrclib.net/api/get?{string.Join("&", fallbackParams)}";
+                    response = await _httpClient.GetAsync(fallbackUrl);
+                }
 
                 if (response.IsSuccessStatusCode)
                 {
