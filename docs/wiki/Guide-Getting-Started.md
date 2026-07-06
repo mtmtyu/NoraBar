@@ -31,7 +31,7 @@ For source build and development instructions, see [[Development]].
 
 1. Play media in software.
 2. Move the mouse near the center of the top edge of the screen.
-3. The HUD opens and shows the track title, artist, album art, and control buttons.
+3. The HUD opens and shows the track title, artist, album art, playback controls, waveform, progress, and synced lyrics when available.
 4. Move the mouse away, and the HUD returns to its thin idle state.
 
 ## Music Controls

@@ -22,6 +22,18 @@ Toggles the bar that shows the playback position.
 
 When enabled, Minimal shows a thin progress bar, and Productivity shows a progress bar with the current position and total duration.
 
+### Synced Lyrics
+
+Toggles synced lyrics in the HUD.
+
+When enabled, NoraBar fetches synced lyrics from LRCLIB when available and displays the current lyric line in sync with playback. If lyrics are not found or a network error occurs, a short status message is shown.
+
+### Window Position
+
+Lets you customize the horizontal position of the HUD.
+
+Use Change Position to enter position edit mode, drag the HUD to the desired position, then finish editing. Use Reset to Default to return the HUD to the default centered position.
+
 ### Run at System Startup
 
 Creates `NoraBar.lnk` in the Windows Startup folder so NoraBar launches when you sign in.
@@ -49,7 +61,7 @@ Opens the repository page that contains the NoraBar source code.
 
 ### Open Source Licenses
 
-Shows the licenses for third-party libraries used by NoraBar. The app currently includes CSCore license information.
+Shows the licenses for third-party libraries used by NoraBar. The app currently includes CSCore and LRCLIB license information.
 
 ## Settings File
 

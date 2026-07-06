@@ -23,6 +23,13 @@ Start here when NoraBar does not appear or behave as expected.
 - Confirm that the output device is enabled.
 - If WASAPI loopback initialization fails, the waveform is not displayed. Restarting the app may recover it.
 
+## Lyrics Do Not Appear
+
+- Make sure Synced Lyrics is enabled in Settings.
+- Lyrics are provided by LRCLIB, so not every track has synced lyrics.
+- Check your network connection.
+- Track title, artist, album name, and duration are used to search lyrics, so incorrect media metadata may prevent matching.
+
 ## Settings Are Not Saved
 
 Settings are saved here:

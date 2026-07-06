@@ -10,6 +10,7 @@ MainWindow
        -> MusicViewModel
             -> MediaControlService
             -> AudioVisualizerService
+            -> LyricsService
        -> SettingsService
        -> StartupService
        -> LocalizationService
@@ -33,6 +34,8 @@ Holds app-wide settings and screen state.
 - Current design style
 - Current HUD state
 - Progress bar visibility
+- Synced lyrics visibility
+- HUD position
 - Display language
 - Settings window page
 - Update check dialog
@@ -51,6 +54,7 @@ Collects the state required for the music display.
 - Playback position
 - Total duration
 - Progress ratio
+- Current lyric
 - Waveform data
 
 It also exposes commands for play, pause, previous track, and next track.
@@ -68,6 +72,10 @@ Playback position is updated by a timer. When media is playing, the service adju
 Captures system audio with CSCore `WasapiLoopbackCapture`, then converts FFT results into 8 visual bars.
 
 It uses lower-frequency bands, converts them to decibels, and normalizes the values to a `0.0` to `1.0` range.
+
+### LyricsService
+
+Fetches synchronized lyrics from the LRCLIB API using track title, artist, album, and duration. It provides the currently active lyric line based on the playback position.
 
 ### SettingsService
 
