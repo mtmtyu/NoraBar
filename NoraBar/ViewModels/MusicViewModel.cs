@@ -13,6 +13,9 @@ namespace NoraBar.ViewModels
         private System.Collections.Generic.List<LyricLine>? _currentLyrics;
         private double _lastDurationSeconds = 0;
         private TimeSpan _lastPosition = TimeSpan.Zero;
+        private string _currentTrackName = "";
+        private string _currentArtistName = "";
+        private string _currentAlbumName = "";
 
         private string _title = "Not Playing";
         public string Title
@@ -84,7 +87,22 @@ namespace NoraBar.ViewModels
             get => _showLyrics;
             set
             {
-                SetProperty(ref _showLyrics, value);
+                if (SetProperty(ref _showLyrics, value))
+                {
+                    if (value && _currentLyrics == null && !string.IsNullOrEmpty(_currentTrackName))
+                    {
+                        int currentRequestId = ++_lyricsRequestId;
+                        System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            CurrentLyric = LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LoadingLyrics);
+                        });
+                        _ = FetchLyricsAsync(currentRequestId, _currentTrackName, _currentArtistName, _currentAlbumName);
+                    }
+                    else if (!value)
+                    {
+                        CurrentLyric = string.Empty;
+                    }
+                }
             }
         }
 
@@ -110,16 +128,16 @@ namespace NoraBar.ViewModels
             {
                 int currentRequestId = ++_lyricsRequestId;
 
-                string tTitle = e.Title ?? "";
-                string tArtist = e.Artist ?? "";
-                string tAlbum = e.AlbumTitle ?? "";
+                _currentTrackName = e.Title ?? "";
+                _currentArtistName = e.Artist ?? "";
+                _currentAlbumName = e.AlbumTitle ?? "";
 
                 _currentLyrics = null;
 
                 System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
-                    Title = string.IsNullOrEmpty(tTitle) ? "Unknown" : tTitle;
-                    Artist = string.IsNullOrEmpty(tArtist) ? "Unknown" : tArtist;
+                    Title = string.IsNullOrEmpty(_currentTrackName) ? "Unknown" : _currentTrackName;
+                    Artist = string.IsNullOrEmpty(_currentArtistName) ? "Unknown" : _currentArtistName;
                     AlbumArt = e.AlbumArt;
                     CurrentLyric = SettingsService.Load().ShowLyrics ? LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LoadingLyrics) : "";
                 });
@@ -127,48 +145,7 @@ namespace NoraBar.ViewModels
                 // Wait for 2 seconds (to reduce API requests during consecutive skips)
                 await System.Threading.Tasks.Task.Delay(2000);
 
-                // Abort the process if the track is changed while waiting.
-                if (currentRequestId != _lyricsRequestId)
-                {
-                    return;
-                }
-
-                if (!SettingsService.Load().ShowLyrics)
-                {
-                    return;
-                }
-
-                var result = await _lyricsService.GetLyricsAsync(tTitle, tArtist, tAlbum, _lastDurationSeconds);
-                
-                if (currentRequestId != _lyricsRequestId)
-                {
-                    return;
-                }
-
-                _currentLyrics = result.Lyrics;
-
-                if (_currentLyrics == null || _currentLyrics.Count == 0)
-                {
-                    _ = System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        if (result.Error == LyricsResultError.NotFound)
-                        {
-                            CurrentLyric = LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LyricsNotFound);
-                        }
-                        else if (result.Error == LyricsResultError.NetworkError)
-                        {
-                            CurrentLyric = LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LyricsNetworkError);
-                        }
-                        else
-                        {
-                            CurrentLyric = "";
-                        }
-                    });
-                }
-                else
-                {
-                    UpdateCurrentLyric(_lastPosition);
-                }
+                await FetchLyricsAsync(currentRequestId, _currentTrackName, _currentArtistName, _currentAlbumName);
             };
             _mediaService.PlaybackStateChanged += (s, e) =>
             {
@@ -245,6 +222,51 @@ namespace NoraBar.ViewModels
                     CurrentLyric = currentText;
                 }
             }, System.Windows.Threading.DispatcherPriority.Render);
+        }
+
+        private async System.Threading.Tasks.Task FetchLyricsAsync(int currentRequestId, string tTitle, string tArtist, string tAlbum)
+        {
+            if (currentRequestId != _lyricsRequestId)
+            {
+                return;
+            }
+
+            if (!SettingsService.Load().ShowLyrics)
+            {
+                return;
+            }
+
+            var result = await _lyricsService.GetLyricsAsync(tTitle, tArtist, tAlbum, _lastDurationSeconds);
+            
+            if (currentRequestId != _lyricsRequestId)
+            {
+                return;
+            }
+
+            _currentLyrics = result.Lyrics;
+
+            if (_currentLyrics == null || _currentLyrics.Count == 0)
+            {
+                _ = System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    if (result.Error == LyricsResultError.NotFound)
+                    {
+                        CurrentLyric = LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LyricsNotFound);
+                    }
+                    else if (result.Error == LyricsResultError.NetworkError)
+                    {
+                        CurrentLyric = LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LyricsNetworkError);
+                    }
+                    else
+                    {
+                        CurrentLyric = "";
+                    }
+                });
+            }
+            else
+            {
+                UpdateCurrentLyric(_lastPosition);
+            }
         }
     }
 }
