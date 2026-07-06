@@ -4,6 +4,10 @@
 
 [日本語版 README](README.ja.md)
 
+I am very happy to be able to release this software!
+
+In this initial release, I have focused primarily on music control features. While the functionality is still limited, I plan to add a variety of features in the future to make this software even more useful and enjoyable.
+
 A small music HUD that quietly appears at the very top of your screen.
 
 NoraBar is a WPF application for Windows desktop. It usually waits as a thin 2px strip at the top edge of the screen, then opens into a music controller when you move the mouse near it. It keeps the current track title, artist, album art, playback position, and waveform visualizer in a place that stays close without getting in your way.
