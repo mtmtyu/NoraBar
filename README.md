@@ -26,12 +26,16 @@ NoraBar is a WPF application for Windows desktop. It usually waits as a thin 2px
   - Uses CSCore WASAPI loopback capture to visualize the audio currently playing on the PC with 8 bars.
   - Adds a small sense of live motion without taking over the desktop.
 
+- **Synchronized lyrics display**
+  - Fetches and displays synchronized lyrics for the current track using LRCLIB.
+
 - **Two design styles**
   - `Minimal Floating Pill`: a compact, lightweight style for everyday use.
   - `Productivity Command Island`: a wider style that gives album art and progress more room.
 
 - **Settings window**
   - Switch the design style, progress bar visibility, startup behavior, and display language.
+  - Customize the HUD position by dragging it in edit mode.
   - Includes GitHub Releases update checks and third-party license information.
 
 ## Screenshots
