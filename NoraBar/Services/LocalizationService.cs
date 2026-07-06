@@ -47,7 +47,9 @@ namespace NoraBar.Services
         LicenseLabel,
         LicenseDetails,
         ThirdPartyTab,
-        LoadingLyrics
+        LoadingLyrics,
+        LyricsNotFound,
+        LyricsNetworkError
     }
 
     public static class LocalizationService
@@ -99,7 +101,9 @@ namespace NoraBar.Services
                     [LocalizationKey.LicenseLabel] = "   ライセンス: Microsoft Public License (MS-PL)",
                     [LocalizationKey.LicenseDetails] = "   (詳細なライセンス条文は以下を参照してください)",
                     [LocalizationKey.ThirdPartyTab] = "サードパーティ",
-                    [LocalizationKey.LoadingLyrics] = "歌詞を読み込んでいます..."
+                    [LocalizationKey.LoadingLyrics] = "歌詞を読み込んでいます...",
+                    [LocalizationKey.LyricsNotFound] = "歌詞が見つかりませんでした",
+                    [LocalizationKey.LyricsNetworkError] = "ネットワークエラーが発生しました"
                 },
                 [AppLanguage.English] = new Dictionary<LocalizationKey, string>
                 {
@@ -145,7 +149,9 @@ namespace NoraBar.Services
                     [LocalizationKey.LicenseLabel] = "   License: Microsoft Public License (MS-PL)",
                     [LocalizationKey.LicenseDetails] = "   See the license text below for details.",
                     [LocalizationKey.ThirdPartyTab] = "Third-party",
-                    [LocalizationKey.LoadingLyrics] = "Loading lyrics..."
+                    [LocalizationKey.LoadingLyrics] = "Loading lyrics...",
+                    [LocalizationKey.LyricsNotFound] = "Lyrics not found",
+                    [LocalizationKey.LyricsNetworkError] = "Network error occurred"
                 }
             };
 

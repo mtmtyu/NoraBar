@@ -118,14 +118,25 @@ namespace NoraBar.ViewModels
                     CurrentLyric = ShowLyrics ? LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LoadingLyrics) : "";
                 });
 
-                var lyrics = await _lyricsService.GetLyricsAsync(tTitle, tArtist, tAlbum, _lastDurationSeconds);
-                _currentLyrics = lyrics;
+                var result = await _lyricsService.GetLyricsAsync(tTitle, tArtist, tAlbum, _lastDurationSeconds);
+                _currentLyrics = result.Lyrics;
 
                 if (_currentLyrics == null || _currentLyrics.Count == 0)
                 {
                     _ = System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                     {
-                        CurrentLyric = "";
+                        if (result.Error == LyricsResultError.NotFound)
+                        {
+                            CurrentLyric = LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LyricsNotFound);
+                        }
+                        else if (result.Error == LyricsResultError.NetworkError)
+                        {
+                            CurrentLyric = LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LyricsNetworkError);
+                        }
+                        else
+                        {
+                            CurrentLyric = "";
+                        }
                     });
                 }
                 else

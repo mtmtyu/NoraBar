@@ -14,6 +14,20 @@ namespace NoraBar.Services
         public string Text { get; set; } = string.Empty;
     }
 
+    public enum LyricsResultError
+    {
+        None,
+        NotFound,
+        NetworkError,
+        InvalidMetadata
+    }
+
+    public class LyricsResult
+    {
+        public List<LyricLine>? Lyrics { get; set; }
+        public LyricsResultError Error { get; set; }
+    }
+
     public class LrcLibResponse
     {
         [JsonPropertyName("id")]
@@ -49,18 +63,18 @@ namespace NoraBar.Services
             _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("NoraBar-App-Lyrics-Fetcher");
         }
 
-        public async Task<List<LyricLine>?> GetLyricsAsync(string trackName, string artistName, string? albumName, double durationInSeconds)
+        public async Task<LyricsResult> GetLyricsAsync(string trackName, string artistName, string? albumName, double durationInSeconds)
         {
             if (string.IsNullOrWhiteSpace(trackName) || string.IsNullOrWhiteSpace(artistName))
             {
-                return null;
+                return new LyricsResult { Error = LyricsResultError.InvalidMetadata };
             }
 
             // Create cache key
             string cacheKey = $"{trackName}_{artistName}_{albumName}_{durationInSeconds}";
             if (_cache.TryGetValue(cacheKey, out var cachedLyrics))
             {
-                return cachedLyrics;
+                return new LyricsResult { Lyrics = cachedLyrics, Error = LyricsResultError.None };
             }
 
             try
@@ -99,16 +113,30 @@ namespace NoraBar.Services
                     {
                         var parsedLyrics = ParseLrc(result.SyncedLyrics);
                         _cache[cacheKey] = parsedLyrics;
-                        return parsedLyrics;
+                        return new LyricsResult { Lyrics = parsedLyrics, Error = LyricsResultError.None };
+                    }
+                    else
+                    {
+                        return new LyricsResult { Error = LyricsResultError.NotFound };
                     }
                 }
+                else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    return new LyricsResult { Error = LyricsResultError.NotFound };
+                }
+                else
+                {
+                    return new LyricsResult { Error = LyricsResultError.NetworkError };
+                }
+            }
+            catch (HttpRequestException)
+            {
+                return new LyricsResult { Error = LyricsResultError.NetworkError };
             }
             catch (Exception)
             {
-                // Return null if failed
+                return new LyricsResult { Error = LyricsResultError.NotFound };
             }
-
-            return null;
         }
 
         private List<LyricLine> ParseLrc(string lrcData)
