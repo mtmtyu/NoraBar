@@ -92,6 +92,8 @@ namespace NoraBar.ViewModels
         public ICommand NextCommand { get; }
         public ICommand PreviousCommand { get; }
 
+        private int _lyricsRequestId = 0;
+
         public MusicViewModel()
         {
             _mediaService = new MediaControlService();
@@ -106,6 +108,8 @@ namespace NoraBar.ViewModels
 
             _mediaService.MediaInfoChanged += async (s, e) =>
             {
+                int currentRequestId = ++_lyricsRequestId;
+
                 string tTitle = e.Title ?? "";
                 string tArtist = e.Artist ?? "";
                 string tAlbum = e.AlbumTitle ?? "";
@@ -121,6 +125,12 @@ namespace NoraBar.ViewModels
                 });
 
                 var result = await _lyricsService.GetLyricsAsync(tTitle, tArtist, tAlbum, _lastDurationSeconds);
+                
+                if (currentRequestId != _lyricsRequestId)
+                {
+                    return;
+                }
+
                 _currentLyrics = result.Lyrics;
 
                 if (_currentLyrics == null || _currentLyrics.Count == 0)
