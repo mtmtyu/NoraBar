@@ -10,7 +10,7 @@ namespace NoraBar.Services
         public DesignVariant Variant { get; set; } = DesignVariant.MinimalFloatingPill;
         public bool ShowProgressBar { get; set; } = true;
         public AppLanguage Language { get; set; } = AppLanguage.Japanese;
-        public bool ShowLyrics { get; set; } = true;
+        public bool ShowLyrics { get; set; } = false;
         public bool HasCustomPosition { get; set; } = false;
         public double WindowLeft { get; set; } = 0;
         public double WindowTop { get; set; } = 0;
