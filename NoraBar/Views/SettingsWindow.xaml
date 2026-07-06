@@ -761,6 +761,40 @@
                                     </ToggleButton>
                                 </Grid>
                             </Border>
+
+                            <!-- Card 6: Reset Settings -->
+                            <Border Style="{StaticResource SettingCardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                                        <TextBlock Text="{Binding ResetSettingsText}" Style="{StaticResource CardHeaderStyle}" Foreground="#FF6B6B" />
+                                        <TextBlock Text="{Binding ResetSettingsDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
+                                    </StackPanel>
+
+                                    <Button Grid.Column="1"
+                                            Command="{Binding ShowResetDialogCommand}"
+                                            Content="{Binding ResetAllSettingsText}"
+                                            Background="#2A1A1A" Foreground="#FF6B6B" BorderBrush="#3A2020" BorderThickness="1"
+                                            Padding="10,5" VerticalAlignment="Center" Height="32">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" x:Name="Brd">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Brd" Property="Background" Value="#3D2020"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </Grid>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
 
@@ -1230,6 +1264,58 @@
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
                                             <Setter TargetName="Brd" Property="Background" Value="#3DFFFFFF"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Reset Confirm Dialog -->
+            <Border x:Name="ResetDialog" Background="#1F1F1F" Width="400" Height="200" CornerRadius="8" BorderThickness="1" BorderBrush="#30FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="24" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5">
+                <Border.RenderTransform>
+                    <ScaleTransform ScaleX="1.0" ScaleY="1.0"/>
+                </Border.RenderTransform>
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="30" ShadowDepth="10" Opacity="0.6" Color="Black"/>
+                </Border.Effect>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="{Binding ResetConfirmTitleText}" FontSize="16" FontWeight="SemiBold" Foreground="#FF6B6B" Margin="0,0,0,16" FontFamily="Segoe UI Variable, Segoe UI"/>
+
+                    <TextBlock Grid.Row="1" Text="{Binding ResetConfirmMessageText}" Foreground="White" FontSize="13" VerticalAlignment="Top" TextWrapping="Wrap" FontFamily="Segoe UI Variable, Segoe UI"/>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                        <Button Content="{Binding ResetConfirmNoText}" Command="{Binding CloseResetDialogCommand}" Width="80" Height="32" Margin="0,0,8,0" Foreground="White" BorderThickness="0" Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="#2AFFFFFF" CornerRadius="4" x:Name="Brd">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Brd" Property="Background" Value="#3DFFFFFF"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                        <Button Content="{Binding ResetConfirmYesText}" Command="{Binding ResetAllSettingsCommand}" Width="100" Height="32" Foreground="White" BorderThickness="0" Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="#FF4B4B" CornerRadius="4" x:Name="Brd">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Brd" Property="Background" Value="#CC3333"/>
                                         </Trigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>

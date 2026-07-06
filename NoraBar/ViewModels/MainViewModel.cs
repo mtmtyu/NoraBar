@@ -212,6 +212,14 @@ namespace NoraBar.ViewModels
         public string ResetPositionText => T(LocalizationKey.ResetPosition);
         public string FinishPositionEditText => T(LocalizationKey.FinishPositionEdit);
 
+        public string ResetSettingsText => T(LocalizationKey.ResetSettings);
+        public string ResetSettingsDescriptionText => T(LocalizationKey.ResetSettingsDescription);
+        public string ResetAllSettingsText => T(LocalizationKey.ResetAllSettings);
+        public string ResetConfirmTitleText => T(LocalizationKey.ResetConfirmTitle);
+        public string ResetConfirmMessageText => T(LocalizationKey.ResetConfirmMessage);
+        public string ResetConfirmYesText => T(LocalizationKey.ResetConfirmYes);
+        public string ResetConfirmNoText => T(LocalizationKey.ResetConfirmNo);
+
         private bool _isLicenseDialogOpen;
         public bool IsLicenseDialogOpen
         {
@@ -237,6 +245,13 @@ namespace NoraBar.ViewModels
         {
             get => _isUpdateDialogOpen;
             set => SetProperty(ref _isUpdateDialogOpen, value);
+        }
+
+        private bool _isResetDialogOpen;
+        public bool IsResetDialogOpen
+        {
+            get => _isResetDialogOpen;
+            set => SetProperty(ref _isResetDialogOpen, value);
         }
 
         private bool _isCheckingUpdates;
@@ -277,6 +292,9 @@ namespace NoraBar.ViewModels
         public ICommand SelectThirdPartyLicenseCommand { get; }
         public ICommand CloseUpdateDialogCommand { get; }
         public ICommand ResetPositionCommand { get; }
+        public ICommand ResetAllSettingsCommand { get; }
+        public ICommand ShowResetDialogCommand { get; }
+        public ICommand CloseResetDialogCommand { get; }
 
         public MusicViewModel Music { get; } = new MusicViewModel();
 
@@ -332,6 +350,34 @@ namespace NoraBar.ViewModels
                 HasCustomPosition = false;
                 IsPositionEditMode = false;
             });
+            ShowResetDialogCommand = new RelayCommand(_ => IsResetDialogOpen = true);
+            CloseResetDialogCommand = new RelayCommand(_ => IsResetDialogOpen = false);
+            ResetAllSettingsCommand = new RelayCommand(_ => ResetAllSettings());
+        }
+
+        private void ResetAllSettings()
+        {
+            IsResetDialogOpen = false;
+            
+            var defaultSettings = new UserSettings();
+
+            // Notify UI by setting properties
+            CurrentVariant = defaultSettings.Variant;
+            ShowProgressBar = defaultSettings.ShowProgressBar;
+            ShowLyrics = defaultSettings.ShowLyrics;
+            SelectedLanguage = defaultSettings.Language;
+            
+            // Explicitly set startup to true as requested
+            IsStartupEnabled = true;
+
+            // Reset positions
+            HasCustomPosition = false;
+            WindowLeft = 0;
+            WindowTop = 0;
+            IsPositionEditMode = false;
+            
+            // Save current settings correctly
+            SaveSettings();
         }
 
         private void SaveSettings()
@@ -518,6 +564,13 @@ namespace NoraBar.ViewModels
             OnPropertyChanged(nameof(ChangePositionText));
             OnPropertyChanged(nameof(ResetPositionText));
             OnPropertyChanged(nameof(FinishPositionEditText));
+            OnPropertyChanged(nameof(ResetSettingsText));
+            OnPropertyChanged(nameof(ResetSettingsDescriptionText));
+            OnPropertyChanged(nameof(ResetAllSettingsText));
+            OnPropertyChanged(nameof(ResetConfirmTitleText));
+            OnPropertyChanged(nameof(ResetConfirmMessageText));
+            OnPropertyChanged(nameof(ResetConfirmYesText));
+            OnPropertyChanged(nameof(ResetConfirmNoText));
         }
     }
 }

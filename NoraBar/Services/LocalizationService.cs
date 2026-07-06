@@ -54,7 +54,14 @@ namespace NoraBar.Services
         WindowPositionDescription,
         ChangePosition,
         ResetPosition,
-        FinishPositionEdit
+        FinishPositionEdit,
+        ResetSettings,
+        ResetSettingsDescription,
+        ResetAllSettings,
+        ResetConfirmTitle,
+        ResetConfirmMessage,
+        ResetConfirmYes,
+        ResetConfirmNo
     }
 
     public static class LocalizationService
@@ -113,7 +120,14 @@ namespace NoraBar.Services
                     [LocalizationKey.WindowPositionDescription] = "HUDの表示位置をカスタマイズします。",
                     [LocalizationKey.ChangePosition] = "表示位置を変更する",
                     [LocalizationKey.ResetPosition] = "デフォルトに戻す",
-                    [LocalizationKey.FinishPositionEdit] = "位置を確定する"
+                    [LocalizationKey.FinishPositionEdit] = "位置を確定する",
+                    [LocalizationKey.ResetSettings] = "設定の初期化",
+                    [LocalizationKey.ResetSettingsDescription] = "すべての設定をデフォルト状態に戻します。",
+                    [LocalizationKey.ResetAllSettings] = "すべてリセット",
+                    [LocalizationKey.ResetConfirmTitle] = "設定のリセット",
+                    [LocalizationKey.ResetConfirmMessage] = "言語、デザイン、表示位置など、すべての設定を初期化しますか？\n（この操作は元に戻せません）",
+                    [LocalizationKey.ResetConfirmYes] = "はい",
+                    [LocalizationKey.ResetConfirmNo] = "いいえ"
                 },
                 [AppLanguage.English] = new Dictionary<LocalizationKey, string>
                 {
@@ -166,7 +180,14 @@ namespace NoraBar.Services
                     [LocalizationKey.WindowPositionDescription] = "Customize the HUD display position.",
                     [LocalizationKey.ChangePosition] = "Change Position",
                     [LocalizationKey.ResetPosition] = "Reset to Default",
-                    [LocalizationKey.FinishPositionEdit] = "Finish Edit"
+                    [LocalizationKey.FinishPositionEdit] = "Finish Edit",
+                    [LocalizationKey.ResetSettings] = "Reset Settings",
+                    [LocalizationKey.ResetSettingsDescription] = "Resets all settings to their default values.",
+                    [LocalizationKey.ResetAllSettings] = "Reset All",
+                    [LocalizationKey.ResetConfirmTitle] = "Reset Settings",
+                    [LocalizationKey.ResetConfirmMessage] = "Are you sure you want to initialize all settings including language, design, and window position?\n(This cannot be undone)",
+                    [LocalizationKey.ResetConfirmYes] = "Yes",
+                    [LocalizationKey.ResetConfirmNo] = "No"
                 }
             };
 

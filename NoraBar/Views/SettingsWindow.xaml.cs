@@ -142,7 +142,8 @@ namespace NoraBar.Views
                 Dispatcher.Invoke(UpdatePreview);
             }
             else if (e.PropertyName == nameof(MainViewModel.IsLicenseDialogOpen) || 
-                     e.PropertyName == nameof(MainViewModel.IsUpdateDialogOpen))
+                     e.PropertyName == nameof(MainViewModel.IsUpdateDialogOpen) ||
+                     e.PropertyName == nameof(MainViewModel.IsResetDialogOpen))
             {
                 Dispatcher.Invoke(UpdateOverlayVisibilities);
             }
@@ -152,7 +153,7 @@ namespace NoraBar.Views
         {
             if (_viewModel == null) return;
 
-            bool overlayRequired = _viewModel.IsLicenseDialogOpen || _viewModel.IsUpdateDialogOpen;
+            bool overlayRequired = _viewModel.IsLicenseDialogOpen || _viewModel.IsUpdateDialogOpen || _viewModel.IsResetDialogOpen;
             
             if (overlayRequired)
             {
@@ -162,6 +163,7 @@ namespace NoraBar.Views
                 {
                     LicenseDialog.Visibility = Visibility.Visible;
                     UpdateDialog.Visibility = Visibility.Collapsed;
+                    ResetDialog.Visibility = Visibility.Collapsed;
                     
                     var sb = (System.Windows.Media.Animation.Storyboard)this.Resources["DialogOpenStoryboard"];
                     sb?.Begin(LicenseDialog);
@@ -170,9 +172,19 @@ namespace NoraBar.Views
                 {
                     LicenseDialog.Visibility = Visibility.Collapsed;
                     UpdateDialog.Visibility = Visibility.Visible;
+                    ResetDialog.Visibility = Visibility.Collapsed;
                     
                     var sb = (System.Windows.Media.Animation.Storyboard)this.Resources["DialogOpenStoryboard"];
                     sb?.Begin(UpdateDialog);
+                }
+                else if (_viewModel.IsResetDialogOpen)
+                {
+                    LicenseDialog.Visibility = Visibility.Collapsed;
+                    UpdateDialog.Visibility = Visibility.Collapsed;
+                    ResetDialog.Visibility = Visibility.Visible;
+                    
+                    var sb = (System.Windows.Media.Animation.Storyboard)this.Resources["DialogOpenStoryboard"];
+                    sb?.Begin(ResetDialog);
                 }
                 
                 var fadeBg = (System.Windows.Media.Animation.Storyboard)this.Resources["OverlayFadeInStoryboard"];
@@ -186,11 +198,12 @@ namespace NoraBar.Views
                     fadeBg = fadeBg.Clone();
                     fadeBg.Completed += (s, ev) =>
                     {
-                        if (_viewModel != null && !_viewModel.IsLicenseDialogOpen && !_viewModel.IsUpdateDialogOpen)
+                        if (_viewModel != null && !_viewModel.IsLicenseDialogOpen && !_viewModel.IsUpdateDialogOpen && !_viewModel.IsResetDialogOpen)
                         {
                             OverlayDialogs.Visibility = Visibility.Collapsed;
                             LicenseDialog.Visibility = Visibility.Collapsed;
                             UpdateDialog.Visibility = Visibility.Collapsed;
+                            ResetDialog.Visibility = Visibility.Collapsed;
                         }
                     };
                     fadeBg.Begin(OverlayDialogs);
@@ -200,6 +213,7 @@ namespace NoraBar.Views
                     OverlayDialogs.Visibility = Visibility.Collapsed;
                     LicenseDialog.Visibility = Visibility.Collapsed;
                     UpdateDialog.Visibility = Visibility.Collapsed;
+                    ResetDialog.Visibility = Visibility.Collapsed;
                 }
             }
         }

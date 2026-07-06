@@ -9,7 +9,7 @@ namespace NoraBar.Services
     {
         public DesignVariant Variant { get; set; } = DesignVariant.MinimalFloatingPill;
         public bool ShowProgressBar { get; set; } = true;
-        public AppLanguage Language { get; set; } = AppLanguage.Japanese;
+        public AppLanguage Language { get; set; } = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ja" ? AppLanguage.Japanese : AppLanguage.English;
         public bool ShowLyrics { get; set; } = false;
         public bool HasCustomPosition { get; set; } = false;
         public double WindowLeft { get; set; } = 0;
@@ -32,12 +32,19 @@ namespace NoraBar.Services
         {
             try
             {
+                bool isFirstRun = !File.Exists(FilePath) && !File.Exists(LegacyFilePath);
+
                 MigrateLegacySettingsIfNeeded();
 
                 if (File.Exists(FilePath))
                 {
                     string json = File.ReadAllText(FilePath);
                     return JsonSerializer.Deserialize<UserSettings>(json) ?? new UserSettings();
+                }
+                
+                if (isFirstRun)
+                {
+                    StartupService.SetStartup(true);
                 }
             }
             catch (Exception)
