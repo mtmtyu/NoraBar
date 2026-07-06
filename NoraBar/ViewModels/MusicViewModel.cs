@@ -9,6 +9,10 @@ namespace NoraBar.ViewModels
     {
         private readonly MediaControlService _mediaService;
         private readonly AudioVisualizerService _audioVisualizerService;
+        private readonly LyricsService _lyricsService;
+        private System.Collections.Generic.List<LyricLine>? _currentLyrics;
+        private double _lastDurationSeconds = 0;
+        private TimeSpan _lastPosition = TimeSpan.Zero;
 
         private string _title = "Not Playing";
         public string Title
@@ -67,6 +71,23 @@ namespace NoraBar.ViewModels
             set => SetProperty(ref _progressValue, value);
         }
 
+        private string _currentLyric = string.Empty;
+        public string CurrentLyric
+        {
+            get => _currentLyric;
+            set => SetProperty(ref _currentLyric, value);
+        }
+
+        private bool _showLyrics = true;
+        public bool ShowLyrics
+        {
+            get => _showLyrics;
+            set
+            {
+                SetProperty(ref _showLyrics, value);
+            }
+        }
+
         public ICommand PlayPauseCommand { get; }
         public ICommand NextCommand { get; }
         public ICommand PreviousCommand { get; }
@@ -75,19 +96,31 @@ namespace NoraBar.ViewModels
         {
             _mediaService = new MediaControlService();
             _audioVisualizerService = new AudioVisualizerService();
+            _lyricsService = new LyricsService();
+
+            ShowLyrics = SettingsService.Load().ShowLyrics;
 
             PlayPauseCommand = new RelayCommand(async _ => await _mediaService.PlayPauseAsync());
             NextCommand = new RelayCommand(async _ => await _mediaService.NextAsync());
             PreviousCommand = new RelayCommand(async _ => await _mediaService.PreviousAsync());
 
-            _mediaService.MediaInfoChanged += (s, e) =>
+            _mediaService.MediaInfoChanged += async (s, e) =>
             {
+                string tTitle = e.Title ?? "";
+                string tArtist = e.Artist ?? "";
+                string tAlbum = e.AlbumTitle ?? "";
+
                 System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
-                    Title = string.IsNullOrEmpty(e.Title) ? "Unknown" : e.Title;
-                    Artist = string.IsNullOrEmpty(e.Artist) ? "Unknown" : e.Artist;
+                    Title = string.IsNullOrEmpty(tTitle) ? "Unknown" : tTitle;
+                    Artist = string.IsNullOrEmpty(tArtist) ? "Unknown" : tArtist;
                     AlbumArt = e.AlbumArt;
+                    CurrentLyric = "";
                 });
+
+                var lyrics = await _lyricsService.GetLyricsAsync(tTitle, tArtist, tAlbum, _lastDurationSeconds);
+                _currentLyrics = lyrics;
+                UpdateCurrentLyric(_lastPosition);
             };
             _mediaService.PlaybackStateChanged += (s, e) =>
             {
@@ -99,6 +132,11 @@ namespace NoraBar.ViewModels
 
             _mediaService.MediaTimelineChanged += (s, e) =>
             {
+                _lastPosition = e.Position;
+                _lastDurationSeconds = e.EndTime.TotalSeconds;
+
+                UpdateCurrentLyric(e.Position);
+
                 System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                 {
                     PositionText = e.Position.ToString(@"m\:ss");
@@ -130,6 +168,35 @@ namespace NoraBar.ViewModels
         {
             _audioVisualizerService.Stop();
             _audioVisualizerService.Dispose();
+        }
+
+        private void UpdateCurrentLyric(TimeSpan position)
+        {
+            if (_currentLyrics == null || _currentLyrics.Count == 0 || !ShowLyrics)
+            {
+                return;
+            }
+
+            string currentText = "";
+            for (int i = 0; i < _currentLyrics.Count; i++)
+            {
+                if (position >= _currentLyrics[i].StartTime)
+                {
+                    currentText = _currentLyrics[i].Text;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                if (CurrentLyric != currentText)
+                {
+                    CurrentLyric = currentText;
+                }
+            }, System.Windows.Threading.DispatcherPriority.Render);
         }
     }
 }

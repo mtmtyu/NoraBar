@@ -128,7 +128,8 @@ namespace NoraBar
         {
             if (e.PropertyName == nameof(MainViewModel.CurrentVariant) ||
                 e.PropertyName == nameof(MainViewModel.CurrentState) ||
-                e.PropertyName == nameof(MainViewModel.ShowProgressBar))
+                e.PropertyName == nameof(MainViewModel.ShowProgressBar) ||
+                e.PropertyName == nameof(MainViewModel.ShowLyrics))
             {
                 Dispatcher.Invoke(UpdateView);
             }
@@ -179,6 +180,7 @@ namespace NoraBar
                     view = new DesignAMusicView();
                     targetWidth = 450;
                     targetHeight = _viewModel.ShowProgressBar ? 96 : 80;
+                    if (_viewModel.ShowLyrics) targetHeight += 24;
                 }
             }
             else // ProductivityCommandIsland (Design B)
@@ -193,6 +195,7 @@ namespace NoraBar
                     view = new DesignBMusicView();
                     targetWidth = 560;
                     targetHeight = _viewModel.ShowProgressBar ? 120 : 90;
+                    if (_viewModel.ShowLyrics) targetHeight += 24;
                 }
             }
 

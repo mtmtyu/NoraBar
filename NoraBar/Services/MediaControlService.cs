@@ -150,6 +150,7 @@ namespace NoraBar.Services
                 {
                     Title = properties.Title,
                     Artist = properties.Artist,
+                    AlbumTitle = properties.AlbumTitle,
                     AlbumArt = albumArt
                 });
             }
@@ -237,6 +238,7 @@ namespace NoraBar.Services
     {
         public string? Title { get; set; }
         public string? Artist { get; set; }
+        public string? AlbumTitle { get; set; }
         public BitmapImage? AlbumArt { get; set; }
     }
 

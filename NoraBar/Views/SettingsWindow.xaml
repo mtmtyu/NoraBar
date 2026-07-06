@@ -619,6 +619,27 @@
                                 </Grid>
                             </Border>
 
+                            <!-- Card 2.5: Lyrics Toggle -->
+                            <Border Style="{StaticResource SettingCardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding ShowLyricsText}" Style="{StaticResource CardHeaderStyle}" />
+                                        <TextBlock Text="{Binding ShowLyricsDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
+                                    </StackPanel>
+
+                                    <CheckBox Grid.Column="1"
+                                              Style="{StaticResource ToggleSwitchStyle}"
+                                              IsChecked="{Binding ShowLyrics}"
+                                              VerticalAlignment="Center"/>
+
+                                </Grid>
+                            </Border>
+
                             <!-- Card 3: Startup Toggle -->
                             <Border Style="{StaticResource SettingCardStyle}">
                                 <Grid>

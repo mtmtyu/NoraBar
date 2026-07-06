@@ -55,6 +55,20 @@ namespace NoraBar.ViewModels
             }
         }
 
+        private bool _showLyrics;
+        public bool ShowLyrics
+        {
+            get => _showLyrics;
+            set
+            {
+                if (SetProperty(ref _showLyrics, value))
+                {
+                    SaveSettings();
+                    Music.ShowLyrics = value;
+                }
+            }
+        }
+
         private AppLanguage _selectedLanguage;
         public AppLanguage SelectedLanguage
         {
@@ -123,6 +137,8 @@ namespace NoraBar.ViewModels
         public string DesignStyleDescriptionText => T(LocalizationKey.DesignStyleDescription);
         public string ProgressBarText => T(LocalizationKey.ProgressBar);
         public string ProgressBarDescriptionText => T(LocalizationKey.ProgressBarDescription);
+        public string ShowLyricsText => T(LocalizationKey.ShowLyrics);
+        public string ShowLyricsDescriptionText => T(LocalizationKey.ShowLyricsDescription);
         public string StartupText => T(LocalizationKey.Startup);
         public string StartupDescriptionText => T(LocalizationKey.StartupDescription);
         public string LanguageText => T(LocalizationKey.Language);
@@ -219,6 +235,7 @@ namespace NoraBar.ViewModels
             var settings = SettingsService.Load();
             _currentVariant = settings.Variant;
             _showProgressBar = settings.ShowProgressBar;
+            _showLyrics = settings.ShowLyrics;
             _selectedLanguage = settings.Language;
 
             SetVariantCommand = new RelayCommand(ExecuteSetVariant);
@@ -262,6 +279,7 @@ namespace NoraBar.ViewModels
             {
                 Variant = CurrentVariant,
                 ShowProgressBar = ShowProgressBar,
+                ShowLyrics = ShowLyrics,
                 Language = SelectedLanguage
             });
         }
@@ -333,7 +351,13 @@ namespace NoraBar.ViewModels
             "(B) If you bring a patent claim against any contributor over patents that you claim are infringed by the software, your patent license from such contributor to the software ends automatically.\n" +
             "(C) If you distribute any portion of the software, you must retain all copyright, patent, trademark, and attribution notices that are present in the software.\n" +
             "(D) If you distribute any portion of the software in source code form, you may do so only under this license by including a complete copy of this license with your distribution. If you distribute any portion of the software in compiled or object code form, you may only do so under a license that complies with this license.\n" +
-            "(E) The software is licensed \"as-is.\" You bear the risk of using it. The contributors give no express warranties, guarantees or conditions. You may have additional consumer rights under your local laws which this license cannot change. To the extent permitted under your local laws, the contributors exclude the implied warranties of merchantability, fitness for a particular purpose and non-infringement.";
+            "(E) The software is licensed \"as-is.\" You bear the risk of using it. The contributors give no express warranties, guarantees or conditions. You may have additional consumer rights under your local laws which this license cannot change. To the extent permitted under your local laws, the contributors exclude the implied warranties of merchantability, fitness for a particular purpose and non-infringement.\n\n" +
+            "========================================================================\n" +
+            "LRCLIB API\n" +
+            "========================================================================\n\n" +
+            "Lyrics provided by LRCLIB (https://lrclib.net/).\n" +
+            "The data from LRCLIB is licensed under the MIT License.\n" +
+            "Please visit their website for more information on their license and terms of service.";
 
         public string CurrentLicenseText => IsNoraBarLicenseTab ? NoraBarLicenseText : ThirdPartyLicenseText;
 
@@ -402,6 +426,8 @@ namespace NoraBar.ViewModels
             OnPropertyChanged(nameof(DesignStyleDescriptionText));
             OnPropertyChanged(nameof(ProgressBarText));
             OnPropertyChanged(nameof(ProgressBarDescriptionText));
+            OnPropertyChanged(nameof(ShowLyricsText));
+            OnPropertyChanged(nameof(ShowLyricsDescriptionText));
             OnPropertyChanged(nameof(StartupText));
             OnPropertyChanged(nameof(StartupDescriptionText));
             OnPropertyChanged(nameof(LanguageText));

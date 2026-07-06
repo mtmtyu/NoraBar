@@ -103,6 +103,28 @@
                          BorderThickness="0" 
                          Margin="0,8,0,0"
                          Visibility="{Binding ShowProgressBar, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+            <!-- Lyrics Row (Shown when ShowLyrics is true) -->
+            <TextBlock Grid.Row="1"
+                       Margin="0,16,0,0"
+                       Text="{Binding Music.CurrentLyric}"
+                       Foreground="#E0FFFFFF"
+                       FontSize="13"
+                       FontWeight="SemiBold"
+                       HorizontalAlignment="Center"
+                       TextAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       Visibility="{Binding ShowLyrics, Converter={StaticResource BoolToVisibilityConverter}}">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ShowProgressBar}" Value="True">
+                                <Setter Property="Margin" Value="0,18,0,0"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
         </Grid>
     </Border>
 </UserControl>

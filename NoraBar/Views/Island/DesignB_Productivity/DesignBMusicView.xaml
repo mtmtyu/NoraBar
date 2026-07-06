@@ -12,98 +12,117 @@
     
     <Border Style="{StaticResource IslandBorderStyle}" Padding="16">
         <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
-            <!-- Album Art -->
-            <Grid Grid.Column="0" Width="80" Height="80" Margin="0,0,20,0" Tag="{Binding Music.Title, NotifyOnTargetUpdated=True}">
-                <Grid.RenderTransform>
-                    <ScaleTransform ScaleX="1" ScaleY="1" CenterX="40" CenterY="40" />
-                </Grid.RenderTransform>
-                <Grid.Triggers>
-                    <EventTrigger RoutedEvent="Binding.TargetUpdated">
-                        <BeginStoryboard>
-                            <Storyboard>
-                                <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.5" To="1" Duration="0:0:0.3" />
-                                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" From="0.8" To="1" Duration="0:0:0.4">
-                                    <DoubleAnimation.EasingFunction>
-                                        <BackEase EasingMode="EaseOut" Amplitude="0.5" />
-                                    </DoubleAnimation.EasingFunction>
-                                </DoubleAnimation>
-                                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" From="0.8" To="1" Duration="0:0:0.4">
-                                    <DoubleAnimation.EasingFunction>
-                                        <BackEase EasingMode="EaseOut" Amplitude="0.5" />
-                                    </DoubleAnimation.EasingFunction>
-                                </DoubleAnimation>
-                            </Storyboard>
-                        </BeginStoryboard>
-                    </EventTrigger>
-                </Grid.Triggers>
-
-                <Border Background="#20FFFFFF" CornerRadius="10" />
-                <TextBlock Text="&#xE8D6;" FontFamily="{StaticResource DefaultFontFamily}" FontSize="28" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                <Border CornerRadius="10">
-                    <Border.Background>
-                        <ImageBrush ImageSource="{Binding Music.AlbumArt}" Stretch="UniformToFill" />
-                    </Border.Background>
-                </Border>
-            </Grid>
-
-            <!-- Metadata -->
-            <Grid Grid.Column="1" VerticalAlignment="Center">
+            <Grid Grid.Row="0">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <StackPanel>
-                    <StackPanel.RenderTransform>
-                        <TranslateTransform Y="0"/>
-                    </StackPanel.RenderTransform>
-                    <StackPanel.Triggers>
+
+                <!-- Album Art -->
+                <Grid Grid.Column="0" Width="80" Height="80" Margin="0,0,20,0" Tag="{Binding Music.Title, NotifyOnTargetUpdated=True}">
+                    <Grid.RenderTransform>
+                        <ScaleTransform ScaleX="1" ScaleY="1" CenterX="40" CenterY="40" />
+                    </Grid.RenderTransform>
+                    <Grid.Triggers>
                         <EventTrigger RoutedEvent="Binding.TargetUpdated">
                             <BeginStoryboard>
                                 <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.4" />
-                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" From="10" To="0" Duration="0:0:0.4">
+                                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.5" To="1" Duration="0:0:0.3" />
+                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" From="0.8" To="1" Duration="0:0:0.4">
                                         <DoubleAnimation.EasingFunction>
-                                            <CubicEase EasingMode="EaseOut" />
+                                            <BackEase EasingMode="EaseOut" Amplitude="0.5" />
+                                        </DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" From="0.8" To="1" Duration="0:0:0.4">
+                                        <DoubleAnimation.EasingFunction>
+                                            <BackEase EasingMode="EaseOut" Amplitude="0.5" />
                                         </DoubleAnimation.EasingFunction>
                                     </DoubleAnimation>
                                 </Storyboard>
                             </BeginStoryboard>
                         </EventTrigger>
-                    </StackPanel.Triggers>
-                    <TextBlock Text="{Binding Music.Title, NotifyOnTargetUpdated=True}" Style="{StaticResource TitleText}" FontSize="18" Margin="0,0,0,4" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="{Binding Music.Artist}" Style="{StaticResource CaptionText}" FontSize="14" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-                
-                <controls:WaveformVisualizer Grid.Column="1" Margin="16,0,0,0" SpectrumData="{Binding Music.SpectrumData}" BarColor="{StaticResource AccentBrush}" VerticalAlignment="Center" />
-            </Grid>
+                    </Grid.Triggers>
 
-            <!-- Controls -->
-            <StackPanel Grid.Column="2" VerticalAlignment="Center" MinWidth="180" Margin="24,0,0,0">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,0">
-                    <controls:IconButton IconText="&#xE892;" Margin="0,0,8,0" Command="{Binding Music.PreviousCommand}" /> <!-- Previous -->
-                    
-                    <!-- Play/Pause Button styled with Design A to unify aesthetics -->
-                    <controls:IconButton IconText="{Binding Music.IsPlaying, Converter={StaticResource PlayPauseIconConverter}}" Margin="0,0,8,0" Command="{Binding Music.PlayPauseCommand}" /> <!-- Play/Pause -->
-                    
-                    <controls:IconButton IconText="&#xE893;" Command="{Binding Music.NextCommand}" /> <!-- Next -->
-                </StackPanel>
-                <Grid Margin="0,12,0,0" Visibility="{Binding ShowProgressBar, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Border Background="#20FFFFFF" CornerRadius="10" />
+                    <TextBlock Text="&#xE8D6;" FontFamily="{StaticResource DefaultFontFamily}" FontSize="28" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <Border CornerRadius="10">
+                        <Border.Background>
+                            <ImageBrush ImageSource="{Binding Music.AlbumArt}" Stretch="UniformToFill" />
+                        </Border.Background>
+                    </Border>
+                </Grid>
+
+                <!-- Metadata -->
+                <Grid Grid.Column="1" VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="{Binding Music.PositionText}" Style="{StaticResource CaptionText}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,12,0"/>
-                    <ProgressBar Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Music.ProgressValue}" Height="4" Foreground="{StaticResource AccentBrush}" Background="#33FFFFFF" BorderThickness="0" VerticalAlignment="Center"/>
-                    <TextBlock Grid.Column="2" Text="{Binding Music.DurationText}" Style="{StaticResource CaptionText}" Foreground="{StaticResource TextSecondaryBrush}" Margin="12,0,0,0"/>
+                    <StackPanel>
+                        <StackPanel.RenderTransform>
+                            <TranslateTransform Y="0"/>
+                        </StackPanel.RenderTransform>
+                        <StackPanel.Triggers>
+                            <EventTrigger RoutedEvent="Binding.TargetUpdated">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.4" />
+                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" From="10" To="0" Duration="0:0:0.4">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </StackPanel.Triggers>
+                        <TextBlock Text="{Binding Music.Title, NotifyOnTargetUpdated=True}" Style="{StaticResource TitleText}" FontSize="18" Margin="0,0,0,4" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding Music.Artist}" Style="{StaticResource CaptionText}" FontSize="14" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                    
+                    <controls:WaveformVisualizer Grid.Column="1" Margin="16,0,0,0" SpectrumData="{Binding Music.SpectrumData}" BarColor="{StaticResource AccentBrush}" VerticalAlignment="Center" />
                 </Grid>
-            </StackPanel>
+
+                <!-- Controls -->
+                <StackPanel Grid.Column="2" VerticalAlignment="Center" MinWidth="180" Margin="24,0,0,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,0">
+                        <controls:IconButton IconText="&#xE892;" Margin="0,0,8,0" Command="{Binding Music.PreviousCommand}" /> <!-- Previous -->
+                        
+                        <!-- Play/Pause Button styled with Design A to unify aesthetics -->
+                        <controls:IconButton IconText="{Binding Music.IsPlaying, Converter={StaticResource PlayPauseIconConverter}}" Margin="0,0,8,0" Command="{Binding Music.PlayPauseCommand}" /> <!-- Play/Pause -->
+                        
+                        <controls:IconButton IconText="&#xE893;" Command="{Binding Music.NextCommand}" /> <!-- Next -->
+                    </StackPanel>
+                    <Grid Margin="0,12,0,0" Visibility="{Binding ShowProgressBar, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{Binding Music.PositionText}" Style="{StaticResource CaptionText}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,12,0"/>
+                        <ProgressBar Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding Music.ProgressValue}" Height="4" Foreground="{StaticResource AccentBrush}" Background="#33FFFFFF" BorderThickness="0" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="{Binding Music.DurationText}" Style="{StaticResource CaptionText}" Foreground="{StaticResource TextSecondaryBrush}" Margin="12,0,0,0"/>
+                    </Grid>
+                </StackPanel>
+            </Grid>
+
+            <!-- Lyrics Row (Shown when ShowLyrics is true) -->
+            <TextBlock Grid.Row="1"
+                       Margin="0,12,0,0"
+                       Text="{Binding Music.CurrentLyric}"
+                       Foreground="#E0FFFFFF"
+                       FontSize="14"
+                       FontWeight="SemiBold"
+                       HorizontalAlignment="Center"
+                       TextAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       Visibility="{Binding ShowLyrics, Converter={StaticResource BoolToVisibilityConverter}}" />
         </Grid>
     </Border>
 </UserControl>
