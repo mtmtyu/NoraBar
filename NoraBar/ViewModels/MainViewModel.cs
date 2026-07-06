@@ -173,7 +173,7 @@ namespace NoraBar.ViewModels
             set => SetProperty(ref _currentPage, value);
         }
 
-        public string CurrentVersion => System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
+        public string CurrentVersion => System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.1";
 
         public string SettingsWindowTitle => T(LocalizationKey.WindowTitle);
         public string AppSubtitleText => T(LocalizationKey.AppSubtitle);
