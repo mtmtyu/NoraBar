@@ -97,7 +97,7 @@ Japanese Wiki pages are also available:
 - [アーキテクチャ](docs/wiki/アーキテクチャ.md)
 - [トラブルシューティング](docs/wiki/トラブルシューティング.md)
 
-Markdown files under `docs/wiki/` are synced to the GitHub Wiki when changes are pushed to the `main` branch.
+Markdown files under `docs/wiki/` are synced to the GitHub Wiki when changes are pushed to the `master` branch.
 
 ## Tech Stack
 

@@ -29,6 +29,7 @@ Start here when NoraBar does not appear or behave as expected.
 - Lyrics are provided by LRCLIB, so not every track has synced lyrics.
 - Check your network connection.
 - Track title, artist, album name, and duration are used to search lyrics, so incorrect media metadata may prevent matching.
+- After changing tracks, lyrics may take a moment to update. NoraBar intentionally waits briefly before requesting lyrics to reduce unnecessary requests during rapid skipping.
 
 ## Settings Are Not Saved
 

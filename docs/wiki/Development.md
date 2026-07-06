@@ -56,13 +56,25 @@ Music information comes from Windows media sessions. The waveform captures syste
 
 ## Wiki Sync
 
-Markdown files under `docs/wiki/` are synced to the GitHub Wiki when changes are pushed to the `main` branch. The sync workflow is defined in `.github/workflows/wiki-sync.yml`.
+Markdown files under `docs/wiki/` are synced to the GitHub Wiki when changes are pushed to the `master` branch. The sync workflow is defined in `.github/workflows/wiki-sync.yml`.
 
 Use GitHub Wiki page links between Wiki pages:
 
 ```markdown
 [[Guide-Getting-Started]]
 ```
+
+## Release Versioning
+
+Before publishing a new release, update the version fields in `NoraBar/NoraBar.csproj`:
+
+- `Version`
+- `AssemblyVersion`
+- `FileVersion`
+
+Also update `AppVersion` in `setup.iss` and `CurrentVersion` in `MainViewModel.cs`.
+
+These values should match the release version so the in-app update checker can correctly compare the installed version with the latest GitHub Release.
 
 ## Documentation Guidelines
 

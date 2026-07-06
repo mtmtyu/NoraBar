@@ -34,4 +34,4 @@ NoraBar is a Windows desktop app that keeps music close without cluttering your 
 
 The source for this Wiki lives in `docs/wiki/` in the repository.
 
-When changes are pushed to the `main` branch, `.github/workflows/wiki-sync.yml` syncs these Markdown files to the GitHub Wiki. Use GitHub Wiki page links such as `[[Guide-Getting-Started]]` for links between Wiki pages.
+When changes are pushed to the `master` branch, `.github/workflows/wiki-sync.yml` syncs these Markdown files to the GitHub Wiki. Use GitHub Wiki page links such as `[[Guide-Getting-Started]]` for links between Wiki pages.
