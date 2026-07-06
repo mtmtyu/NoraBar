@@ -64,7 +64,7 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel>
+                    <StackPanel VerticalAlignment="Center">
                         <StackPanel.RenderTransform>
                             <TranslateTransform Y="0"/>
                         </StackPanel.RenderTransform>
