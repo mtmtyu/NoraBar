@@ -46,7 +46,8 @@ namespace NoraBar.Services
         LicensePackageVersion,
         LicenseLabel,
         LicenseDetails,
-        ThirdPartyTab
+        ThirdPartyTab,
+        LoadingLyrics
     }
 
     public static class LocalizationService
@@ -97,7 +98,8 @@ namespace NoraBar.Services
                     [LocalizationKey.LicensePackageVersion] = "■ CSCore (バージョン 1.2.1.2)",
                     [LocalizationKey.LicenseLabel] = "   ライセンス: Microsoft Public License (MS-PL)",
                     [LocalizationKey.LicenseDetails] = "   (詳細なライセンス条文は以下を参照してください)",
-                    [LocalizationKey.ThirdPartyTab] = "サードパーティ"
+                    [LocalizationKey.ThirdPartyTab] = "サードパーティ",
+                    [LocalizationKey.LoadingLyrics] = "歌詞を読み込んでいます..."
                 },
                 [AppLanguage.English] = new Dictionary<LocalizationKey, string>
                 {
@@ -142,7 +144,8 @@ namespace NoraBar.Services
                     [LocalizationKey.LicensePackageVersion] = "CSCore (version 1.2.1.2)",
                     [LocalizationKey.LicenseLabel] = "   License: Microsoft Public License (MS-PL)",
                     [LocalizationKey.LicenseDetails] = "   See the license text below for details.",
-                    [LocalizationKey.ThirdPartyTab] = "Third-party"
+                    [LocalizationKey.ThirdPartyTab] = "Third-party",
+                    [LocalizationKey.LoadingLyrics] = "Loading lyrics..."
                 }
             };
 
