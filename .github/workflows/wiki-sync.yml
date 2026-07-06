@@ -2,7 +2,7 @@ name: Sync docs/wiki to GitHub Wiki
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - 'docs/wiki/**'
       - '.github/workflows/wiki-sync.yml'
