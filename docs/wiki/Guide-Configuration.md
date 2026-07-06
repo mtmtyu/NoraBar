@@ -37,17 +37,26 @@ Use Change Position to enter position edit mode, drag the HUD to the desired pos
 ### Run at System Startup
 
 Creates `NoraBar.lnk` in the Windows Startup folder so NoraBar launches when you sign in.
+On the first run (when the settings file does not exist yet), this setting is enabled by default.
 
 Startup launches pass the `--startup` argument, so only the HUD stays resident and the settings window does not open automatically.
 
 ### Display Language
 
 Switches the language used in the app.
+On the first run, "Japanese" is selected if the system language (OS language) is Japanese, and "English" is selected for other languages.
 
 - Japanese
 - English
 
 This affects the settings window, tray menu, and right-click menu.
+
+### Reset Settings
+
+Resets all settings to their default values.
+
+Clicking "Reset All" shows a confirmation dialog. If confirmed, all settings—including language, design style, window position, progress bar, synced lyrics, and startup behavior—will be initialized. (Note: After reset, the startup behavior will be enabled, and the custom HUD position will be cleared.)
+
 
 ## About
 
