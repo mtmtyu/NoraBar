@@ -110,6 +110,8 @@ namespace NoraBar.ViewModels
                 string tArtist = e.Artist ?? "";
                 string tAlbum = e.AlbumTitle ?? "";
 
+                _currentLyrics = null;
+
                 System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
                     Title = string.IsNullOrEmpty(tTitle) ? "Unknown" : tTitle;
