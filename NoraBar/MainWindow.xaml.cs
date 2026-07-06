@@ -37,9 +37,7 @@ namespace NoraBar
             _viewModel = new MainViewModel();
             this.DataContext = _viewModel;
 
-            // Position window at the top center of the screen
-            this.Left = (SystemParameters.PrimaryScreenWidth - this.Width) / 2;
-            this.Top = 0;
+            ApplyWindowPosition();
 
             // Initialize visual state to Idle
             _viewModel.CurrentState = IslandState.Idle;
@@ -61,6 +59,82 @@ namespace NoraBar
             if (!args.Contains("--startup"))
             {
                 OpenSettings();
+            }
+        }
+
+        private void ApplyWindowPosition()
+        {
+            if (_viewModel.HasCustomPosition)
+            {
+                this.Left = _viewModel.WindowLeft;
+                var deviceTopLeft = DipsToDevice(new Point(_viewModel.WindowLeft, _viewModel.WindowTop));
+                var deviceSize = DipsToDevice(new Point(this.Width, this.Height));
+                var rect = new System.Drawing.Rectangle(
+                    (int)deviceTopLeft.X,
+                    (int)deviceTopLeft.Y,
+                    (int)deviceSize.X,
+                    (int)deviceSize.Y);
+                var screen = System.Windows.Forms.Screen.FromRectangle(rect);
+                this.Top = GetScreenBoundsInDips(screen).Top;
+            }
+            else
+            {
+                var screen = System.Windows.Forms.Screen.PrimaryScreen;
+                if (screen != null)
+                {
+                    var bounds = GetScreenBoundsInDips(screen);
+                    this.Left = bounds.Left + (bounds.Width - this.Width) / 2;
+                    this.Top = bounds.Top;
+                }
+            }
+        }
+
+        private Point DipsToDevice(Point point)
+        {
+            var dpi = VisualTreeHelper.GetDpi(this);
+            return new Point(point.X * dpi.DpiScaleX, point.Y * dpi.DpiScaleY);
+        }
+
+        private Point DeviceToDips(Point point)
+        {
+            var dpi = VisualTreeHelper.GetDpi(this);
+            return new Point(point.X / dpi.DpiScaleX, point.Y / dpi.DpiScaleY);
+        }
+
+        private Rect GetScreenBoundsInDips(System.Windows.Forms.Screen screen)
+        {
+            var topLeft = DeviceToDips(new Point(screen.Bounds.Left, screen.Bounds.Top));
+            var bottomRight = DeviceToDips(new Point(screen.Bounds.Right, screen.Bounds.Bottom));
+            return new Rect(topLeft, bottomRight);
+        }
+
+        private System.Windows.Forms.Screen GetScreenFromDips(Point point)
+        {
+            var devicePoint = DipsToDevice(point);
+            return System.Windows.Forms.Screen.FromPoint(new System.Drawing.Point((int)devicePoint.X, (int)devicePoint.Y));
+        }
+
+        private Point GetMouseScreenPositionInDips(MouseEventArgs e)
+        {
+            return DeviceToDips(PointToScreen(e.GetPosition(this)));
+        }
+
+        private void UpdateEditModeVisuals()
+        {
+            if (_viewModel.IsPositionEditMode)
+            {
+                HudBorder.Background = new SolidColorBrush(Color.FromArgb(0x40, 0x00, 0xFF, 0x00));
+                HudBorder.Cursor = Cursors.SizeAll;
+                _viewModel.CurrentState = IslandState.Music;
+            }
+            else
+            {
+                HudBorder.Background = new SolidColorBrush(Color.FromArgb(0x01, 0xFF, 0xFF, 0xFF));
+                HudBorder.Cursor = Cursors.Arrow;
+                if (!HudBorder.IsMouseOver)
+                {
+                    _viewModel.CurrentState = IslandState.Idle;
+                }
             }
         }
 
@@ -136,6 +210,14 @@ namespace NoraBar
             else if (e.PropertyName == nameof(MainViewModel.SelectedLanguage))
             {
                 Dispatcher.Invoke(UpdateLocalizedShellText);
+            }
+            else if (e.PropertyName == nameof(MainViewModel.HasCustomPosition))
+            {
+                Dispatcher.Invoke(ApplyWindowPosition);
+            }
+            else if (e.PropertyName == nameof(MainViewModel.IsPositionEditMode))
+            {
+                Dispatcher.Invoke(UpdateEditModeVisuals);
             }
         }
 
@@ -243,14 +325,59 @@ namespace NoraBar
 
         private void HudBorder_MouseEnter(object sender, MouseEventArgs e)
         {
-            if (_isClosingApp) return;
+            if (_isClosingApp || _viewModel.IsPositionEditMode) return;
             _viewModel.CurrentState = IslandState.Music;
         }
 
         private void HudBorder_MouseLeave(object sender, MouseEventArgs e)
         {
-            if (_isClosingApp) return;
+            if (_isClosingApp || _viewModel.IsPositionEditMode) return;
             _viewModel.CurrentState = IslandState.Idle;
+        }
+
+        private bool _isDragging = false;
+        private double _dragStartLeft;
+        private double _dragStartMouseX;
+
+        private void HudBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (_viewModel.IsPositionEditMode && e.LeftButton == MouseButtonState.Pressed)
+            {
+                _isDragging = true;
+                _dragStartLeft = this.Left;
+                _dragStartMouseX = GetMouseScreenPositionInDips(e).X;
+                HudBorder.CaptureMouse();
+            }
+        }
+
+        private void HudBorder_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (_isDragging && _viewModel.IsPositionEditMode)
+            {
+                var currentMousePosition = GetMouseScreenPositionInDips(e);
+                var currentMouseX = currentMousePosition.X;
+                var diffX = currentMouseX - _dragStartMouseX;
+                this.Left = _dragStartLeft + diffX;
+
+                var screen = GetScreenFromDips(currentMousePosition);
+                this.Top = GetScreenBoundsInDips(screen).Top;
+            }
+        }
+
+        private void HudBorder_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (_isDragging)
+            {
+                _isDragging = false;
+                HudBorder.ReleaseMouseCapture();
+
+                var screen = GetScreenFromDips(GetMouseScreenPositionInDips(e));
+                this.Top = GetScreenBoundsInDips(screen).Top;
+
+                _viewModel.WindowLeft = this.Left;
+                _viewModel.WindowTop = this.Top;
+                _viewModel.HasCustomPosition = true;
+            }
         }
 
         private void OpenSettings_Click(object sender, RoutedEventArgs e)

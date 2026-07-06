@@ -83,6 +83,52 @@ namespace NoraBar.ViewModels
             }
         }
 
+        private bool _hasCustomPosition;
+        public bool HasCustomPosition
+        {
+            get => _hasCustomPosition;
+            set
+            {
+                if (SetProperty(ref _hasCustomPosition, value))
+                {
+                    SaveSettings();
+                }
+            }
+        }
+
+        private double _windowLeft;
+        public double WindowLeft
+        {
+            get => _windowLeft;
+            set
+            {
+                if (SetProperty(ref _windowLeft, value))
+                {
+                    SaveSettings();
+                }
+            }
+        }
+
+        private double _windowTop;
+        public double WindowTop
+        {
+            get => _windowTop;
+            set
+            {
+                if (SetProperty(ref _windowTop, value))
+                {
+                    SaveSettings();
+                }
+            }
+        }
+
+        private bool _isPositionEditMode;
+        public bool IsPositionEditMode
+        {
+            get => _isPositionEditMode;
+            set => SetProperty(ref _isPositionEditMode, value);
+        }
+
         public IReadOnlyList<LanguageOption> AvailableLanguages { get; } =
         [
             new LanguageOption(AppLanguage.Japanese, LocalizationService.GetText(AppLanguage.Japanese, LocalizationKey.Japanese)),
@@ -160,6 +206,12 @@ namespace NoraBar.ViewModels
         public string DownloadText => T(LocalizationKey.Download);
         public string ThirdPartyTabTitle => T(LocalizationKey.ThirdPartyTab);
 
+        public string WindowPositionText => T(LocalizationKey.WindowPosition);
+        public string WindowPositionDescriptionText => T(LocalizationKey.WindowPositionDescription);
+        public string ChangePositionText => T(LocalizationKey.ChangePosition);
+        public string ResetPositionText => T(LocalizationKey.ResetPosition);
+        public string FinishPositionEditText => T(LocalizationKey.FinishPositionEdit);
+
         private bool _isLicenseDialogOpen;
         public bool IsLicenseDialogOpen
         {
@@ -224,6 +276,7 @@ namespace NoraBar.ViewModels
         public ICommand SelectNoraBarLicenseCommand { get; }
         public ICommand SelectThirdPartyLicenseCommand { get; }
         public ICommand CloseUpdateDialogCommand { get; }
+        public ICommand ResetPositionCommand { get; }
 
         public MusicViewModel Music { get; } = new MusicViewModel();
 
@@ -237,6 +290,9 @@ namespace NoraBar.ViewModels
             _showProgressBar = settings.ShowProgressBar;
             _showLyrics = settings.ShowLyrics;
             _selectedLanguage = settings.Language;
+            _hasCustomPosition = settings.HasCustomPosition;
+            _windowLeft = settings.WindowLeft;
+            _windowTop = settings.WindowTop;
 
             SetVariantCommand = new RelayCommand(ExecuteSetVariant);
             SetStateCommand = new RelayCommand(ExecuteSetState);
@@ -271,6 +327,11 @@ namespace NoraBar.ViewModels
             SelectNoraBarLicenseCommand = new RelayCommand(_ => IsNoraBarLicenseTab = true);
             SelectThirdPartyLicenseCommand = new RelayCommand(_ => IsNoraBarLicenseTab = false);
             CloseUpdateDialogCommand = new RelayCommand(_ => IsUpdateDialogOpen = false);
+            ResetPositionCommand = new RelayCommand(_ =>
+            {
+                HasCustomPosition = false;
+                IsPositionEditMode = false;
+            });
         }
 
         private void SaveSettings()
@@ -280,7 +341,10 @@ namespace NoraBar.ViewModels
                 Variant = CurrentVariant,
                 ShowProgressBar = ShowProgressBar,
                 ShowLyrics = ShowLyrics,
-                Language = SelectedLanguage
+                Language = SelectedLanguage,
+                HasCustomPosition = HasCustomPosition,
+                WindowLeft = WindowLeft,
+                WindowTop = WindowTop
             });
         }
 
@@ -449,6 +513,11 @@ namespace NoraBar.ViewModels
             OnPropertyChanged(nameof(DownloadText));
             OnPropertyChanged(nameof(ThirdPartyTabTitle));
             OnPropertyChanged(nameof(CurrentLicenseText));
+            OnPropertyChanged(nameof(WindowPositionText));
+            OnPropertyChanged(nameof(WindowPositionDescriptionText));
+            OnPropertyChanged(nameof(ChangePositionText));
+            OnPropertyChanged(nameof(ResetPositionText));
+            OnPropertyChanged(nameof(FinishPositionEditText));
         }
     }
 }

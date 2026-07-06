@@ -683,6 +683,84 @@
                                               VerticalAlignment="Center" />
                                 </Grid>
                             </Border>
+
+                            <!-- Card 5: Window Position -->
+                            <Border Style="{StaticResource SettingCardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                                        <TextBlock Text="{Binding WindowPositionText}" Style="{StaticResource CardHeaderStyle}" />
+                                        <TextBlock Text="{Binding WindowPositionDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
+                                    </StackPanel>
+
+                                    <Button Grid.Column="1"
+                                            Command="{Binding ResetPositionCommand}"
+                                            Content="{Binding ResetPositionText}"
+                                            Visibility="{Binding HasCustomPosition, Converter={StaticResource BoolToVis}}"
+                                            Background="#1AFFFFFF" Foreground="White" BorderBrush="#20FFFFFF" BorderThickness="1"
+                                            Padding="10,5" Margin="0,0,8,0" VerticalAlignment="Center" Height="32">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" x:Name="Brd">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Brd" Property="Background" Value="#25FFFFFF"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+
+                                    <ToggleButton Grid.Column="2"
+                                                  IsChecked="{Binding IsPositionEditMode}"
+                                                  Background="#1AFFFFFF" Foreground="White" BorderBrush="#20FFFFFF" BorderThickness="1"
+                                                  Padding="10,5" VerticalAlignment="Center" Height="32">
+                                        <ToggleButton.Style>
+                                            <Style TargetType="ToggleButton">
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="ToggleButton">
+                                                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" x:Name="Brd">
+                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="Brd" Property="Background" Value="#25FFFFFF"/>
+                                                                </Trigger>
+                                                                <Trigger Property="IsChecked" Value="True">
+                                                                    <Setter TargetName="Brd" Property="Background" Value="{StaticResource AccentBrush}"/>
+                                                                    <Setter TargetName="Brd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </ToggleButton.Style>
+                                        <ToggleButton.Content>
+                                            <TextBlock>
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="{Binding DataContext.ChangePositionText, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsPositionEditMode}" Value="True">
+                                                                <Setter Property="Text" Value="{Binding DataContext.FinishPositionEditText, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </ToggleButton.Content>
+                                    </ToggleButton>
+                                </Grid>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
 

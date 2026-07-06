@@ -23,7 +23,10 @@
                 Height="2"
                 Background="#01FFFFFF"
                 MouseEnter="HudBorder_MouseEnter"
-                MouseLeave="HudBorder_MouseLeave">
+                MouseLeave="HudBorder_MouseLeave"
+                MouseLeftButtonDown="HudBorder_MouseLeftButtonDown"
+                MouseMove="HudBorder_MouseMove"
+                MouseLeftButtonUp="HudBorder_MouseLeftButtonUp">
             <Border.RenderTransform>
                 <TranslateTransform x:Name="HudTransform" Y="0"/>
             </Border.RenderTransform>

@@ -49,7 +49,12 @@ namespace NoraBar.Services
         ThirdPartyTab,
         LoadingLyrics,
         LyricsNotFound,
-        LyricsNetworkError
+        LyricsNetworkError,
+        WindowPosition,
+        WindowPositionDescription,
+        ChangePosition,
+        ResetPosition,
+        FinishPositionEdit
     }
 
     public static class LocalizationService
@@ -103,7 +108,12 @@ namespace NoraBar.Services
                     [LocalizationKey.ThirdPartyTab] = "サードパーティ",
                     [LocalizationKey.LoadingLyrics] = "歌詞を読み込んでいます...",
                     [LocalizationKey.LyricsNotFound] = "歌詞が見つかりませんでした",
-                    [LocalizationKey.LyricsNetworkError] = "ネットワークエラーが発生しました"
+                    [LocalizationKey.LyricsNetworkError] = "ネットワークエラーが発生しました",
+                    [LocalizationKey.WindowPosition] = "表示位置",
+                    [LocalizationKey.WindowPositionDescription] = "HUDの表示位置をカスタマイズします。",
+                    [LocalizationKey.ChangePosition] = "表示位置を変更する",
+                    [LocalizationKey.ResetPosition] = "デフォルトに戻す",
+                    [LocalizationKey.FinishPositionEdit] = "位置を確定する"
                 },
                 [AppLanguage.English] = new Dictionary<LocalizationKey, string>
                 {
@@ -151,7 +161,12 @@ namespace NoraBar.Services
                     [LocalizationKey.ThirdPartyTab] = "Third-party",
                     [LocalizationKey.LoadingLyrics] = "Loading lyrics...",
                     [LocalizationKey.LyricsNotFound] = "Lyrics not found",
-                    [LocalizationKey.LyricsNetworkError] = "Network error occurred"
+                    [LocalizationKey.LyricsNetworkError] = "Network error occurred",
+                    [LocalizationKey.WindowPosition] = "Window Position",
+                    [LocalizationKey.WindowPositionDescription] = "Customize the HUD display position.",
+                    [LocalizationKey.ChangePosition] = "Change Position",
+                    [LocalizationKey.ResetPosition] = "Reset to Default",
+                    [LocalizationKey.FinishPositionEdit] = "Finish Edit"
                 }
             };
 

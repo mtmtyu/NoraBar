@@ -96,7 +96,11 @@ namespace NoraBar.Views
             else
             {
                 e.Cancel = true;
-                
+                if (_viewModel != null)
+                {
+                    _viewModel.IsPositionEditMode = false;
+                }
+
                 var sb = (System.Windows.Media.Animation.Storyboard)this.Resources["WindowCloseStoryboard"];
                 if (sb != null)
                 {
