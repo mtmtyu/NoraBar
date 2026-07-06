@@ -136,7 +136,8 @@ namespace NoraBar.Views
         private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(MainViewModel.CurrentVariant) || 
-                e.PropertyName == nameof(MainViewModel.ShowProgressBar))
+                e.PropertyName == nameof(MainViewModel.ShowProgressBar) ||
+                e.PropertyName == nameof(MainViewModel.ShowLyrics))
             {
                 Dispatcher.Invoke(UpdatePreview);
             }
@@ -207,19 +208,30 @@ namespace NoraBar.Views
         {
             if (_viewModel == null) return;
 
+            double targetWidth = 200;
+            double targetHeight = 2;
+
             UserControl? previewView = null;
             if (_viewModel.CurrentVariant == Models.DesignVariant.MinimalFloatingPill)
             {
                 previewView = new DesignAMusicView();
+                targetWidth = 450;
+                targetHeight = _viewModel.ShowProgressBar ? 106 : 80;
+                if (_viewModel.ShowLyrics) targetHeight += 24;
             }
             else
             {
                 previewView = new DesignBMusicView();
+                targetWidth = 560;
+                targetHeight = _viewModel.ShowProgressBar ? 120 : 90;
+                if (_viewModel.ShowLyrics) targetHeight += 24;
             }
 
             // Bind current VM as DataContext for preview so that metadata and progress display correctly
             previewView.DataContext = _viewModel;
             PreviewHost.Content = previewView;
+            PreviewHost.Width = targetWidth;
+            PreviewHost.Height = targetHeight;
         }
     }
 }
