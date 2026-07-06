@@ -124,6 +124,15 @@ namespace NoraBar.ViewModels
                     CurrentLyric = ShowLyrics ? LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LoadingLyrics) : "";
                 });
 
+                // Wait for 2 seconds (to reduce API requests during consecutive skips)
+                await System.Threading.Tasks.Task.Delay(2000);
+
+                // Abort the process if the track is changed while waiting.
+                if (currentRequestId != _lyricsRequestId)
+                {
+                    return;
+                }
+
                 var result = await _lyricsService.GetLyricsAsync(tTitle, tArtist, tAlbum, _lastDurationSeconds);
                 
                 if (currentRequestId != _lyricsRequestId)
