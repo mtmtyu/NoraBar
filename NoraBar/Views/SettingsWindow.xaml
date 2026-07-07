@@ -642,6 +642,30 @@
 
                                 </Grid>
                             </Border>
+                            
+                            <!-- Card 2.6: Text Scroll Mode -->
+                            <Border Style="{StaticResource SettingCardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                                        <TextBlock Text="{Binding TextScrollModeText}" Style="{StaticResource CardHeaderStyle}" />
+                                        <TextBlock Text="{Binding TextScrollModeDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
+                                    </StackPanel>
+
+                                    <ComboBox Grid.Column="1"
+                                              ItemsSource="{Binding AvailableScrollModes}"
+                                              DisplayMemberPath="DisplayName"
+                                              SelectedValue="{Binding TextScrollMode}"
+                                              SelectedValuePath="Mode"
+                                              Width="160"
+                                              Height="32"
+                                              VerticalAlignment="Center" />
+                                </Grid>
+                            </Border>
 
                             <!-- Card 3: Startup Toggle -->
                             <Border Style="{StaticResource SettingCardStyle}">

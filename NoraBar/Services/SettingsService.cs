@@ -11,6 +11,7 @@ namespace NoraBar.Services
         public bool ShowProgressBar { get; set; } = true;
         public AppLanguage Language { get; set; } = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ja" ? AppLanguage.Japanese : AppLanguage.English;
         public bool ShowLyrics { get; set; } = false;
+        public TextScrollMode TextScrollMode { get; set; } = TextScrollMode.Always;
         public bool HasCustomPosition { get; set; } = false;
         public double WindowLeft { get; set; } = 0;
         public double WindowTop { get; set; } = 0;

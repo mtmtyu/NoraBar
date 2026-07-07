@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:controls="clr-namespace:NoraBar.Views.Controls"
+             xmlns:commonControls="clr-namespace:NoraBar.Controls"
              mc:Ignorable="d" 
              d:DesignHeight="120" d:DesignWidth="560">
     <UserControl.Resources>
@@ -82,8 +83,8 @@
                                 </BeginStoryboard>
                             </EventTrigger>
                         </StackPanel.Triggers>
-                        <TextBlock Text="{Binding Music.Title, NotifyOnTargetUpdated=True}" Style="{StaticResource TitleText}" FontSize="18" Margin="0,0,0,4" TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Text="{Binding Music.Artist}" Style="{StaticResource CaptionText}" FontSize="14" TextTrimming="CharacterEllipsis"/>
+                        <commonControls:MarqueeTextBlock Text="{Binding Music.Title, NotifyOnTargetUpdated=True}" TextStyle="{StaticResource TitleText}" FontSize="18" Margin="0,0,0,4" TextTrimming="CharacterEllipsis" ScrollMode="{Binding Music.TextScrollMode}"/>
+                        <commonControls:MarqueeTextBlock Text="{Binding Music.Artist}" TextStyle="{StaticResource CaptionText}" FontSize="14" TextTrimming="CharacterEllipsis" ScrollMode="{Binding Music.TextScrollMode}"/>
                     </StackPanel>
                     
                     <controls:WaveformVisualizer Grid.Column="1" Margin="16,0,0,0" SpectrumData="{Binding Music.SpectrumData}" BarColor="{StaticResource AccentBrush}" VerticalAlignment="Center" />

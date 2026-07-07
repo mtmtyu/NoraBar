@@ -61,7 +61,12 @@ namespace NoraBar.Services
         ResetConfirmTitle,
         ResetConfirmMessage,
         ResetConfirmYes,
-        ResetConfirmNo
+        ResetConfirmNo,
+        TextScrollMode,
+        TextScrollModeDescription,
+        TextScrollDisabled,
+        TextScrollAlways,
+        TextScrollHoverOnly
     }
 
     public static class LocalizationService
@@ -127,7 +132,12 @@ namespace NoraBar.Services
                     [LocalizationKey.ResetConfirmTitle] = "設定のリセット",
                     [LocalizationKey.ResetConfirmMessage] = "言語、デザイン、表示位置など、すべての設定を初期化しますか？\n（この操作は元に戻せません）",
                     [LocalizationKey.ResetConfirmYes] = "はい",
-                    [LocalizationKey.ResetConfirmNo] = "いいえ"
+                    [LocalizationKey.ResetConfirmNo] = "いいえ",
+                    [LocalizationKey.TextScrollMode] = "テキストの自動スクロール",
+                    [LocalizationKey.TextScrollModeDescription] = "曲名などが長い場合に、自動でスクロールさせる条件を設定します。",
+                    [LocalizationKey.TextScrollDisabled] = "無効（省略して表示）",
+                    [LocalizationKey.TextScrollAlways] = "常に",
+                    [LocalizationKey.TextScrollHoverOnly] = "ホバー時のみ"
                 },
                 [AppLanguage.English] = new Dictionary<LocalizationKey, string>
                 {
@@ -187,7 +197,12 @@ namespace NoraBar.Services
                     [LocalizationKey.ResetConfirmTitle] = "Reset Settings",
                     [LocalizationKey.ResetConfirmMessage] = "Are you sure you want to initialize all settings including language, design, and window position?\n(This cannot be undone)",
                     [LocalizationKey.ResetConfirmYes] = "Yes",
-                    [LocalizationKey.ResetConfirmNo] = "No"
+                    [LocalizationKey.ResetConfirmNo] = "No",
+                    [LocalizationKey.TextScrollMode] = "Auto Scroll Text",
+                    [LocalizationKey.TextScrollModeDescription] = "Condition for automatically scrolling long titles and artist names.",
+                    [LocalizationKey.TextScrollDisabled] = "Disabled (Truncate)",
+                    [LocalizationKey.TextScrollAlways] = "Always",
+                    [LocalizationKey.TextScrollHoverOnly] = "Hover Only"
                 }
             };
 

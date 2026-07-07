@@ -20,6 +20,18 @@ namespace NoraBar.ViewModels
             public string DisplayName { get; }
         }
 
+        public sealed class ScrollModeOption
+        {
+            public ScrollModeOption(TextScrollMode mode, string displayName)
+            {
+                Mode = mode;
+                DisplayName = displayName;
+            }
+
+            public TextScrollMode Mode { get; }
+            public string DisplayName { get; }
+        }
+
         private DesignVariant _currentVariant;
         public DesignVariant CurrentVariant
         {
@@ -65,6 +77,20 @@ namespace NoraBar.ViewModels
                 {
                     SaveSettings();
                     Music.ShowLyrics = value;
+                }
+            }
+        }
+
+        private TextScrollMode _textScrollMode;
+        public TextScrollMode TextScrollMode
+        {
+            get => _textScrollMode;
+            set
+            {
+                if (SetProperty(ref _textScrollMode, value))
+                {
+                    SaveSettings();
+                    Music.TextScrollMode = value;
                 }
             }
         }
@@ -135,6 +161,13 @@ namespace NoraBar.ViewModels
             new LanguageOption(AppLanguage.English, LocalizationService.GetText(AppLanguage.English, LocalizationKey.English))
         ];
 
+        public IReadOnlyList<ScrollModeOption> AvailableScrollModes =>
+        [
+            new ScrollModeOption(Models.TextScrollMode.Disabled, T(LocalizationKey.TextScrollDisabled)),
+            new ScrollModeOption(Models.TextScrollMode.Always, T(LocalizationKey.TextScrollAlways)),
+            new ScrollModeOption(Models.TextScrollMode.HoverOnly, T(LocalizationKey.TextScrollHoverOnly))
+        ];
+
         public bool IsMinimalVariant
         {
             get => CurrentVariant == DesignVariant.MinimalFloatingPill;
@@ -185,6 +218,8 @@ namespace NoraBar.ViewModels
         public string ProgressBarDescriptionText => T(LocalizationKey.ProgressBarDescription);
         public string ShowLyricsText => T(LocalizationKey.ShowLyrics);
         public string ShowLyricsDescriptionText => T(LocalizationKey.ShowLyricsDescription);
+        public string TextScrollModeText => T(LocalizationKey.TextScrollMode);
+        public string TextScrollModeDescriptionText => T(LocalizationKey.TextScrollModeDescription);
         public string StartupText => T(LocalizationKey.Startup);
         public string StartupDescriptionText => T(LocalizationKey.StartupDescription);
         public string LanguageText => T(LocalizationKey.Language);
@@ -307,10 +342,14 @@ namespace NoraBar.ViewModels
             _currentVariant = settings.Variant;
             _showProgressBar = settings.ShowProgressBar;
             _showLyrics = settings.ShowLyrics;
+            _textScrollMode = settings.TextScrollMode;
             _selectedLanguage = settings.Language;
             _hasCustomPosition = settings.HasCustomPosition;
             _windowLeft = settings.WindowLeft;
             _windowTop = settings.WindowTop;
+
+            Music.ShowLyrics = _showLyrics;
+            Music.TextScrollMode = _textScrollMode;
 
             SetVariantCommand = new RelayCommand(ExecuteSetVariant);
             SetStateCommand = new RelayCommand(ExecuteSetState);
@@ -365,6 +404,7 @@ namespace NoraBar.ViewModels
             CurrentVariant = defaultSettings.Variant;
             ShowProgressBar = defaultSettings.ShowProgressBar;
             ShowLyrics = defaultSettings.ShowLyrics;
+            TextScrollMode = defaultSettings.TextScrollMode;
             SelectedLanguage = defaultSettings.Language;
             
             // Explicitly set startup to true as requested
@@ -387,6 +427,7 @@ namespace NoraBar.ViewModels
                 Variant = CurrentVariant,
                 ShowProgressBar = ShowProgressBar,
                 ShowLyrics = ShowLyrics,
+                TextScrollMode = TextScrollMode,
                 Language = SelectedLanguage,
                 HasCustomPosition = HasCustomPosition,
                 WindowLeft = WindowLeft,
@@ -538,6 +579,9 @@ namespace NoraBar.ViewModels
             OnPropertyChanged(nameof(ProgressBarDescriptionText));
             OnPropertyChanged(nameof(ShowLyricsText));
             OnPropertyChanged(nameof(ShowLyricsDescriptionText));
+            OnPropertyChanged(nameof(TextScrollModeText));
+            OnPropertyChanged(nameof(TextScrollModeDescriptionText));
+            OnPropertyChanged(nameof(AvailableScrollModes));
             OnPropertyChanged(nameof(StartupText));
             OnPropertyChanged(nameof(StartupDescriptionText));
             OnPropertyChanged(nameof(LanguageText));

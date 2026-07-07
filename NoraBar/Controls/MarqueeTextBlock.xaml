@@ -1,0 +1,41 @@
+<UserControl x:Class="NoraBar.Controls.MarqueeTextBlock"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             mc:Ignorable="d" 
+             d:DesignHeight="30" d:DesignWidth="200"
+             MouseEnter="UserControl_MouseEnter"
+             MouseLeave="UserControl_MouseLeave"
+             SizeChanged="UserControl_SizeChanged"
+             ClipToBounds="True">
+    <Grid x:Name="RootGrid" Background="Transparent" VerticalAlignment="Center">
+        <!-- Hidden TextBlock to provide the correct height for the UserControl -->
+        <TextBlock x:Name="HiddenTextBlock"
+                   Style="{Binding TextStyle, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                   Visibility="Hidden"
+                   HorizontalAlignment="Stretch"
+                   VerticalAlignment="Stretch"/>
+
+        <!-- Canvas provides infinite measure space so text doesn't wrap or clip prematurely -->
+        <Canvas>
+            <TextBlock x:Name="MainTextBlock"
+                       Style="{Binding TextStyle, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                       TextTrimming="{Binding TextTrimming, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                       VerticalAlignment="Center">
+                <TextBlock.RenderTransform>
+                    <TranslateTransform x:Name="MainTransform" X="0" Y="0"/>
+                </TextBlock.RenderTransform>
+            </TextBlock>
+                       
+            <TextBlock x:Name="DuplicateTextBlock"
+                       Style="{Binding TextStyle, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                       Visibility="Collapsed"
+                       VerticalAlignment="Center">
+                <TextBlock.RenderTransform>
+                    <TranslateTransform x:Name="DuplicateTransform" X="0" Y="0"/>
+                </TextBlock.RenderTransform>
+            </TextBlock>
+        </Canvas>
+    </Grid>
+</UserControl>

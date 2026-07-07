@@ -2,6 +2,7 @@ using System;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using NoraBar.Services;
+using NoraBar.Models;
 
 namespace NoraBar.ViewModels
 {
@@ -36,6 +37,13 @@ namespace NoraBar.ViewModels
         {
             get => _albumArt;
             set => SetProperty(ref _albumArt, value);
+        }
+
+        private TextScrollMode _textScrollMode = TextScrollMode.Always;
+        public TextScrollMode TextScrollMode
+        {
+            get => _textScrollMode;
+            set => SetProperty(ref _textScrollMode, value);
         }
 
         private bool _isPlaying;
