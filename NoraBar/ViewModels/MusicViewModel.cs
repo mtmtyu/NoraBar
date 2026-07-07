@@ -39,7 +39,7 @@ namespace NoraBar.ViewModels
             set => SetProperty(ref _albumArt, value);
         }
 
-        private TextScrollMode _textScrollMode = TextScrollMode.Always;
+        private TextScrollMode _textScrollMode = TextScrollMode.Disabled;
         public TextScrollMode TextScrollMode
         {
             get => _textScrollMode;
