@@ -810,6 +810,40 @@
                                 </Grid>
                             </Border>
 
+                            <!-- Card 5.5: Restart Audio Visualizer -->
+                            <Border Style="{StaticResource SettingCardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                                        <TextBlock Text="{Binding RestartVisualizerText}" Style="{StaticResource CardHeaderStyle}" />
+                                        <TextBlock Text="{Binding RestartVisualizerDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
+                                    </StackPanel>
+
+                                    <Button Grid.Column="1"
+                                            Command="{Binding RestartVisualizerCommand}"
+                                            Content="{Binding RestartVisualizerButtonText}"
+                                            Background="#1AFFFFFF" Foreground="White" BorderBrush="#20FFFFFF" BorderThickness="1"
+                                            Padding="10,5" VerticalAlignment="Center" Height="32">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" x:Name="Brd">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Brd" Property="Background" Value="#25FFFFFF"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </Grid>
+                            </Border>
+
                             <!-- Card 6: Reset Settings -->
                             <Border Style="{StaticResource SettingCardStyle}">
                                 <Grid>

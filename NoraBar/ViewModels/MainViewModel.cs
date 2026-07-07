@@ -271,6 +271,10 @@ namespace NoraBar.ViewModels
         public string ResetConfirmYesText => T(LocalizationKey.ResetConfirmYes);
         public string ResetConfirmNoText => T(LocalizationKey.ResetConfirmNo);
 
+        public string RestartVisualizerText => T(LocalizationKey.RestartVisualizer);
+        public string RestartVisualizerDescriptionText => T(LocalizationKey.RestartVisualizerDescription);
+        public string RestartVisualizerButtonText => T(LocalizationKey.RestartVisualizerButton);
+
         private bool _isLicenseDialogOpen;
         public bool IsLicenseDialogOpen
         {
@@ -346,6 +350,7 @@ namespace NoraBar.ViewModels
         public ICommand ResetAllSettingsCommand { get; }
         public ICommand ShowResetDialogCommand { get; }
         public ICommand CloseResetDialogCommand { get; }
+        public ICommand RestartVisualizerCommand { get; }
 
         public MusicViewModel Music { get; } = new MusicViewModel();
 
@@ -409,6 +414,7 @@ namespace NoraBar.ViewModels
             ShowResetDialogCommand = new RelayCommand(_ => IsResetDialogOpen = true);
             CloseResetDialogCommand = new RelayCommand(_ => IsResetDialogOpen = false);
             ResetAllSettingsCommand = new RelayCommand(_ => ResetAllSettings());
+            RestartVisualizerCommand = new RelayCommand(_ => Music.RestartVisualizer());
         }
 
         private void ResetAllSettings()
@@ -670,6 +676,9 @@ namespace NoraBar.ViewModels
             OnPropertyChanged(nameof(ResetConfirmMessageText));
             OnPropertyChanged(nameof(ResetConfirmYesText));
             OnPropertyChanged(nameof(ResetConfirmNoText));
+            OnPropertyChanged(nameof(RestartVisualizerText));
+            OnPropertyChanged(nameof(RestartVisualizerDescriptionText));
+            OnPropertyChanged(nameof(RestartVisualizerButtonText));
         }
     }
 }

@@ -69,7 +69,10 @@ namespace NoraBar.Services
         TextScrollHoverOnly,
         CheckUpdateOnStartup,
         CheckUpdateOnStartupDescription,
-        UpdateAvailableButton
+        UpdateAvailableButton,
+        RestartVisualizer,
+        RestartVisualizerDescription,
+        RestartVisualizerButton
     }
 
     public static class LocalizationService
@@ -143,7 +146,10 @@ namespace NoraBar.Services
                     [LocalizationKey.TextScrollHoverOnly] = "ホバー時のみ",
                     [LocalizationKey.CheckUpdateOnStartup] = "起動時にアップデートを確認",
                     [LocalizationKey.CheckUpdateOnStartupDescription] = "アプリ起動時に新しいバージョンがあるか自動で確認します。",
-                    [LocalizationKey.UpdateAvailableButton] = "今すぐ更新"
+                    [LocalizationKey.UpdateAvailableButton] = "今すぐ更新",
+                    [LocalizationKey.RestartVisualizer] = "オーディオビジュアライザーの再起動",
+                    [LocalizationKey.RestartVisualizerDescription] = "ビジュアライザーが動かなくなった場合に、オーディオ入力を再初期化します。",
+                    [LocalizationKey.RestartVisualizerButton] = "再起動"
                 },
                 [AppLanguage.English] = new Dictionary<LocalizationKey, string>
                 {
@@ -211,7 +217,10 @@ namespace NoraBar.Services
                     [LocalizationKey.TextScrollHoverOnly] = "Hover Only",
                     [LocalizationKey.CheckUpdateOnStartup] = "Check for Updates on Startup",
                     [LocalizationKey.CheckUpdateOnStartupDescription] = "Automatically check for new versions when the app starts.",
-                    [LocalizationKey.UpdateAvailableButton] = "Update Now"
+                    [LocalizationKey.UpdateAvailableButton] = "Update Now",
+                    [LocalizationKey.RestartVisualizer] = "Restart Audio Visualizer",
+                    [LocalizationKey.RestartVisualizerDescription] = "Reinitializes audio capture if the visualizer stops working.",
+                    [LocalizationKey.RestartVisualizerButton] = "Restart"
                 }
             };
 

@@ -145,10 +145,14 @@ namespace NoraBar.Services
         public void Stop()
         {
             _timer?.Dispose();
+            _timer = null;
             _capture?.Stop();
             _capture?.Dispose();
+            _capture = null;
             _soundInSource?.Dispose();
+            _soundInSource = null;
             _realtimeSource?.Dispose();
+            _realtimeSource = null;
         }
 
         public void Dispose()
