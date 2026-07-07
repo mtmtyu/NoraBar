@@ -68,7 +68,8 @@ namespace NoraBar.Services
         TextScrollAlways,
         TextScrollHoverOnly,
         CheckUpdateOnStartup,
-        CheckUpdateOnStartupDescription
+        CheckUpdateOnStartupDescription,
+        UpdateAvailableButton
     }
 
     public static class LocalizationService
@@ -141,7 +142,8 @@ namespace NoraBar.Services
                     [LocalizationKey.TextScrollAlways] = "常に",
                     [LocalizationKey.TextScrollHoverOnly] = "ホバー時のみ",
                     [LocalizationKey.CheckUpdateOnStartup] = "起動時にアップデートを確認",
-                    [LocalizationKey.CheckUpdateOnStartupDescription] = "アプリ起動時に新しいバージョンがあるか自動で確認します。"
+                    [LocalizationKey.CheckUpdateOnStartupDescription] = "アプリ起動時に新しいバージョンがあるか自動で確認します。",
+                    [LocalizationKey.UpdateAvailableButton] = "今すぐ更新"
                 },
                 [AppLanguage.English] = new Dictionary<LocalizationKey, string>
                 {
@@ -208,7 +210,8 @@ namespace NoraBar.Services
                     [LocalizationKey.TextScrollAlways] = "Always",
                     [LocalizationKey.TextScrollHoverOnly] = "Hover Only",
                     [LocalizationKey.CheckUpdateOnStartup] = "Check for Updates on Startup",
-                    [LocalizationKey.CheckUpdateOnStartupDescription] = "Automatically check for new versions when the app starts."
+                    [LocalizationKey.CheckUpdateOnStartupDescription] = "Automatically check for new versions when the app starts.",
+                    [LocalizationKey.UpdateAvailableButton] = "Update Now"
                 }
             };
 

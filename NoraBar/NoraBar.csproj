@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <PackageReference Include="CSCore" Version="1.2.1.2" NoWarn="NU1701" />
+    <PackageReference Include="Material.Icons.WPF" Version="3.0.2" />
   </ItemGroup>
 
   <ItemGroup>

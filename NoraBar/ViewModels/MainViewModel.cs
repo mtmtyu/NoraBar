@@ -243,6 +243,7 @@ namespace NoraBar.ViewModels
         public string CheckUpdatesText => T(LocalizationKey.CheckUpdates);
         public string CheckUpdatesDescriptionText => T(LocalizationKey.CheckUpdatesDescription);
         public string CheckUpdatesButtonText => T(LocalizationKey.CheckUpdatesButton);
+        public string UpdateAvailableButtonText => T(LocalizationKey.UpdateAvailableButton);
         public string GitHubRepositoryText => T(LocalizationKey.GitHubRepository);
         public string GitHubRepositoryDescriptionText => T(LocalizationKey.GitHubRepositoryDescription);
         public string OpenRepositoryText => T(LocalizationKey.OpenRepository);
@@ -643,6 +644,7 @@ namespace NoraBar.ViewModels
             OnPropertyChanged(nameof(CheckUpdatesText));
             OnPropertyChanged(nameof(CheckUpdatesDescriptionText));
             OnPropertyChanged(nameof(CheckUpdatesButtonText));
+            OnPropertyChanged(nameof(UpdateAvailableButtonText));
             OnPropertyChanged(nameof(GitHubRepositoryText));
             OnPropertyChanged(nameof(GitHubRepositoryDescriptionText));
             OnPropertyChanged(nameof(OpenRepositoryText));

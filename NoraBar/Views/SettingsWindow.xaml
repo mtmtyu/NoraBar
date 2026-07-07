@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:models="clr-namespace:NoraBar.Models"
         xmlns:converters="clr-namespace:NoraBar.Converters"
+        xmlns:materialIcons="clr-namespace:Material.Icons.WPF;assembly=Material.Icons.WPF"
         mc:Ignorable="d"
         Title="{Binding SettingsWindowTitle}" Height="600" Width="1000"
         WindowStartupLocation="CenterScreen"
@@ -896,8 +897,8 @@
                                             <ControlTemplate TargetType="Button">
                                                 <Border x:Name="Brd" Background="#1AFFFFFF" CornerRadius="4">
                                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                        <TextBlock Text="{Binding CheckUpdatesButtonText}" VerticalAlignment="Center" />
-                                                        <Ellipse x:Name="UpdateBadge" Width="6" Height="6" Fill="#FF6B6B" Margin="6,0,0,0" Visibility="Collapsed" VerticalAlignment="Center" />
+                                                        <materialIcons:MaterialIcon x:Name="UpdateIcon" Kind="TrayArrowDown" Foreground="White" Width="14" Height="14" Margin="0,0,6,0" Visibility="Collapsed" />
+                                                        <TextBlock x:Name="BtnText" Text="{Binding CheckUpdatesButtonText}" VerticalAlignment="Center" FontWeight="Normal" />
                                                     </StackPanel>
                                                 </Border>
                                                 <ControlTemplate.Triggers>
@@ -906,7 +907,9 @@
                                                     </Trigger>
                                                     <DataTrigger Binding="{Binding HasUpdate}" Value="True">
                                                         <Setter TargetName="Brd" Property="Background" Value="{StaticResource AccentBrush}"/>
-                                                        <Setter TargetName="UpdateBadge" Property="Visibility" Value="Visible"/>
+                                                        <Setter TargetName="UpdateIcon" Property="Visibility" Value="Visible"/>
+                                                        <Setter TargetName="BtnText" Property="Text" Value="{Binding UpdateAvailableButtonText}"/>
+                                                        <Setter TargetName="BtnText" Property="FontWeight" Value="SemiBold"/>
                                                     </DataTrigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
