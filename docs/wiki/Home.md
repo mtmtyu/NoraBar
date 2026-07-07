@@ -26,6 +26,8 @@ NoraBar is a Windows desktop app that keeps music close without cluttering your 
 - Music controls backed by Windows media sessions
 - Synchronized lyrics display powered by LRCLIB
 - An 8-bar waveform visualizer powered by WASAPI loopback capture
+- Automatic text scrolling settings for long track information
+- Automatic update checks on startup
 - Two design styles: Minimal and Productivity
 - Japanese / English display language switching
 - System tray residency and Windows startup registration
