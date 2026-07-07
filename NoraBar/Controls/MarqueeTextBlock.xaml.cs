@@ -57,6 +57,16 @@ namespace NoraBar.Controls
             Unloaded += MarqueeTextBlock_Unloaded;
         }
 
+        protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
+        {
+            base.OnPropertyChanged(e);
+
+            if (e.Property == FontSizeProperty)
+            {
+                ApplyLocalFontSize();
+            }
+        }
+
         private static void OnTextChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             if (d is MarqueeTextBlock control)
@@ -78,6 +88,7 @@ namespace NoraBar.Controls
 
         private void MarqueeTextBlock_Loaded(object sender, RoutedEventArgs e)
         {
+            ApplyLocalFontSize();
             UpdateScrollAnimation();
         }
 
@@ -107,6 +118,26 @@ namespace NoraBar.Controls
             {
                 UpdateScrollAnimation();
             }
+        }
+
+        private void ApplyLocalFontSize()
+        {
+            if (MainTextBlock == null || DuplicateTextBlock == null || HiddenTextBlock == null)
+            {
+                return;
+            }
+
+            if (ReadLocalValue(FontSizeProperty) == DependencyProperty.UnsetValue)
+            {
+                MainTextBlock.ClearValue(TextBlock.FontSizeProperty);
+                DuplicateTextBlock.ClearValue(TextBlock.FontSizeProperty);
+                HiddenTextBlock.ClearValue(TextBlock.FontSizeProperty);
+                return;
+            }
+
+            MainTextBlock.FontSize = FontSize;
+            DuplicateTextBlock.FontSize = FontSize;
+            HiddenTextBlock.FontSize = FontSize;
         }
 
         private void UpdateScrollAnimation()
