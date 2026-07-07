@@ -199,6 +199,19 @@ namespace NoraBar.ViewModels
             }
         }
 
+        private bool _checkUpdateOnStartup;
+        public bool CheckUpdateOnStartup
+        {
+            get => _checkUpdateOnStartup;
+            set
+            {
+                if (SetProperty(ref _checkUpdateOnStartup, value))
+                {
+                    SaveSettings();
+                }
+            }
+        }
+
         private string _currentPage = "HUD";
         public string CurrentPage
         {
@@ -222,6 +235,8 @@ namespace NoraBar.ViewModels
         public string TextScrollModeDescriptionText => T(LocalizationKey.TextScrollModeDescription);
         public string StartupText => T(LocalizationKey.Startup);
         public string StartupDescriptionText => T(LocalizationKey.StartupDescription);
+        public string CheckUpdateOnStartupText => T(LocalizationKey.CheckUpdateOnStartup);
+        public string CheckUpdateOnStartupDescriptionText => T(LocalizationKey.CheckUpdateOnStartupDescription);
         public string LanguageText => T(LocalizationKey.Language);
         public string LanguageDescriptionText => T(LocalizationKey.LanguageDescription);
         public string VersionText => T(LocalizationKey.Version);
@@ -347,6 +362,7 @@ namespace NoraBar.ViewModels
             _hasCustomPosition = settings.HasCustomPosition;
             _windowLeft = settings.WindowLeft;
             _windowTop = settings.WindowTop;
+            _checkUpdateOnStartup = settings.CheckUpdateOnStartup;
 
             Music.ShowLyrics = _showLyrics;
             Music.TextScrollMode = _textScrollMode;
@@ -406,6 +422,7 @@ namespace NoraBar.ViewModels
             ShowLyrics = defaultSettings.ShowLyrics;
             TextScrollMode = defaultSettings.TextScrollMode;
             SelectedLanguage = defaultSettings.Language;
+            CheckUpdateOnStartup = defaultSettings.CheckUpdateOnStartup;
             
             // Explicitly set startup to true as requested
             IsStartupEnabled = true;
@@ -431,7 +448,8 @@ namespace NoraBar.ViewModels
                 Language = SelectedLanguage,
                 HasCustomPosition = HasCustomPosition,
                 WindowLeft = WindowLeft,
-                WindowTop = WindowTop
+                WindowTop = WindowTop,
+                CheckUpdateOnStartup = CheckUpdateOnStartup
             });
         }
 
@@ -562,6 +580,39 @@ namespace NoraBar.ViewModels
             }
         }
 
+        public async System.Threading.Tasks.Task<bool> CheckForUpdatesSilentlyAsync()
+        {
+            try
+            {
+                using var client = new System.Net.Http.HttpClient();
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("NoraBar-App-Update-Checker");
+
+                var response = await client.GetFromJsonAsync<GitHubRelease>("https://api.github.com/repos/mtmtyu/NoraBar/releases/latest");
+                if (response != null && !string.IsNullOrEmpty(response.TagName))
+                {
+                    var latestVerStr = response.TagName.TrimStart('v');
+                    var localVer = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+
+                    if (System.Version.TryParse(latestVerStr, out var latestVer) && localVer != null)
+                    {
+                        if (latestVer > localVer)
+                        {
+                            UpdateStatus = string.Format(T(LocalizationKey.UpdateAvailable), response.TagName);
+                            HasUpdate = true;
+                            LatestReleaseUrl = response.HtmlUrl;
+                            IsUpdateDialogOpen = true;
+                            return true;
+                        }
+                    }
+                }
+            }
+            catch (System.Exception)
+            {
+                // Fail silently
+            }
+            return false;
+        }
+
         private string T(LocalizationKey key)
         {
             return LocalizationService.GetText(SelectedLanguage, key);
@@ -584,6 +635,8 @@ namespace NoraBar.ViewModels
             OnPropertyChanged(nameof(AvailableScrollModes));
             OnPropertyChanged(nameof(StartupText));
             OnPropertyChanged(nameof(StartupDescriptionText));
+            OnPropertyChanged(nameof(CheckUpdateOnStartupText));
+            OnPropertyChanged(nameof(CheckUpdateOnStartupDescriptionText));
             OnPropertyChanged(nameof(LanguageText));
             OnPropertyChanged(nameof(LanguageDescriptionText));
             OnPropertyChanged(nameof(VersionText));

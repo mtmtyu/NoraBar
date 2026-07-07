@@ -66,7 +66,9 @@ namespace NoraBar.Services
         TextScrollModeDescription,
         TextScrollDisabled,
         TextScrollAlways,
-        TextScrollHoverOnly
+        TextScrollHoverOnly,
+        CheckUpdateOnStartup,
+        CheckUpdateOnStartupDescription
     }
 
     public static class LocalizationService
@@ -137,7 +139,9 @@ namespace NoraBar.Services
                     [LocalizationKey.TextScrollModeDescription] = "曲名などが長い場合に、自動でスクロールさせる条件を設定します。",
                     [LocalizationKey.TextScrollDisabled] = "無効（省略して表示）",
                     [LocalizationKey.TextScrollAlways] = "常に",
-                    [LocalizationKey.TextScrollHoverOnly] = "ホバー時のみ"
+                    [LocalizationKey.TextScrollHoverOnly] = "ホバー時のみ",
+                    [LocalizationKey.CheckUpdateOnStartup] = "起動時にアップデートを確認",
+                    [LocalizationKey.CheckUpdateOnStartupDescription] = "アプリ起動時に新しいバージョンがあるか自動で確認します。"
                 },
                 [AppLanguage.English] = new Dictionary<LocalizationKey, string>
                 {
@@ -202,7 +206,9 @@ namespace NoraBar.Services
                     [LocalizationKey.TextScrollModeDescription] = "Condition for automatically scrolling long titles and artist names.",
                     [LocalizationKey.TextScrollDisabled] = "Disabled (Truncate)",
                     [LocalizationKey.TextScrollAlways] = "Always",
-                    [LocalizationKey.TextScrollHoverOnly] = "Hover Only"
+                    [LocalizationKey.TextScrollHoverOnly] = "Hover Only",
+                    [LocalizationKey.CheckUpdateOnStartup] = "Check for Updates on Startup",
+                    [LocalizationKey.CheckUpdateOnStartupDescription] = "Automatically check for new versions when the app starts."
                 }
             };
 

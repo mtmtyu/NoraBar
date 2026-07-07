@@ -50,7 +50,7 @@ namespace NoraBar
             UpdateLocalizedShellText();
         }
 
-        protected override void OnContentRendered(EventArgs e)
+        protected override async void OnContentRendered(EventArgs e)
         {
             base.OnContentRendered(e);
 
@@ -59,6 +59,15 @@ namespace NoraBar
             if (!args.Contains("--startup"))
             {
                 OpenSettings();
+            }
+
+            if (_viewModel.CheckUpdateOnStartup)
+            {
+                bool hasUpdate = await _viewModel.CheckForUpdatesSilentlyAsync();
+                if (hasUpdate)
+                {
+                    OpenSettings();
+                }
             }
         }
 

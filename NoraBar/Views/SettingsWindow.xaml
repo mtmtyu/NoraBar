@@ -687,6 +687,26 @@
                                 </Grid>
                             </Border>
 
+                            <!-- Card 3.5: Check Update on Startup Toggle -->
+                            <Border Style="{StaticResource SettingCardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding CheckUpdateOnStartupText}" Style="{StaticResource CardHeaderStyle}" />
+                                        <TextBlock Text="{Binding CheckUpdateOnStartupDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
+                                    </StackPanel>
+
+                                    <CheckBox Grid.Column="1"
+                                              Style="{StaticResource ToggleSwitchStyle}"
+                                              IsChecked="{Binding CheckUpdateOnStartup}"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
                             <!-- Card 4: Language Selector -->
                             <Border Style="{StaticResource SettingCardStyle}">
                                 <Grid>
@@ -871,16 +891,23 @@
                                         <TextBlock Text="{Binding CheckUpdatesDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
                                     </StackPanel>
 
-                                    <Button Grid.Column="1" Content="{Binding CheckUpdatesButtonText}" Command="{Binding CheckUpdateCommand}" Width="140" Height="32" VerticalAlignment="Center" Foreground="White" BorderThickness="0" Cursor="Hand">
+                                    <Button Grid.Column="1" Command="{Binding CheckUpdateCommand}" Width="140" Height="32" VerticalAlignment="Center" Foreground="White" BorderThickness="0" Cursor="Hand">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
-                                                <Border Background="#1AFFFFFF" CornerRadius="4" x:Name="Brd">
-                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                <Border x:Name="Brd" Background="#1AFFFFFF" CornerRadius="4">
+                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding CheckUpdatesButtonText}" VerticalAlignment="Center" />
+                                                        <Ellipse x:Name="UpdateBadge" Width="6" Height="6" Fill="#FF6B6B" Margin="6,0,0,0" Visibility="Collapsed" VerticalAlignment="Center" />
+                                                    </StackPanel>
                                                 </Border>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
                                                         <Setter TargetName="Brd" Property="Background" Value="#25FFFFFF"/>
                                                     </Trigger>
+                                                    <DataTrigger Binding="{Binding HasUpdate}" Value="True">
+                                                        <Setter TargetName="Brd" Property="Background" Value="{StaticResource AccentBrush}"/>
+                                                        <Setter TargetName="UpdateBadge" Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
                                         </Button.Template>

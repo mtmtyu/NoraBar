@@ -15,6 +15,7 @@ namespace NoraBar.Services
         public bool HasCustomPosition { get; set; } = false;
         public double WindowLeft { get; set; } = 0;
         public double WindowTop { get; set; } = 0;
+        public bool CheckUpdateOnStartup { get; set; } = true;
     }
 
     public static class SettingsService
