@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
 using Windows.Media.Control;
@@ -11,15 +12,27 @@ namespace NoraBar.Services
         private const int MaxAlbumArtBytes = 5 * 1024 * 1024;
         private const int MaxAlbumArtDecodePixels = 512;
         private const int StreamCopyBufferSize = 81920;
+        private const int MediaRefreshIntervalMilliseconds = 500;
 
         private GlobalSystemMediaTransportControlsSessionManager? _sessionManager;
         private GlobalSystemMediaTransportControlsSession? _currentSession;
+        private readonly MediaInfoUpdateCoordinator _mediaInfoUpdateCoordinator = new();
+        private int _isRefreshingMediaProperties;
 
         public event EventHandler<MediaInfoChangedEventArgs>? MediaInfoChanged;
+        public event EventHandler<AlbumArtChangedEventArgs>? AlbumArtChanged;
         public event EventHandler<PlaybackStateChangedEventArgs>? PlaybackStateChanged;
         public event EventHandler<MediaTimelineChangedEventArgs>? MediaTimelineChanged;
 
         private System.Threading.Timer? _progressTimer;
+
+        public MediaControlService()
+        {
+            _mediaInfoUpdateCoordinator.MediaInfoChanged += (_, args) =>
+                MediaInfoChanged?.Invoke(this, args);
+            _mediaInfoUpdateCoordinator.AlbumArtChanged += (_, args) =>
+                AlbumArtChanged?.Invoke(this, args);
+        }
 
         public async Task InitializeAsync()
         {
@@ -32,7 +45,11 @@ namespace NoraBar.Services
                     UpdateCurrentSession(_sessionManager.GetCurrentSession());
                 }
 
-                _progressTimer = new System.Threading.Timer(UpdateProgress, null, 0, 500);
+                _progressTimer = new System.Threading.Timer(
+                    UpdateProgress,
+                    null,
+                    0,
+                    MediaRefreshIntervalMilliseconds);
             }
             catch (Exception)
             {
@@ -42,17 +59,19 @@ namespace NoraBar.Services
 
         private void UpdateProgress(object? state)
         {
+            _ = UpdateMediaPropertiesAsync();
+
             if (_currentSession == null) return;
             try
             {
                 var timeline = _currentSession.GetTimelineProperties();
                 var playbackInfo = _currentSession.GetPlaybackInfo();
-                
+
                 if (timeline != null && playbackInfo != null)
                 {
                     var position = timeline.Position;
                     bool isPlaying = playbackInfo.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
-                    
+
                     if (isPlaying && timeline.LastUpdatedTime != default)
                     {
                         var elapsed = DateTimeOffset.UtcNow - timeline.LastUpdatedTime.ToUniversalTime();
@@ -86,12 +105,13 @@ namespace NoraBar.Services
             }
 
             _currentSession = session;
+            _mediaInfoUpdateCoordinator.Reset();
 
             if (_currentSession != null)
             {
                 _currentSession.MediaPropertiesChanged += CurrentSession_MediaPropertiesChanged;
                 _currentSession.PlaybackInfoChanged += CurrentSession_PlaybackInfoChanged;
-                
+
                 _ = UpdateMediaPropertiesAsync();
                 UpdatePlaybackInfo();
             }
@@ -109,55 +129,73 @@ namespace NoraBar.Services
 
         private async Task UpdateMediaPropertiesAsync()
         {
-            if (_currentSession == null) return;
+            if (Interlocked.CompareExchange(ref _isRefreshingMediaProperties, 1, 0) != 0)
+            {
+                return;
+            }
 
             try
             {
-                var properties = await _currentSession.TryGetMediaPropertiesAsync();
-                if (properties == null) return;
-
-                BitmapImage? albumArt = null;
-                if (properties.Thumbnail != null)
+                var session = _currentSession;
+                if (session == null)
                 {
-                    using var stream = await properties.Thumbnail.OpenReadAsync();
-                    if (stream != null)
-                    {
-                        var winStream = stream.AsStreamForRead();
-                        var memStream = await CopyThumbnailToMemoryAsync(winStream);
-
-                        if (memStream != null)
-                        {
-                            using (memStream)
-                            {
-                                System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                                {
-                                    var bitmap = new BitmapImage();
-                                    bitmap.BeginInit();
-                                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                                    bitmap.DecodePixelWidth = MaxAlbumArtDecodePixels;
-                                    bitmap.DecodePixelHeight = MaxAlbumArtDecodePixels;
-                                    bitmap.StreamSource = memStream;
-                                    bitmap.EndInit();
-                                    bitmap.Freeze();
-                                    albumArt = bitmap;
-                                });
-                            }
-                        }
-                    }
+                    return;
                 }
 
-                MediaInfoChanged?.Invoke(this, new MediaInfoChangedEventArgs
-                {
-                    Title = properties.Title,
-                    Artist = properties.Artist,
-                    AlbumTitle = properties.AlbumTitle,
-                    AlbumArt = albumArt
-                });
+                var properties = await session.TryGetMediaPropertiesAsync();
+                if (properties == null) return;
+                if (session != _currentSession) return;
+
+                _ = _mediaInfoUpdateCoordinator.PublishAsync(
+                    new MediaMetadata(properties.Title, properties.Artist, properties.AlbumTitle),
+                    () => LoadAlbumArtAsync(properties));
             }
             catch (Exception)
             {
                 // Ignored
             }
+            finally
+            {
+                Volatile.Write(ref _isRefreshingMediaProperties, 0);
+            }
+        }
+
+        private static async Task<BitmapImage?> LoadAlbumArtAsync(
+            GlobalSystemMediaTransportControlsSessionMediaProperties properties)
+        {
+            if (properties.Thumbnail == null)
+            {
+                return null;
+            }
+
+            using var stream = await properties.Thumbnail.OpenReadAsync();
+            if (stream == null)
+            {
+                return null;
+            }
+
+            var winStream = stream.AsStreamForRead();
+            using var memStream = await CopyThumbnailToMemoryAsync(winStream);
+            if (memStream == null)
+            {
+                return null;
+            }
+
+            BitmapImage? albumArt = null;
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.DecodePixelWidth = MaxAlbumArtDecodePixels;
+                bitmap.DecodePixelHeight = MaxAlbumArtDecodePixels;
+                bitmap.StreamSource = memStream;
+                bitmap.EndInit();
+                bitmap.Freeze();
+                albumArt = bitmap;
+            });
+
+            return albumArt;
         }
 
         private static async Task<MemoryStream?> CopyThumbnailToMemoryAsync(Stream source)
@@ -216,6 +254,7 @@ namespace NoraBar.Services
             if (_currentSession != null)
             {
                 await _currentSession.TrySkipNextAsync();
+                await UpdateMediaPropertiesAsync();
             }
         }
 
@@ -224,6 +263,7 @@ namespace NoraBar.Services
             if (_currentSession != null)
             {
                 await _currentSession.TrySkipPreviousAsync();
+                await UpdateMediaPropertiesAsync();
             }
         }
     }
@@ -239,6 +279,10 @@ namespace NoraBar.Services
         public string? Title { get; set; }
         public string? Artist { get; set; }
         public string? AlbumTitle { get; set; }
+    }
+
+    public class AlbumArtChangedEventArgs : EventArgs
+    {
         public BitmapImage? AlbumArt { get; set; }
     }
 
