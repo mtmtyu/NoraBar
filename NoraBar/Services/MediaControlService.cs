@@ -17,6 +17,7 @@ namespace NoraBar.Services
         private GlobalSystemMediaTransportControlsSessionManager? _sessionManager;
         private GlobalSystemMediaTransportControlsSession? _currentSession;
         private readonly MediaInfoUpdateCoordinator _mediaInfoUpdateCoordinator = new();
+        private readonly PlaybackStateCoordinator _playbackStateCoordinator = new();
         private int _isRefreshingMediaProperties;
 
         public event EventHandler<MediaInfoChangedEventArgs>? MediaInfoChanged;
@@ -32,6 +33,8 @@ namespace NoraBar.Services
                 MediaInfoChanged?.Invoke(this, args);
             _mediaInfoUpdateCoordinator.AlbumArtChanged += (_, args) =>
                 AlbumArtChanged?.Invoke(this, args);
+            _playbackStateCoordinator.PlaybackStateChanged += (_, args) =>
+                PlaybackStateChanged?.Invoke(this, args);
         }
 
         public async Task InitializeAsync()
@@ -69,21 +72,18 @@ namespace NoraBar.Services
 
                 if (timeline != null && playbackInfo != null)
                 {
-                    var position = timeline.Position;
-                    bool isPlaying = playbackInfo.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
-
-                    if (isPlaying && timeline.LastUpdatedTime != default)
-                    {
-                        var elapsed = DateTimeOffset.UtcNow - timeline.LastUpdatedTime.ToUniversalTime();
-                        position += elapsed;
-                    }
-
-                    if (position > timeline.EndTime) position = timeline.EndTime;
-                    if (position < TimeSpan.Zero) position = TimeSpan.Zero;
+                    bool reportedIsPlaying =
+                        playbackInfo.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
+                    PlaybackSnapshot snapshot = _playbackStateCoordinator.CreateSnapshot(
+                        reportedIsPlaying,
+                        timeline.Position,
+                        timeline.LastUpdatedTime,
+                        timeline.EndTime,
+                        DateTimeOffset.UtcNow);
 
                     MediaTimelineChanged?.Invoke(this, new MediaTimelineChangedEventArgs
                     {
-                        Position = position,
+                        Position = snapshot.Position,
                         EndTime = timeline.EndTime
                     });
                 }
@@ -106,6 +106,7 @@ namespace NoraBar.Services
 
             _currentSession = session;
             _mediaInfoUpdateCoordinator.Reset();
+            _playbackStateCoordinator.Reset();
 
             if (_currentSession != null)
             {
@@ -234,19 +235,61 @@ namespace NoraBar.Services
             var playbackInfo = _currentSession.GetPlaybackInfo();
             if (playbackInfo != null)
             {
-                PlaybackStateChanged?.Invoke(this, new PlaybackStateChangedEventArgs
-                {
-                    IsPlaying = playbackInfo.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing
-                });
+                bool isPlaying =
+                    playbackInfo.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
+                _playbackStateCoordinator.ApplyAuthoritativeState(isPlaying);
             }
         }
 
         public async Task PlayPauseAsync()
         {
-            if (_currentSession != null)
+            var session = _currentSession;
+            if (session == null)
             {
-                await _currentSession.TryTogglePlayPauseAsync();
+                return;
             }
+
+            var playbackInfo = session.GetPlaybackInfo();
+            var timeline = session.GetTimelineProperties();
+            if (playbackInfo == null || timeline == null)
+            {
+                await session.TryTogglePlayPauseAsync();
+                return;
+            }
+
+            var requestStartedAt = DateTimeOffset.UtcNow;
+            bool reportedIsPlaying =
+                playbackInfo.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
+            PlaybackSnapshot currentSnapshot = _playbackStateCoordinator.CreateSnapshot(
+                reportedIsPlaying,
+                timeline.Position,
+                timeline.LastUpdatedTime,
+                timeline.EndTime,
+                requestStartedAt);
+
+            bool succeeded = await session.TryTogglePlayPauseAsync();
+            if (!succeeded || session != _currentSession)
+            {
+                return;
+            }
+
+            var completedAt = DateTimeOffset.UtcNow;
+            TimeSpan position = currentSnapshot.Position;
+            if (currentSnapshot.IsPlaying)
+            {
+                position += completedAt - requestStartedAt;
+            }
+
+            PlaybackSnapshot requestedSnapshot = _playbackStateCoordinator.ApplyRequestedState(
+                !currentSnapshot.IsPlaying,
+                position,
+                timeline.EndTime,
+                completedAt);
+            MediaTimelineChanged?.Invoke(this, new MediaTimelineChangedEventArgs
+            {
+                Position = requestedSnapshot.Position,
+                EndTime = timeline.EndTime
+            });
         }
 
         public async Task NextAsync()
