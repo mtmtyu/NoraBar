@@ -212,6 +212,19 @@ namespace NoraBar.ViewModels
             }
         }
 
+        private bool _disableExpandOnFullscreen;
+        public bool DisableExpandOnFullscreen
+        {
+            get => _disableExpandOnFullscreen;
+            set
+            {
+                if (SetProperty(ref _disableExpandOnFullscreen, value))
+                {
+                    SaveSettings();
+                }
+            }
+        }
+
         private string _currentPage = "HUD";
         public string CurrentPage
         {
@@ -237,6 +250,8 @@ namespace NoraBar.ViewModels
         public string StartupDescriptionText => T(LocalizationKey.StartupDescription);
         public string CheckUpdateOnStartupText => T(LocalizationKey.CheckUpdateOnStartup);
         public string CheckUpdateOnStartupDescriptionText => T(LocalizationKey.CheckUpdateOnStartupDescription);
+        public string DisableExpandOnFullscreenText => T(LocalizationKey.DisableExpandOnFullscreen);
+        public string DisableExpandOnFullscreenDescriptionText => T(LocalizationKey.DisableExpandOnFullscreenDescription);
         public string LanguageText => T(LocalizationKey.Language);
         public string LanguageDescriptionText => T(LocalizationKey.LanguageDescription);
         public string VersionText => T(LocalizationKey.Version);
@@ -369,6 +384,7 @@ namespace NoraBar.ViewModels
             _windowLeft = settings.WindowLeft;
             _windowTop = settings.WindowTop;
             _checkUpdateOnStartup = settings.CheckUpdateOnStartup;
+            _disableExpandOnFullscreen = settings.DisableExpandOnFullscreen;
 
             Music.ShowLyrics = _showLyrics;
             Music.TextScrollMode = _textScrollMode;
@@ -430,6 +446,7 @@ namespace NoraBar.ViewModels
             TextScrollMode = defaultSettings.TextScrollMode;
             SelectedLanguage = defaultSettings.Language;
             CheckUpdateOnStartup = defaultSettings.CheckUpdateOnStartup;
+            DisableExpandOnFullscreen = defaultSettings.DisableExpandOnFullscreen;
             
             // Explicitly set startup to true as requested
             IsStartupEnabled = true;
@@ -456,7 +473,8 @@ namespace NoraBar.ViewModels
                 HasCustomPosition = HasCustomPosition,
                 WindowLeft = WindowLeft,
                 WindowTop = WindowTop,
-                CheckUpdateOnStartup = CheckUpdateOnStartup
+                CheckUpdateOnStartup = CheckUpdateOnStartup,
+                DisableExpandOnFullscreen = DisableExpandOnFullscreen
             });
         }
 
@@ -644,6 +662,8 @@ namespace NoraBar.ViewModels
             OnPropertyChanged(nameof(StartupDescriptionText));
             OnPropertyChanged(nameof(CheckUpdateOnStartupText));
             OnPropertyChanged(nameof(CheckUpdateOnStartupDescriptionText));
+            OnPropertyChanged(nameof(DisableExpandOnFullscreenText));
+            OnPropertyChanged(nameof(DisableExpandOnFullscreenDescriptionText));
             OnPropertyChanged(nameof(LanguageText));
             OnPropertyChanged(nameof(LanguageDescriptionText));
             OnPropertyChanged(nameof(VersionText));

@@ -72,7 +72,9 @@ namespace NoraBar.Services
         UpdateAvailableButton,
         RestartVisualizer,
         RestartVisualizerDescription,
-        RestartVisualizerButton
+        RestartVisualizerButton,
+        DisableExpandOnFullscreen,
+        DisableExpandOnFullscreenDescription
     }
 
     public static class LocalizationService
@@ -149,7 +151,9 @@ namespace NoraBar.Services
                     [LocalizationKey.UpdateAvailableButton] = "今すぐ更新",
                     [LocalizationKey.RestartVisualizer] = "オーディオビジュアライザーの再起動",
                     [LocalizationKey.RestartVisualizerDescription] = "ビジュアライザーが動かなくなった場合に、オーディオ入力を再初期化します。",
-                    [LocalizationKey.RestartVisualizerButton] = "再起動"
+                    [LocalizationKey.RestartVisualizerButton] = "再起動",
+                    [LocalizationKey.DisableExpandOnFullscreen] = "フルスクリーン時に展開を無効化",
+                    [LocalizationKey.DisableExpandOnFullscreenDescription] = "HUDがある画面でフルスクリーンのソフトウェアが起動している間、HUDの展開を無効化します。"
                 },
                 [AppLanguage.English] = new Dictionary<LocalizationKey, string>
                 {
@@ -220,7 +224,9 @@ namespace NoraBar.Services
                     [LocalizationKey.UpdateAvailableButton] = "Update Now",
                     [LocalizationKey.RestartVisualizer] = "Restart Audio Visualizer",
                     [LocalizationKey.RestartVisualizerDescription] = "Reinitializes audio capture if the visualizer stops working.",
-                    [LocalizationKey.RestartVisualizerButton] = "Restart"
+                    [LocalizationKey.RestartVisualizerButton] = "Restart",
+                    [LocalizationKey.DisableExpandOnFullscreen] = "Disable Expansion in Fullscreen",
+                    [LocalizationKey.DisableExpandOnFullscreenDescription] = "Disables HUD expansion while a fullscreen application is running on the HUD's screen."
                 }
             };
 

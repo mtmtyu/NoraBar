@@ -16,6 +16,7 @@ namespace NoraBar.Services
         public double WindowLeft { get; set; } = 0;
         public double WindowTop { get; set; } = 0;
         public bool CheckUpdateOnStartup { get; set; } = true;
+        public bool DisableExpandOnFullscreen { get; set; } = true;
     }
 
     public static class SettingsService

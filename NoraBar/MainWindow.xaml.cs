@@ -292,6 +292,14 @@ namespace NoraBar
 
             if (!isIdle)
             {
+                if (_viewModel.DisableExpandOnFullscreen && FullscreenDetector.IsFullscreenAppActive(this))
+                {
+                    // Block expansion: maintain the collapsed state and do not show music view
+                    IslandHost.Content = null;
+                    AnimateSize(200, 2, true);
+                    return;
+                }
+
                 // Expand: immediately set content and fade in
                 IslandHost.Content = view;
                 AnimateSize(targetWidth, targetHeight, false);

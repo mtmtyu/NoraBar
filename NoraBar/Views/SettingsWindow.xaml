@@ -708,6 +708,26 @@
                                 </Grid>
                             </Border>
 
+                            <!-- Card 3.6: Disable Expand On Fullscreen Toggle -->
+                            <Border Style="{StaticResource SettingCardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding DisableExpandOnFullscreenText}" Style="{StaticResource CardHeaderStyle}" />
+                                        <TextBlock Text="{Binding DisableExpandOnFullscreenDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
+                                    </StackPanel>
+
+                                    <CheckBox Grid.Column="1"
+                                              Style="{StaticResource ToggleSwitchStyle}"
+                                              IsChecked="{Binding DisableExpandOnFullscreen}"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
                             <!-- Card 4: Language Selector -->
                             <Border Style="{StaticResource SettingCardStyle}">
                                 <Grid>
