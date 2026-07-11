@@ -6,6 +6,42 @@ namespace NoraBar.Tests.Services;
 public class MediaInfoUpdateCoordinatorTests
 {
     [Fact]
+    public async Task Reset_AssignsANewerVersionToSubsequentNotifications()
+    {
+        var coordinator = new MediaInfoUpdateCoordinator();
+        MediaInfoChangedEventArgs? firstMetadata = null;
+        MediaInfoChangedEventArgs? secondMetadata = null;
+        AlbumArtChangedEventArgs? secondArtwork = null;
+
+        coordinator.MediaInfoChanged += (_, args) =>
+        {
+            if (firstMetadata is null)
+            {
+                firstMetadata = args;
+            }
+            else
+            {
+                secondMetadata = args;
+            }
+        };
+        coordinator.AlbumArtChanged += (_, args) => secondArtwork = args;
+
+        await coordinator.PublishAsync(
+            new MediaMetadata("First", "Artist", "Album"),
+            () => Task.FromResult<System.Windows.Media.Imaging.BitmapImage?>(null));
+        coordinator.Reset();
+        await coordinator.PublishAsync(
+            new MediaMetadata("Second", "Artist", "Album"),
+            () => Task.FromResult<System.Windows.Media.Imaging.BitmapImage?>(null));
+
+        Assert.NotNull(firstMetadata);
+        Assert.NotNull(secondMetadata);
+        Assert.NotNull(secondArtwork);
+        Assert.True(secondMetadata.UpdateVersion > firstMetadata.UpdateVersion);
+        Assert.Equal(secondMetadata.UpdateVersion, secondArtwork.UpdateVersion);
+    }
+
+    [Fact]
     public async Task PublishAsync_NotifiesMetadataBeforeArtworkLoadingCompletes()
     {
         var artworkSource = new TaskCompletionSource<System.Windows.Media.Imaging.BitmapImage?>(

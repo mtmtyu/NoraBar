@@ -18,6 +18,7 @@ namespace NoraBar.ViewModels
         private string _currentTrackName = "";
         private string _currentArtistName = "";
         private string _currentAlbumName = "";
+        private int _mediaUpdateVersion;
 
         private string _title = "Not Playing";
         public string Title
@@ -136,6 +137,11 @@ namespace NoraBar.ViewModels
 
             _mediaService.MediaInfoChanged += async (s, e) =>
             {
+                if (!TryAdvanceMediaUpdateVersion(e.UpdateVersion))
+                {
+                    return;
+                }
+
                 int currentRequestId = ++_lyricsRequestId;
 
                 _currentTrackName = e.Title ?? "";
@@ -146,6 +152,11 @@ namespace NoraBar.ViewModels
 
                 System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
+                    if (e.UpdateVersion != System.Threading.Volatile.Read(ref _mediaUpdateVersion))
+                    {
+                        return;
+                    }
+
                     Title = string.IsNullOrEmpty(_currentTrackName) ? "Unknown" : _currentTrackName;
                     Artist = string.IsNullOrEmpty(_currentArtistName) ? "Unknown" : _currentArtistName;
                     AlbumArt = null;
@@ -159,8 +170,18 @@ namespace NoraBar.ViewModels
             };
             _mediaService.AlbumArtChanged += (s, e) =>
             {
+                if (e.UpdateVersion != System.Threading.Volatile.Read(ref _mediaUpdateVersion))
+                {
+                    return;
+                }
+
                 System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
+                    if (e.UpdateVersion != System.Threading.Volatile.Read(ref _mediaUpdateVersion))
+                    {
+                        return;
+                    }
+
                     AlbumArt = e.AlbumArt;
                 });
             };
@@ -204,6 +225,26 @@ namespace NoraBar.ViewModels
                 }, System.Windows.Threading.DispatcherPriority.Render);
             };
             IsVisualizerRunning = _audioVisualizerService.Start();
+        }
+
+        private bool TryAdvanceMediaUpdateVersion(int updateVersion)
+        {
+            while (true)
+            {
+                int currentVersion = System.Threading.Volatile.Read(ref _mediaUpdateVersion);
+                if (updateVersion <= currentVersion)
+                {
+                    return false;
+                }
+
+                if (System.Threading.Interlocked.CompareExchange(
+                        ref _mediaUpdateVersion,
+                        updateVersion,
+                        currentVersion) == currentVersion)
+                {
+                    return true;
+                }
+            }
         }
 
         public void Cleanup()

@@ -67,6 +67,7 @@ namespace NoraBar.Services
                     _updateVersion++;
                     metadataArgs = new MediaInfoChangedEventArgs
                     {
+                        UpdateVersion = _updateVersion,
                         Title = metadata.Title,
                         Artist = metadata.Artist,
                         AlbumTitle = metadata.AlbumTitle
@@ -131,6 +132,7 @@ namespace NoraBar.Services
                     : AlbumArtLoadState.Loaded;
                 albumArtArgs = new AlbumArtChangedEventArgs
                 {
+                    UpdateVersion = updateVersion,
                     AlbumArt = albumArt
                 };
             }
@@ -169,8 +171,19 @@ namespace NoraBar.Services
         public void Clear()
         {
             Reset();
-            MediaInfoChanged?.Invoke(this, new MediaInfoChangedEventArgs());
-            AlbumArtChanged?.Invoke(this, new AlbumArtChangedEventArgs());
+            int updateVersion;
+            lock (_syncRoot)
+            {
+                updateVersion = _updateVersion;
+            }
+            MediaInfoChanged?.Invoke(this, new MediaInfoChangedEventArgs
+            {
+                UpdateVersion = updateVersion
+            });
+            AlbumArtChanged?.Invoke(this, new AlbumArtChangedEventArgs
+            {
+                UpdateVersion = updateVersion
+            });
         }
     }
 }
