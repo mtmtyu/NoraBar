@@ -57,6 +57,10 @@ When enabled, NoraBar automatically checks for a new version in the background w
 
 Resets the audio visualizer. If the waveform visualizer stops reacting or fails to initialize, you can restart only the visualizer component with this button without needing to restart the entire application.
 
+### Disable Expand on Fullscreen
+
+Disables the HUD expansion feature when a fullscreen application is launched on the same screen.
+
 ### Display Language
 
 Switches the language used in the app.
