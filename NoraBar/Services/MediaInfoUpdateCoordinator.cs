@@ -11,6 +11,8 @@ namespace NoraBar.Services
         private readonly object _syncRoot = new();
         private MediaMetadata? _currentMetadata;
         private int _updateVersion;
+        private bool _isAlbumArtLoading;
+        private bool _hasLoadedAlbumArt;
 
         public event EventHandler<MediaInfoChangedEventArgs>? MediaInfoChanged;
         public event EventHandler<AlbumArtChangedEventArgs>? AlbumArtChanged;
@@ -23,19 +25,27 @@ namespace NoraBar.Services
 
             lock (_syncRoot)
             {
-                if (_currentMetadata == metadata)
+                bool metadataChanged = _currentMetadata != metadata;
+                if (!metadataChanged && (_isAlbumArtLoading || _hasLoadedAlbumArt))
                 {
                     return;
                 }
 
-                _currentMetadata = metadata;
-                updateVersion = ++_updateVersion;
-                MediaInfoChanged?.Invoke(this, new MediaInfoChangedEventArgs
+                if (metadataChanged)
                 {
-                    Title = metadata.Title,
-                    Artist = metadata.Artist,
-                    AlbumTitle = metadata.AlbumTitle
-                });
+                    _currentMetadata = metadata;
+                    _hasLoadedAlbumArt = false;
+                    _updateVersion++;
+                    MediaInfoChanged?.Invoke(this, new MediaInfoChangedEventArgs
+                    {
+                        Title = metadata.Title,
+                        Artist = metadata.Artist,
+                        AlbumTitle = metadata.AlbumTitle
+                    });
+                }
+
+                updateVersion = _updateVersion;
+                _isAlbumArtLoading = true;
             }
 
             BitmapImage? albumArt;
@@ -45,6 +55,13 @@ namespace NoraBar.Services
             }
             catch
             {
+                lock (_syncRoot)
+                {
+                    if (updateVersion == _updateVersion)
+                    {
+                        _isAlbumArtLoading = false;
+                    }
+                }
                 return;
             }
 
@@ -55,6 +72,8 @@ namespace NoraBar.Services
                     return;
                 }
 
+                _isAlbumArtLoading = false;
+                _hasLoadedAlbumArt = albumArt != null;
                 AlbumArtChanged?.Invoke(this, new AlbumArtChangedEventArgs
                 {
                     AlbumArt = albumArt
@@ -67,6 +86,8 @@ namespace NoraBar.Services
             lock (_syncRoot)
             {
                 _currentMetadata = null;
+                _isAlbumArtLoading = false;
+                _hasLoadedAlbumArt = false;
                 _updateVersion++;
             }
         }
