@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using NoraBar.Models;
 
 namespace NoraBar.Controls
@@ -10,6 +11,7 @@ namespace NoraBar.Controls
     public partial class MarqueeTextBlock : UserControl
     {
         private Storyboard? _scrollStoryboard;
+        private DispatcherOperation? _pendingScrollUpdate;
         private bool _isHovering = false;
         private const double ScrollSpeedPixelsPerSecond = 50.0;
         private const double Spacing = 30.0; // Space between original and duplicate text
@@ -94,6 +96,7 @@ namespace NoraBar.Controls
 
         private void MarqueeTextBlock_Unloaded(object sender, RoutedEventArgs e)
         {
+            CancelPendingScrollUpdate();
             StopAnimation();
         }
 
@@ -142,11 +145,19 @@ namespace NoraBar.Controls
 
         private void UpdateScrollAnimation()
         {
+            CancelPendingScrollUpdate();
             StopAnimation();
 
             // Use ContextIdle to ensure layout passes have completed before measuring
-            Dispatcher.BeginInvoke(new Action(() =>
+            _pendingScrollUpdate = Dispatcher.BeginInvoke(new Action(() =>
             {
+                _pendingScrollUpdate = null;
+
+                if (!IsLoaded)
+                {
+                    return;
+                }
+
                 if (string.IsNullOrEmpty(Text) || ActualWidth == 0)
                 {
                     ResetPositions();
@@ -179,7 +190,17 @@ namespace NoraBar.Controls
                 {
                     ResetPositions();
                 }
-            }), System.Windows.Threading.DispatcherPriority.ContextIdle);
+            }), DispatcherPriority.ContextIdle);
+        }
+
+        private void CancelPendingScrollUpdate()
+        {
+            if (_pendingScrollUpdate?.Status == DispatcherOperationStatus.Pending)
+            {
+                _pendingScrollUpdate.Abort();
+            }
+
+            _pendingScrollUpdate = null;
         }
 
         private void ResetPositions()
