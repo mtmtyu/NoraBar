@@ -117,6 +117,7 @@ namespace NoraBar.ViewModels
         public ICommand PlayPauseCommand { get; }
         public ICommand NextCommand { get; }
         public ICommand PreviousCommand { get; }
+        public bool IsVisualizerRunning { get; private set; }
 
         private int _lyricsRequestId = 0;
 
@@ -201,7 +202,7 @@ namespace NoraBar.ViewModels
                     SpectrumData = data;
                 }, System.Windows.Threading.DispatcherPriority.Render);
             };
-            _audioVisualizerService.Start();
+            IsVisualizerRunning = _audioVisualizerService.Start();
         }
 
         public void Cleanup()
@@ -213,7 +214,8 @@ namespace NoraBar.ViewModels
         public bool RestartVisualizer()
         {
             _audioVisualizerService.Stop();
-            return _audioVisualizerService.Start();
+            IsVisualizerRunning = _audioVisualizerService.Start();
+            return IsVisualizerRunning;
         }
 
         private void UpdateCurrentLyric(TimeSpan position)

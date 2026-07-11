@@ -396,6 +396,10 @@ namespace NoraBar.ViewModels
 
             Music.ShowLyrics = _showLyrics;
             Music.TextScrollMode = _textScrollMode;
+            if (!Music.IsVisualizerRunning)
+            {
+                RestartVisualizerStatus = T(LocalizationKey.RestartVisualizerFailed);
+            }
 
             SetVariantCommand = new RelayCommand(ExecuteSetVariant);
             SetStateCommand = new RelayCommand(ExecuteSetState);
