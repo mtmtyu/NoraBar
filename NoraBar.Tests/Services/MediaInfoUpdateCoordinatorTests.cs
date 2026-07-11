@@ -97,13 +97,34 @@ public class MediaInfoUpdateCoordinatorTests
     }
 
     [Fact]
-    public async Task PublishAsync_DoesNotRetryArtworkWhenItIsUnavailableForTheSameMetadata()
+    public async Task PublishAsync_RetriesArtworkWhenItBecomesAvailableForTheSameMetadata()
     {
         var coordinator = new MediaInfoUpdateCoordinator();
         var metadata = new MediaMetadata("Available title", "Artist", "Album");
         int artworkLoadCount = 0;
 
         await coordinator.PublishAsync(metadata, LoadArtworkAsync);
+        await coordinator.PublishAsync(metadata, LoadArtworkAsync);
+
+        Assert.Equal(2, artworkLoadCount);
+
+        Task<System.Windows.Media.Imaging.BitmapImage?> LoadArtworkAsync()
+        {
+            artworkLoadCount++;
+            return Task.FromResult<System.Windows.Media.Imaging.BitmapImage?>(null);
+        }
+    }
+
+    [Fact]
+    public async Task PublishForSessionAsync_AllowsRetryAfterAnAlreadyCanceledUpdate()
+    {
+        var coordinator = new MediaInfoUpdateCoordinator();
+        var metadata = new MediaMetadata("Title", "Artist", "Album");
+        using var cancellationSource = new CancellationTokenSource();
+        cancellationSource.Cancel();
+        int artworkLoadCount = 0;
+
+        await coordinator.PublishForSessionAsync(metadata, LoadArtworkAsync, cancellationSource.Token);
         await coordinator.PublishAsync(metadata, LoadArtworkAsync);
 
         Assert.Equal(1, artworkLoadCount);
@@ -192,4 +213,36 @@ public class MediaInfoUpdateCoordinatorTests
         Assert.Equal(1, artworkNotificationCount);
     }
 
+    [Fact]
+    public async Task PublishForSessionAsync_AllowsRetryWhenCanceledDuringArtworkLoading()
+    {
+        var coordinator = new MediaInfoUpdateCoordinator();
+        var metadata = new MediaMetadata("Title", "Artist", "Album");
+        var artworkSource = new TaskCompletionSource<System.Windows.Media.Imaging.BitmapImage?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var cancellationSource = new CancellationTokenSource();
+        int artworkLoadCount = 0;
+
+        Task canceledUpdate = coordinator.PublishForSessionAsync(
+            metadata,
+            () =>
+            {
+                artworkLoadCount++;
+                return artworkSource.Task;
+            },
+            cancellationSource.Token);
+        cancellationSource.Cancel();
+        artworkSource.SetResult(null);
+        await canceledUpdate;
+
+        await coordinator.PublishAsync(
+            metadata,
+            () =>
+            {
+                artworkLoadCount++;
+                return Task.FromResult<System.Windows.Media.Imaging.BitmapImage?>(null);
+            });
+
+        Assert.Equal(2, artworkLoadCount);
+    }
 }

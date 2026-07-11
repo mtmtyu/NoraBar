@@ -7,6 +7,7 @@ namespace NoraBar.Services
     internal sealed class PlaybackStateCoordinator
     {
         private static readonly TimeSpan RequestedStateTimeout = TimeSpan.FromSeconds(2);
+        private static readonly TimeSpan PositionMatchTolerance = TimeSpan.FromSeconds(1);
         private readonly object _syncRoot = new();
         private bool? _requestedIsPlaying;
         private TimeSpan _requestedPosition;
@@ -27,11 +28,22 @@ namespace NoraBar.Services
 
             lock (_syncRoot)
             {
-                if (_requestedIsPlaying.HasValue &&
-                    (reportedIsPlaying == _requestedIsPlaying.Value ||
-                     GetPositiveElapsed(now, _requestedAt) >= RequestedStateTimeout))
+                if (_requestedIsPlaying.HasValue)
                 {
-                    _requestedIsPlaying = null;
+                    TimeSpan requestAge = GetPositiveElapsed(now, _requestedAt);
+                    TimeSpan expectedPosition = _requestedPosition;
+                    if (_requestedIsPlaying.Value)
+                    {
+                        expectedPosition += requestAge;
+                    }
+
+                    bool reportedStateAndPositionMatch =
+                        reportedIsPlaying == _requestedIsPlaying.Value &&
+                        IsPositionClose(reportedPosition, expectedPosition);
+                    if (reportedStateAndPositionMatch || requestAge >= RequestedStateTimeout)
+                    {
+                        _requestedIsPlaying = null;
+                    }
                 }
 
                 bool isPlaying = _requestedIsPlaying ?? reportedIsPlaying;
@@ -91,7 +103,6 @@ namespace NoraBar.Services
 
             lock (_syncRoot)
             {
-                _requestedIsPlaying = null;
                 shouldPublish = MarkStateForPublication(isPlaying);
             }
 
@@ -131,6 +142,11 @@ namespace NoraBar.Services
             {
                 IsPlaying = isPlaying
             });
+        }
+
+        private static bool IsPositionClose(TimeSpan reportedPosition, TimeSpan expectedPosition)
+        {
+            return (reportedPosition - expectedPosition).Duration() <= PositionMatchTolerance;
         }
 
         private static TimeSpan GetPositiveElapsed(DateTimeOffset now, DateTimeOffset then)

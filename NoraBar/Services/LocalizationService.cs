@@ -73,6 +73,8 @@ namespace NoraBar.Services
         RestartVisualizer,
         RestartVisualizerDescription,
         RestartVisualizerButton,
+        RestartVisualizerSucceeded,
+        RestartVisualizerFailed,
         DisableExpandOnFullscreen,
         DisableExpandOnFullscreenDescription
     }
@@ -152,6 +154,8 @@ namespace NoraBar.Services
                     [LocalizationKey.RestartVisualizer] = "オーディオビジュアライザーの再起動",
                     [LocalizationKey.RestartVisualizerDescription] = "ビジュアライザーが動かなくなった場合に、オーディオ入力を再初期化します。",
                     [LocalizationKey.RestartVisualizerButton] = "再起動",
+                    [LocalizationKey.RestartVisualizerSucceeded] = "ビジュアライザーを再起動しました。",
+                    [LocalizationKey.RestartVisualizerFailed] = "ビジュアライザーを再起動できませんでした。オーディオデバイスを確認してください。",
                     [LocalizationKey.DisableExpandOnFullscreen] = "フルスクリーン時に展開を無効化",
                     [LocalizationKey.DisableExpandOnFullscreenDescription] = "HUDがある画面でフルスクリーンのソフトウェアが起動している間、HUDの展開を無効化します。"
                 },
@@ -225,6 +229,8 @@ namespace NoraBar.Services
                     [LocalizationKey.RestartVisualizer] = "Restart Audio Visualizer",
                     [LocalizationKey.RestartVisualizerDescription] = "Reinitializes audio capture if the visualizer stops working.",
                     [LocalizationKey.RestartVisualizerButton] = "Restart",
+                    [LocalizationKey.RestartVisualizerSucceeded] = "The visualizer was restarted.",
+                    [LocalizationKey.RestartVisualizerFailed] = "The visualizer could not be restarted. Check the audio device.",
                     [LocalizationKey.DisableExpandOnFullscreen] = "Disable Expansion in Fullscreen",
                     [LocalizationKey.DisableExpandOnFullscreenDescription] = "Disables HUD expansion while a fullscreen application is running on the HUD's screen."
                 }

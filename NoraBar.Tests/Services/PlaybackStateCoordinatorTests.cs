@@ -80,8 +80,36 @@ public class PlaybackStateCoordinatorTests
         var now = new DateTimeOffset(2026, 7, 11, 3, 0, 0, TimeSpan.Zero);
         coordinator.ApplyRequestedState(true, TimeSpan.FromSeconds(40), TimeSpan.FromMinutes(3), now);
         PlaybackSnapshot snapshot = coordinator.CreateSnapshot(
-            true, TimeSpan.FromSeconds(50), now, TimeSpan.FromMinutes(3), now.AddSeconds(1));
+            true, TimeSpan.FromSeconds(41), now.AddSeconds(1), TimeSpan.FromMinutes(3), now.AddSeconds(1));
         Assert.True(snapshot.IsPlaying);
-        Assert.Equal(TimeSpan.FromSeconds(51), snapshot.Position);
+        Assert.Equal(TimeSpan.FromSeconds(41), snapshot.Position);
+    }
+    [Fact]
+    public void CreateSnapshot_KeepsRequestedPauseWhileReportedTimelineIsStale()
+    {
+        var coordinator = new PlaybackStateCoordinator();
+        var now = new DateTimeOffset(2026, 7, 11, 3, 0, 0, TimeSpan.Zero);
+        coordinator.ApplyRequestedState(false, TimeSpan.FromSeconds(40), TimeSpan.FromMinutes(3), now);
+
+        PlaybackSnapshot snapshot = coordinator.CreateSnapshot(
+            false, TimeSpan.FromSeconds(30), now.AddSeconds(-10), TimeSpan.FromMinutes(3), now.AddSeconds(1));
+
+        Assert.False(snapshot.IsPlaying);
+        Assert.Equal(TimeSpan.FromSeconds(40), snapshot.Position);
+    }
+
+    [Fact]
+    public void ApplyAuthoritativeState_DoesNotDiscardRequestedTimeline()
+    {
+        var coordinator = new PlaybackStateCoordinator();
+        var now = new DateTimeOffset(2026, 7, 11, 3, 0, 0, TimeSpan.Zero);
+        coordinator.ApplyRequestedState(false, TimeSpan.FromSeconds(40), TimeSpan.FromMinutes(3), now);
+
+        coordinator.ApplyAuthoritativeState(false);
+        PlaybackSnapshot snapshot = coordinator.CreateSnapshot(
+            false, TimeSpan.FromSeconds(30), now.AddSeconds(-10), TimeSpan.FromMinutes(3), now.AddSeconds(1));
+
+        Assert.False(snapshot.IsPlaying);
+        Assert.Equal(TimeSpan.FromSeconds(40), snapshot.Position);
     }
 }

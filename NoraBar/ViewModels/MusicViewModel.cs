@@ -210,10 +210,10 @@ namespace NoraBar.ViewModels
             _audioVisualizerService.Dispose();
         }
 
-        public void RestartVisualizer()
+        public bool RestartVisualizer()
         {
             _audioVisualizerService.Stop();
-            _audioVisualizerService.Start();
+            return _audioVisualizerService.Start();
         }
 
         private void UpdateCurrentLyric(TimeSpan position)

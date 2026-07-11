@@ -45,11 +45,15 @@ namespace NoraBar.Services
 
             lock (_syncRoot)
             {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
                 bool metadataChanged = _currentMetadata != metadata;
                 if (!metadataChanged &&
                     (_albumArtLoadState is AlbumArtLoadState.Loading or
-                        AlbumArtLoadState.Loaded or
-                        AlbumArtLoadState.NotAvailable ||
+                        AlbumArtLoadState.Loaded ||
                      _albumArtLoadAttempts >= MaxAlbumArtLoadAttempts))
                 {
                     return;
@@ -81,6 +85,7 @@ namespace NoraBar.Services
 
             if (cancellationToken.IsCancellationRequested)
             {
+                ResetCanceledLoad(updateVersion);
                 return;
             }
 
@@ -104,8 +109,15 @@ namespace NoraBar.Services
             AlbumArtChangedEventArgs? albumArtArgs = null;
             lock (_syncRoot)
             {
-                if (updateVersion != _updateVersion || cancellationToken.IsCancellationRequested)
+                if (updateVersion != _updateVersion)
                 {
+                    return;
+                }
+
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    _albumArtLoadAttempts--;
+                    _albumArtLoadState = AlbumArtLoadState.NotAttempted;
                     return;
                 }
 
@@ -121,6 +133,20 @@ namespace NoraBar.Services
             if (albumArtArgs is not null && !cancellationToken.IsCancellationRequested)
             {
                 AlbumArtChanged?.Invoke(this, albumArtArgs);
+            }
+        }
+
+        private void ResetCanceledLoad(int updateVersion)
+        {
+            lock (_syncRoot)
+            {
+                if (updateVersion != _updateVersion)
+                {
+                    return;
+                }
+
+                _albumArtLoadAttempts--;
+                _albumArtLoadState = AlbumArtLoadState.NotAttempted;
             }
         }
 

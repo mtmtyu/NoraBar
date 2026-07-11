@@ -841,6 +841,7 @@
                                     <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                                         <TextBlock Text="{Binding RestartVisualizerText}" Style="{StaticResource CardHeaderStyle}" />
                                         <TextBlock Text="{Binding RestartVisualizerDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
+                                        <TextBlock Text="{Binding RestartVisualizerStatus}" Style="{StaticResource CardSubHeaderStyle}" />
                                     </StackPanel>
 
                                     <Button Grid.Column="1"
@@ -946,7 +947,7 @@
                                         <TextBlock Text="{Binding CheckUpdatesDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
                                     </StackPanel>
 
-                                    <Button Grid.Column="1" Command="{Binding CheckUpdateCommand}" Width="140" Height="32" VerticalAlignment="Center" Foreground="White" BorderThickness="0" Cursor="Hand">
+                                    <Button Grid.Column="1" Command="{Binding UpdateCommand}" Width="140" Height="32" VerticalAlignment="Center" Foreground="White" BorderThickness="0" Cursor="Hand">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
                                                 <Border x:Name="Brd" Background="#1AFFFFFF" CornerRadius="4">

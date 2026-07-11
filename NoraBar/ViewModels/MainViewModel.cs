@@ -290,6 +290,13 @@ namespace NoraBar.ViewModels
         public string RestartVisualizerDescriptionText => T(LocalizationKey.RestartVisualizerDescription);
         public string RestartVisualizerButtonText => T(LocalizationKey.RestartVisualizerButton);
 
+        private string _restartVisualizerStatus = string.Empty;
+        public string RestartVisualizerStatus
+        {
+            get => _restartVisualizerStatus;
+            private set => SetProperty(ref _restartVisualizerStatus, value);
+        }
+
         private bool _isLicenseDialogOpen;
         public bool IsLicenseDialogOpen
         {
@@ -354,6 +361,7 @@ namespace NoraBar.ViewModels
 
         public ICommand NavigateCommand { get; }
         public ICommand CheckUpdateCommand { get; }
+        public ICommand UpdateCommand { get; }
         public ICommand OpenGitHubCommand { get; }
         public ICommand OpenReleasePageCommand { get; }
         public ICommand ShowLicenseCommand { get; }
@@ -394,6 +402,16 @@ namespace NoraBar.ViewModels
 
             NavigateCommand = new RelayCommand(p => CurrentPage = p as string ?? "HUD");
             CheckUpdateCommand = new RelayCommand(async _ => await CheckForUpdatesAsync());
+            UpdateCommand = new RelayCommand(async _ =>
+            {
+                if (HasUpdate)
+                {
+                    OpenLatestReleasePage();
+                    return;
+                }
+
+                await CheckForUpdatesAsync();
+            });
             OpenGitHubCommand = new RelayCommand(_ =>
             {
                 try
@@ -404,19 +422,7 @@ namespace NoraBar.ViewModels
                 {
                 }
             });
-            OpenReleasePageCommand = new RelayCommand(_ =>
-            {
-                if (!string.IsNullOrEmpty(LatestReleaseUrl))
-                {
-                    try
-                    {
-                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(LatestReleaseUrl) { UseShellExecute = true });
-                    }
-                    catch
-                    {
-                    }
-                }
-            });
+            OpenReleasePageCommand = new RelayCommand(_ => OpenLatestReleasePage());
             ShowLicenseCommand = new RelayCommand(_ => IsLicenseDialogOpen = true);
             CloseLicenseCommand = new RelayCommand(_ => IsLicenseDialogOpen = false);
             SelectNoraBarLicenseCommand = new RelayCommand(_ => IsNoraBarLicenseTab = true);
@@ -430,13 +436,35 @@ namespace NoraBar.ViewModels
             ShowResetDialogCommand = new RelayCommand(_ => IsResetDialogOpen = true);
             CloseResetDialogCommand = new RelayCommand(_ => IsResetDialogOpen = false);
             ResetAllSettingsCommand = new RelayCommand(_ => ResetAllSettings());
-            RestartVisualizerCommand = new RelayCommand(_ => Music.RestartVisualizer());
+            RestartVisualizerCommand = new RelayCommand(_ =>
+            {
+                RestartVisualizerStatus = Music.RestartVisualizer()
+                    ? T(LocalizationKey.RestartVisualizerSucceeded)
+                    : T(LocalizationKey.RestartVisualizerFailed);
+            });
+        }
+
+        private void OpenLatestReleasePage()
+        {
+            if (string.IsNullOrEmpty(LatestReleaseUrl))
+            {
+                return;
+            }
+
+            try
+            {
+                System.Diagnostics.Process.Start(
+                    new System.Diagnostics.ProcessStartInfo(LatestReleaseUrl) { UseShellExecute = true });
+            }
+            catch
+            {
+            }
         }
 
         private void ResetAllSettings()
         {
             IsResetDialogOpen = false;
-            
+
             var defaultSettings = new UserSettings();
 
             // Notify UI by setting properties
@@ -447,7 +475,7 @@ namespace NoraBar.ViewModels
             SelectedLanguage = defaultSettings.Language;
             CheckUpdateOnStartup = defaultSettings.CheckUpdateOnStartup;
             DisableExpandOnFullscreen = defaultSettings.DisableExpandOnFullscreen;
-            
+
             // Explicitly set startup to true as requested
             IsStartupEnabled = true;
 
@@ -456,7 +484,7 @@ namespace NoraBar.ViewModels
             WindowLeft = 0;
             WindowTop = 0;
             IsPositionEditMode = false;
-            
+
             // Save current settings correctly
             SaveSettings();
         }
@@ -713,6 +741,7 @@ namespace NoraBar.ViewModels
             OnPropertyChanged(nameof(RestartVisualizerText));
             OnPropertyChanged(nameof(RestartVisualizerDescriptionText));
             OnPropertyChanged(nameof(RestartVisualizerButtonText));
+            RestartVisualizerStatus = string.Empty;
         }
     }
 }

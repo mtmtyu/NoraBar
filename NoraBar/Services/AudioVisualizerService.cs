@@ -14,18 +14,18 @@ namespace NoraBar.Services
         private SoundInSource? _soundInSource;
         private IWaveSource? _realtimeSource;
         private SingleBlockNotificationStream? _singleBlockNotificationStream;
-        
+
         private Timer? _timer;
         private readonly int _barCount = 8;
-        
+
         private readonly Complex[] _complexBuffer = new Complex[4096];
         private int _bufferIndex = 0;
         private readonly object _lock = new object();
         private bool _newDataAvailable = false;
-        
+
         public event EventHandler<float[]>? SpectrumDataUpdated;
 
-        public void Start()
+        public bool Start()
         {
             try
             {
@@ -53,7 +53,7 @@ namespace NoraBar.Services
                 };
 
                 _realtimeSource = _singleBlockNotificationStream.ToWaveSource();
-                
+
                 // Read data continuously
                 byte[] buffer = new byte[_realtimeSource.WaveFormat.BytesPerSecond / 2];
                 _soundInSource.DataAvailable += (s, e) =>
@@ -68,10 +68,12 @@ namespace NoraBar.Services
                 _capture.Start();
 
                 _timer = new Timer(UpdateSpectrum, null, 0, 50); // 20 FPS
+                return true;
             }
             catch (Exception)
             {
-                // Ignored for prototype
+                Stop();
+                return false;
             }
         }
 
@@ -105,11 +107,11 @@ namespace NoraBar.Services
             FastFourierTransformation.Fft(fftData, 12, FftMode.Forward);
 
             float[] spectrumData = new float[_barCount];
-                
+
             // Use only the lower frequencies (first quarter of the FFT data)
-            int maxBands = fftData.Length / 4; 
+            int maxBands = fftData.Length / 4;
             int bandSize = maxBands / _barCount;
-            
+
             for (int i = 0; i < _barCount; i++)
             {
                 float max = 0;
@@ -122,20 +124,20 @@ namespace NoraBar.Services
                         if (val > max) max = val;
                     }
                 }
-                
+
                 // Convert magnitude to decibels for a more natural response
                 if (max < 1e-5f) max = 1e-5f;
                 float db = (float)(10 * Math.Log10(max));
-                
+
                 // Map -40dB .. 0dB to 0.0 .. 1.0
                 float scaled = (db + 40.0f) / 40.0f;
-                
+
                 // Emphasize the visualization slightly
                 scaled *= 1.2f;
 
                 if (scaled > 1.0f) scaled = 1.0f;
                 if (scaled < 0.0f) scaled = 0.0f;
-                
+
                 spectrumData[i] = scaled;
             }
 
@@ -144,15 +146,46 @@ namespace NoraBar.Services
 
         public void Stop()
         {
-            _timer?.Dispose();
-            _timer = null;
-            _capture?.Stop();
-            _capture?.Dispose();
+            DisposeResource(ref _timer);
+
+            WasapiLoopbackCapture? capture = _capture;
             _capture = null;
-            _soundInSource?.Dispose();
-            _soundInSource = null;
-            _realtimeSource?.Dispose();
-            _realtimeSource = null;
+            if (capture != null)
+            {
+                try
+                {
+                    capture.Stop();
+                }
+                catch (Exception)
+                {
+                }
+                finally
+                {
+                    DisposeResource(capture);
+                }
+            }
+
+            DisposeResource(ref _soundInSource);
+            DisposeResource(ref _realtimeSource);
+            DisposeResource(ref _singleBlockNotificationStream);
+        }
+
+        private static void DisposeResource<T>(ref T? resource) where T : class, IDisposable
+        {
+            T? resourceToDispose = resource;
+            resource = null;
+            DisposeResource(resourceToDispose);
+        }
+
+        private static void DisposeResource(IDisposable? resource)
+        {
+            try
+            {
+                resource?.Dispose();
+            }
+            catch (Exception)
+            {
+            }
         }
 
         public void Dispose()
