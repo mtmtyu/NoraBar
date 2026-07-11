@@ -20,6 +20,7 @@ namespace NoraBar.Services
         private readonly MediaInfoUpdateCoordinator _mediaInfoUpdateCoordinator = new();
         private readonly PlaybackStateCoordinator _playbackStateCoordinator = new();
         private readonly SemaphoreSlim _mediaPropertiesRefreshLock = new(1, 1);
+        private readonly object _sessionUpdateLock = new();
         private CancellationTokenSource _sessionCancellation = new();
 
         public event EventHandler<MediaInfoChangedEventArgs>? MediaInfoChanged;
@@ -109,26 +110,29 @@ namespace NoraBar.Services
 
         private void UpdateCurrentSession(GlobalSystemMediaTransportControlsSession? session)
         {
-            if (_currentSession != null)
+            lock (_sessionUpdateLock)
             {
-                _currentSession.MediaPropertiesChanged -= CurrentSession_MediaPropertiesChanged;
-                _currentSession.PlaybackInfoChanged -= CurrentSession_PlaybackInfoChanged;
-            }
+                if (_currentSession != null)
+                {
+                    _currentSession.MediaPropertiesChanged -= CurrentSession_MediaPropertiesChanged;
+                    _currentSession.PlaybackInfoChanged -= CurrentSession_PlaybackInfoChanged;
+                }
 
-            _currentSession = session;
-            _sessionCancellation.Cancel();
-            _sessionCancellation.Dispose();
-            _sessionCancellation = new CancellationTokenSource();
-            _mediaInfoUpdateCoordinator.Reset();
-            _playbackStateCoordinator.Reset();
+                _currentSession = session;
+                _sessionCancellation.Cancel();
+                _sessionCancellation.Dispose();
+                _sessionCancellation = new CancellationTokenSource();
+                _mediaInfoUpdateCoordinator.Reset();
+                _playbackStateCoordinator.Reset();
 
-            if (_currentSession != null)
-            {
-                _currentSession.MediaPropertiesChanged += CurrentSession_MediaPropertiesChanged;
-                _currentSession.PlaybackInfoChanged += CurrentSession_PlaybackInfoChanged;
+                if (_currentSession != null)
+                {
+                    _currentSession.MediaPropertiesChanged += CurrentSession_MediaPropertiesChanged;
+                    _currentSession.PlaybackInfoChanged += CurrentSession_PlaybackInfoChanged;
 
-                _ = UpdateMediaPropertiesAsync();
-                UpdatePlaybackInfo();
+                    _ = UpdateMediaPropertiesAsync();
+                    UpdatePlaybackInfo();
+                }
             }
         }
 
