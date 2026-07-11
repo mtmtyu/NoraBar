@@ -20,16 +20,22 @@ namespace NoraBar.ViewModels
             public string DisplayName { get; }
         }
 
-        public sealed class ScrollModeOption
+        public sealed class ScrollModeOption : ViewModelBase
         {
             public ScrollModeOption(TextScrollMode mode, string displayName)
             {
                 Mode = mode;
-                DisplayName = displayName;
+                _displayName = displayName;
             }
 
             public TextScrollMode Mode { get; }
-            public string DisplayName { get; }
+
+            private string _displayName;
+            public string DisplayName
+            {
+                get => _displayName;
+                set => SetProperty(ref _displayName, value);
+            }
         }
 
         private DesignVariant _currentVariant;
@@ -161,12 +167,7 @@ namespace NoraBar.ViewModels
             new LanguageOption(AppLanguage.English, LocalizationService.GetText(AppLanguage.English, LocalizationKey.English))
         ];
 
-        public IReadOnlyList<ScrollModeOption> AvailableScrollModes =>
-        [
-            new ScrollModeOption(Models.TextScrollMode.Disabled, T(LocalizationKey.TextScrollDisabled)),
-            new ScrollModeOption(Models.TextScrollMode.Always, T(LocalizationKey.TextScrollAlways)),
-            new ScrollModeOption(Models.TextScrollMode.HoverOnly, T(LocalizationKey.TextScrollHoverOnly))
-        ];
+        public IReadOnlyList<ScrollModeOption> AvailableScrollModes { get; }
 
         public bool IsMinimalVariant
         {
@@ -385,6 +386,13 @@ namespace NoraBar.ViewModels
             _windowTop = settings.WindowTop;
             _checkUpdateOnStartup = settings.CheckUpdateOnStartup;
             _disableExpandOnFullscreen = settings.DisableExpandOnFullscreen;
+
+            AvailableScrollModes = new[]
+            {
+                new ScrollModeOption(Models.TextScrollMode.Disabled, T(LocalizationKey.TextScrollDisabled)),
+                new ScrollModeOption(Models.TextScrollMode.Always, T(LocalizationKey.TextScrollAlways)),
+                new ScrollModeOption(Models.TextScrollMode.HoverOnly, T(LocalizationKey.TextScrollHoverOnly))
+            };
 
             Music.ShowLyrics = _showLyrics;
             Music.TextScrollMode = _textScrollMode;
@@ -677,7 +685,12 @@ namespace NoraBar.ViewModels
             OnPropertyChanged(nameof(ShowLyricsDescriptionText));
             OnPropertyChanged(nameof(TextScrollModeText));
             OnPropertyChanged(nameof(TextScrollModeDescriptionText));
-            OnPropertyChanged(nameof(AvailableScrollModes));
+            if (AvailableScrollModes != null)
+            {
+                AvailableScrollModes[0].DisplayName = T(LocalizationKey.TextScrollDisabled);
+                AvailableScrollModes[1].DisplayName = T(LocalizationKey.TextScrollAlways);
+                AvailableScrollModes[2].DisplayName = T(LocalizationKey.TextScrollHoverOnly);
+            }
             OnPropertyChanged(nameof(StartupText));
             OnPropertyChanged(nameof(StartupDescriptionText));
             OnPropertyChanged(nameof(CheckUpdateOnStartupText));
