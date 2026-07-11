@@ -20,6 +20,24 @@ namespace NoraBar.ViewModels
             public string DisplayName { get; }
         }
 
+        public sealed class ScrollModeOption : ViewModelBase
+        {
+            public ScrollModeOption(TextScrollMode mode, string displayName)
+            {
+                Mode = mode;
+                _displayName = displayName;
+            }
+
+            public TextScrollMode Mode { get; }
+
+            private string _displayName;
+            public string DisplayName
+            {
+                get => _displayName;
+                set => SetProperty(ref _displayName, value);
+            }
+        }
+
         private DesignVariant _currentVariant;
         public DesignVariant CurrentVariant
         {
@@ -65,6 +83,20 @@ namespace NoraBar.ViewModels
                 {
                     SaveSettings();
                     Music.ShowLyrics = value;
+                }
+            }
+        }
+
+        private TextScrollMode _textScrollMode;
+        public TextScrollMode TextScrollMode
+        {
+            get => _textScrollMode;
+            set
+            {
+                if (SetProperty(ref _textScrollMode, value))
+                {
+                    SaveSettings();
+                    Music.TextScrollMode = value;
                 }
             }
         }
@@ -135,6 +167,8 @@ namespace NoraBar.ViewModels
             new LanguageOption(AppLanguage.English, LocalizationService.GetText(AppLanguage.English, LocalizationKey.English))
         ];
 
+        public IReadOnlyList<ScrollModeOption> AvailableScrollModes { get; }
+
         public bool IsMinimalVariant
         {
             get => CurrentVariant == DesignVariant.MinimalFloatingPill;
@@ -166,33 +200,71 @@ namespace NoraBar.ViewModels
             }
         }
 
-        private string _currentPage = "HUD";
+        private bool _checkUpdateOnStartup;
+        public bool CheckUpdateOnStartup
+        {
+            get => _checkUpdateOnStartup;
+            set
+            {
+                if (SetProperty(ref _checkUpdateOnStartup, value))
+                {
+                    SaveSettings();
+                }
+            }
+        }
+
+        private bool _disableExpandOnFullscreen;
+        public bool DisableExpandOnFullscreen
+        {
+            get => _disableExpandOnFullscreen;
+            set
+            {
+                if (SetProperty(ref _disableExpandOnFullscreen, value))
+                {
+                    SaveSettings();
+                }
+            }
+        }
+
+        private string _currentPage = "General";
         public string CurrentPage
         {
             get => _currentPage;
             set => SetProperty(ref _currentPage, value);
         }
 
-        public string CurrentVersion => System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.2";
+        public string CurrentVersion => System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.3";
 
         public string SettingsWindowTitle => T(LocalizationKey.WindowTitle);
         public string AppSubtitleText => T(LocalizationKey.AppSubtitle);
+        public string GeneralSettingsText => T(LocalizationKey.GeneralSettings);
         public string HudSettingsText => T(LocalizationKey.HudSettings);
         public string AboutText => T(LocalizationKey.About);
+        public string HudSelectionText => T(LocalizationKey.HudSelection);
+        public string HudSelectionDescriptionText => T(LocalizationKey.HudSelectionDescription);
+        public string SharedDisplaySettingsText => T(LocalizationKey.SharedDisplaySettings);
+        public string SelectedHudSettingsText => T(LocalizationKey.SelectedHudSettings);
         public string DesignStyleText => T(LocalizationKey.DesignStyle);
         public string DesignStyleDescriptionText => T(LocalizationKey.DesignStyleDescription);
         public string ProgressBarText => T(LocalizationKey.ProgressBar);
         public string ProgressBarDescriptionText => T(LocalizationKey.ProgressBarDescription);
         public string ShowLyricsText => T(LocalizationKey.ShowLyrics);
         public string ShowLyricsDescriptionText => T(LocalizationKey.ShowLyricsDescription);
+        public string TextScrollModeText => T(LocalizationKey.TextScrollMode);
+        public string TextScrollModeDescriptionText => T(LocalizationKey.TextScrollModeDescription);
         public string StartupText => T(LocalizationKey.Startup);
         public string StartupDescriptionText => T(LocalizationKey.StartupDescription);
+        public string CheckUpdateOnStartupText => T(LocalizationKey.CheckUpdateOnStartup);
+        public string CheckUpdateOnStartupDescriptionText => T(LocalizationKey.CheckUpdateOnStartupDescription);
+        public string DisableExpandOnFullscreenText => T(LocalizationKey.DisableExpandOnFullscreen);
+        public string DisableExpandOnFullscreenDescriptionText => T(LocalizationKey.DisableExpandOnFullscreenDescription);
         public string LanguageText => T(LocalizationKey.Language);
         public string LanguageDescriptionText => T(LocalizationKey.LanguageDescription);
         public string VersionText => T(LocalizationKey.Version);
         public string CheckUpdatesText => T(LocalizationKey.CheckUpdates);
         public string CheckUpdatesDescriptionText => T(LocalizationKey.CheckUpdatesDescription);
         public string CheckUpdatesButtonText => T(LocalizationKey.CheckUpdatesButton);
+        public string UpdateAvailableButtonText => T(LocalizationKey.UpdateAvailableButton);
         public string GitHubRepositoryText => T(LocalizationKey.GitHubRepository);
         public string GitHubRepositoryDescriptionText => T(LocalizationKey.GitHubRepositoryDescription);
         public string OpenRepositoryText => T(LocalizationKey.OpenRepository);
@@ -219,6 +291,10 @@ namespace NoraBar.ViewModels
         public string ResetConfirmMessageText => T(LocalizationKey.ResetConfirmMessage);
         public string ResetConfirmYesText => T(LocalizationKey.ResetConfirmYes);
         public string ResetConfirmNoText => T(LocalizationKey.ResetConfirmNo);
+
+        public string RestartVisualizerText => T(LocalizationKey.RestartVisualizer);
+        public string RestartVisualizerDescriptionText => T(LocalizationKey.RestartVisualizerDescription);
+        public string RestartVisualizerButtonText => T(LocalizationKey.RestartVisualizerButton);
 
         private bool _isLicenseDialogOpen;
         public bool IsLicenseDialogOpen
@@ -295,6 +371,7 @@ namespace NoraBar.ViewModels
         public ICommand ResetAllSettingsCommand { get; }
         public ICommand ShowResetDialogCommand { get; }
         public ICommand CloseResetDialogCommand { get; }
+        public ICommand RestartVisualizerCommand { get; }
 
         public MusicViewModel Music { get; } = new MusicViewModel();
 
@@ -307,15 +384,30 @@ namespace NoraBar.ViewModels
             _currentVariant = settings.Variant;
             _showProgressBar = settings.ShowProgressBar;
             _showLyrics = settings.ShowLyrics;
+            _textScrollMode = settings.TextScrollMode;
             _selectedLanguage = settings.Language;
             _hasCustomPosition = settings.HasCustomPosition;
             _windowLeft = settings.WindowLeft;
             _windowTop = settings.WindowTop;
+            _checkUpdateOnStartup = settings.CheckUpdateOnStartup;
+            _disableExpandOnFullscreen = settings.DisableExpandOnFullscreen;
+
+            AvailableScrollModes = new[]
+            {
+                new ScrollModeOption(Models.TextScrollMode.Disabled, T(LocalizationKey.TextScrollDisabled)),
+                new ScrollModeOption(Models.TextScrollMode.Always, T(LocalizationKey.TextScrollAlways)),
+                new ScrollModeOption(Models.TextScrollMode.HoverOnly, T(LocalizationKey.TextScrollHoverOnly))
+            };
+
+            Music.ShowLyrics = _showLyrics;
+            Music.TextScrollMode = _textScrollMode;
 
             SetVariantCommand = new RelayCommand(ExecuteSetVariant);
             SetStateCommand = new RelayCommand(ExecuteSetState);
 
-            NavigateCommand = new RelayCommand(p => CurrentPage = p as string ?? "HUD");
+            _availableHuds = new[] { T(LocalizationKey.MusicHudName) };
+
+            NavigateCommand = new RelayCommand(p => CurrentPage = p as string ?? "General");
             CheckUpdateCommand = new RelayCommand(async _ => await CheckForUpdatesAsync());
             OpenGitHubCommand = new RelayCommand(_ =>
             {
@@ -353,6 +445,7 @@ namespace NoraBar.ViewModels
             ShowResetDialogCommand = new RelayCommand(_ => IsResetDialogOpen = true);
             CloseResetDialogCommand = new RelayCommand(_ => IsResetDialogOpen = false);
             ResetAllSettingsCommand = new RelayCommand(_ => ResetAllSettings());
+            RestartVisualizerCommand = new RelayCommand(_ => Music.RestartVisualizer());
         }
 
         private void ResetAllSettings()
@@ -365,7 +458,10 @@ namespace NoraBar.ViewModels
             CurrentVariant = defaultSettings.Variant;
             ShowProgressBar = defaultSettings.ShowProgressBar;
             ShowLyrics = defaultSettings.ShowLyrics;
+            TextScrollMode = defaultSettings.TextScrollMode;
             SelectedLanguage = defaultSettings.Language;
+            CheckUpdateOnStartup = defaultSettings.CheckUpdateOnStartup;
+            DisableExpandOnFullscreen = defaultSettings.DisableExpandOnFullscreen;
             
             // Explicitly set startup to true as requested
             IsStartupEnabled = true;
@@ -387,10 +483,13 @@ namespace NoraBar.ViewModels
                 Variant = CurrentVariant,
                 ShowProgressBar = ShowProgressBar,
                 ShowLyrics = ShowLyrics,
+                TextScrollMode = TextScrollMode,
                 Language = SelectedLanguage,
                 HasCustomPosition = HasCustomPosition,
                 WindowLeft = WindowLeft,
-                WindowTop = WindowTop
+                WindowTop = WindowTop,
+                CheckUpdateOnStartup = CheckUpdateOnStartup,
+                DisableExpandOnFullscreen = DisableExpandOnFullscreen
             });
         }
 
@@ -463,6 +562,25 @@ namespace NoraBar.ViewModels
             "(D) If you distribute any portion of the software in source code form, you may do so only under this license by including a complete copy of this license with your distribution. If you distribute any portion of the software in compiled or object code form, you may only do so under a license that complies with this license.\n" +
             "(E) The software is licensed \"as-is.\" You bear the risk of using it. The contributors give no express warranties, guarantees or conditions. You may have additional consumer rights under your local laws which this license cannot change. To the extent permitted under your local laws, the contributors exclude the implied warranties of merchantability, fitness for a particular purpose and non-infringement.\n\n" +
             "========================================================================\n" +
+            "Material.Icons.WPF - MIT License\n" +
+            "========================================================================\n\n" +
+            "Copyright (c) 2021 SKProCH\n\n" +
+            "Permission is hereby granted, free of charge, to any person obtaining a copy\n" +
+            "of this software and associated documentation files (the \"Software\"), to deal\n" +
+            "in the Software without restriction, including without limitation the rights\n" +
+            "to use, copy, modify, merge, publish, distribute, sublicense, and/or sell\n" +
+            "copies of the Software, and to permit persons to whom the Software is\n" +
+            "furnished to do so, subject to the following conditions:\n\n" +
+            "The above copyright notice and this permission notice shall be included in all\n" +
+            "copies or substantial portions of the Software.\n\n" +
+            "THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n" +
+            "IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n" +
+            "FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n" +
+            "AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n" +
+            "LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n" +
+            "OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\n" +
+            "SOFTWARE.\n\n" +
+            "========================================================================\n" +
             "LRCLIB API\n" +
             "========================================================================\n\n" +
             "Lyrics provided by LRCLIB (https://lrclib.net/).\n" +
@@ -480,6 +598,34 @@ namespace NoraBar.ViewModels
             public string HtmlUrl { get; set; } = string.Empty;
         }
 
+        private async System.Threading.Tasks.Task<GitHubRelease?> GetAvailableUpdateAsync()
+        {
+            using var client = new System.Net.Http.HttpClient();
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("NoraBar-App-Update-Checker");
+
+            var release = await client.GetFromJsonAsync<GitHubRelease>("https://api.github.com/repos/mtmtyu/NoraBar/releases/latest");
+            if (release == null || string.IsNullOrEmpty(release.TagName))
+            {
+                return null;
+            }
+
+            var latestVersionText = release.TagName.TrimStart('v');
+            var currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+
+            return System.Version.TryParse(latestVersionText, out var latestVersion) &&
+                   currentVersion != null &&
+                   latestVersion > currentVersion
+                ? release
+                : null;
+        }
+
+        private void ApplyAvailableUpdate(GitHubRelease release)
+        {
+            UpdateStatus = string.Format(T(LocalizationKey.UpdateAvailable), release.TagName);
+            HasUpdate = true;
+            LatestReleaseUrl = release.HtmlUrl;
+        }
+
         private async System.Threading.Tasks.Task CheckForUpdatesAsync()
         {
             IsCheckingUpdates = true;
@@ -489,26 +635,13 @@ namespace NoraBar.ViewModels
 
             try
             {
-                using var client = new System.Net.Http.HttpClient();
-                client.DefaultRequestHeaders.UserAgent.ParseAdd("NoraBar-App-Update-Checker");
-
-                var response = await client.GetFromJsonAsync<GitHubRelease>("https://api.github.com/repos/mtmtyu/NoraBar/releases/latest");
-                if (response != null && !string.IsNullOrEmpty(response.TagName))
+                var release = await GetAvailableUpdateAsync();
+                if (release != null)
                 {
-                    var latestVerStr = response.TagName.TrimStart('v');
-                    var localVer = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-
-                    if (System.Version.TryParse(latestVerStr, out var latestVer) && localVer != null)
-                    {
-                        if (latestVer > localVer)
-                        {
-                            UpdateStatus = string.Format(T(LocalizationKey.UpdateAvailable), response.TagName);
-                            HasUpdate = true;
-                            LatestReleaseUrl = response.HtmlUrl;
-                            return;
-                        }
-                    }
+                    ApplyAvailableUpdate(release);
+                    return;
                 }
+
                 UpdateStatus = T(LocalizationKey.UpToDate);
             }
             catch (System.Exception ex)
@@ -521,6 +654,25 @@ namespace NoraBar.ViewModels
             }
         }
 
+        public async System.Threading.Tasks.Task<bool> CheckForUpdatesSilentlyAsync()
+        {
+            try
+            {
+                var release = await GetAvailableUpdateAsync();
+                if (release != null)
+                {
+                    ApplyAvailableUpdate(release);
+                    IsUpdateDialogOpen = true;
+                    return true;
+                }
+            }
+            catch (System.Exception)
+            {
+                // Fail silently
+            }
+            return false;
+        }
+
         private string T(LocalizationKey key)
         {
             return LocalizationService.GetText(SelectedLanguage, key);
@@ -528,9 +680,31 @@ namespace NoraBar.ViewModels
 
         private void RefreshLocalizedText()
         {
+            var oldSelectedHudIndex = -1;
+            if (AvailableHuds != null && SelectedHud != null)
+            {
+                oldSelectedHudIndex = Array.IndexOf(_availableHuds, SelectedHud);
+            }
+
+            AvailableHuds = new[] { T(LocalizationKey.MusicHudName) };
+
+            if (oldSelectedHudIndex >= 0 && oldSelectedHudIndex < _availableHuds.Length)
+            {
+                SelectedHud = _availableHuds[oldSelectedHudIndex];
+            }
+            else if (_availableHuds.Length > 0)
+            {
+                SelectedHud = _availableHuds[0];
+            }
+
             OnPropertyChanged(nameof(SettingsWindowTitle));
             OnPropertyChanged(nameof(AppSubtitleText));
+            OnPropertyChanged(nameof(GeneralSettingsText));
+            OnPropertyChanged(nameof(HudSelectionText));
+            OnPropertyChanged(nameof(HudSelectionDescriptionText));
             OnPropertyChanged(nameof(HudSettingsText));
+            OnPropertyChanged(nameof(SharedDisplaySettingsText));
+            OnPropertyChanged(nameof(SelectedHudSettingsText));
             OnPropertyChanged(nameof(AboutText));
             OnPropertyChanged(nameof(DesignStyleText));
             OnPropertyChanged(nameof(DesignStyleDescriptionText));
@@ -538,14 +712,27 @@ namespace NoraBar.ViewModels
             OnPropertyChanged(nameof(ProgressBarDescriptionText));
             OnPropertyChanged(nameof(ShowLyricsText));
             OnPropertyChanged(nameof(ShowLyricsDescriptionText));
+            OnPropertyChanged(nameof(TextScrollModeText));
+            OnPropertyChanged(nameof(TextScrollModeDescriptionText));
+            if (AvailableScrollModes != null)
+            {
+                AvailableScrollModes[0].DisplayName = T(LocalizationKey.TextScrollDisabled);
+                AvailableScrollModes[1].DisplayName = T(LocalizationKey.TextScrollAlways);
+                AvailableScrollModes[2].DisplayName = T(LocalizationKey.TextScrollHoverOnly);
+            }
             OnPropertyChanged(nameof(StartupText));
             OnPropertyChanged(nameof(StartupDescriptionText));
+            OnPropertyChanged(nameof(CheckUpdateOnStartupText));
+            OnPropertyChanged(nameof(CheckUpdateOnStartupDescriptionText));
+            OnPropertyChanged(nameof(DisableExpandOnFullscreenText));
+            OnPropertyChanged(nameof(DisableExpandOnFullscreenDescriptionText));
             OnPropertyChanged(nameof(LanguageText));
             OnPropertyChanged(nameof(LanguageDescriptionText));
             OnPropertyChanged(nameof(VersionText));
             OnPropertyChanged(nameof(CheckUpdatesText));
             OnPropertyChanged(nameof(CheckUpdatesDescriptionText));
             OnPropertyChanged(nameof(CheckUpdatesButtonText));
+            OnPropertyChanged(nameof(UpdateAvailableButtonText));
             OnPropertyChanged(nameof(GitHubRepositoryText));
             OnPropertyChanged(nameof(GitHubRepositoryDescriptionText));
             OnPropertyChanged(nameof(OpenRepositoryText));
@@ -571,6 +758,35 @@ namespace NoraBar.ViewModels
             OnPropertyChanged(nameof(ResetConfirmMessageText));
             OnPropertyChanged(nameof(ResetConfirmYesText));
             OnPropertyChanged(nameof(ResetConfirmNoText));
+            OnPropertyChanged(nameof(RestartVisualizerText));
+            OnPropertyChanged(nameof(RestartVisualizerDescriptionText));
+            OnPropertyChanged(nameof(RestartVisualizerButtonText));
+        }
+
+        private string[] _availableHuds;
+        public IReadOnlyList<string> AvailableHuds
+        {
+            get => _availableHuds;
+            private set => SetProperty(ref _availableHuds, value as string[]);
+        }
+        
+        private string _selectedHud;
+        public string SelectedHud
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(_selectedHud)) return _selectedHud;
+                if (_availableHuds != null && _availableHuds.Length > 0) return _availableHuds[0];
+                return "音楽HUD";
+            }
+            set
+            {
+                if (string.IsNullOrEmpty(value)) return;
+                if (SetProperty(ref _selectedHud, value))
+                {
+                    SaveSettings();
+                }
+            }
         }
     }
 }

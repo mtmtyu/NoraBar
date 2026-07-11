@@ -43,6 +43,7 @@ dotnet publish NoraBar/NoraBar.csproj -c Release -r win-x64 --self-contained fal
 - Windows Forms `NotifyIcon`
 - Windows Media Control API
 - CSCore `1.2.1.2`
+- Material.Icons.WPF `3.0.2`
 
 Music information comes from Windows media sessions. The waveform captures system audio through WASAPI loopback and visualizes it after FFT processing.
 

@@ -19,6 +19,7 @@ Start here when NoraBar does not appear or behave as expected.
 
 ## The Waveform Does Not Move
 
+- Press the **Restart Audio Visualizer** button in the settings window to restart only the visualizer function.
 - Confirm that audio is playing from the PC.
 - Confirm that the output device is enabled.
 - If WASAPI loopback initialization fails, the waveform is not displayed. Restarting the app may recover it.

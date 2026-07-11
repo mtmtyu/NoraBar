@@ -50,7 +50,7 @@ namespace NoraBar
             UpdateLocalizedShellText();
         }
 
-        protected override void OnContentRendered(EventArgs e)
+        protected override async void OnContentRendered(EventArgs e)
         {
             base.OnContentRendered(e);
 
@@ -59,6 +59,15 @@ namespace NoraBar
             if (!args.Contains("--startup"))
             {
                 OpenSettings();
+            }
+
+            if (_viewModel.CheckUpdateOnStartup)
+            {
+                bool hasUpdate = await _viewModel.CheckForUpdatesSilentlyAsync();
+                if (hasUpdate)
+                {
+                    OpenSettings();
+                }
             }
         }
 
@@ -283,6 +292,14 @@ namespace NoraBar
 
             if (!isIdle)
             {
+                if (_viewModel.DisableExpandOnFullscreen && FullscreenDetector.IsFullscreenAppActive(this))
+                {
+                    // Block expansion: maintain the collapsed state and do not show music view
+                    IslandHost.Content = null;
+                    AnimateSize(200, 2, true);
+                    return;
+                }
+
                 // Expand: immediately set content and fade in
                 IslandHost.Content = view;
                 AnimateSize(targetWidth, targetHeight, false);

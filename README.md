@@ -26,18 +26,25 @@ NoraBar is a WPF application for Windows desktop. It usually waits as a thin 2px
   - Uses CSCore WASAPI loopback capture to visualize the audio currently playing on the PC with 8 bars.
   - Adds a small sense of live motion without taking over the desktop.
 
+- **Automatic text scrolling**
+  - Scrolls track titles and artists automatically when they are too long to fit.
+  - Supports disabled, scroll-on-hover, and always-scroll modes.
+
 - **Synced lyrics**
   - Fetches synced lyrics from LRCLIB when available.
   - Displays the current lyric line in the HUD in sync with playback.
   - Can be turned on or off from the settings window.
+
+- **Fullscreen detection**
+  - Automatically prevents the HUD from expanding while fullscreen applications (like games or videos) are running.
 
 - **Two design styles**
   - `Minimal Floating Pill`: a compact, lightweight style for everyday use.
   - `Productivity Command Island`: a wider style that gives album art and progress more room.
 
 - **Settings window**
-  - Switch the design style, progress bar visibility, synced lyrics, startup behavior, display language, and HUD position.
-  - Includes GitHub Releases update checks and third-party license information.
+  - Switch the design style, progress bar visibility, synced lyrics, automatic text scrolling, startup behavior, display language, and HUD position.
+  - Includes startup update checks, manual update checks, an audio visualizer restart button, and third-party license information.
 
 ## Screenshots
 
@@ -106,11 +113,12 @@ Markdown files under `docs/wiki/` are synced to the GitHub Wiki when changes are
 - XAML
 - Windows Media Control API
 - CSCore
+- Material.Icons.WPF
 - Windows Forms NotifyIcon
 
 ## License
 
-NoraBar uses CSCore and LRCLIB as third-party components/services. License information is available from the settings window in the app.
+NoraBar uses CSCore, Material.Icons.WPF, and LRCLIB as third-party components/services. License information is available from the settings window in the app.
 
 NoraBar is licensed under the GNU Affero General Public License v3.0. See [LICENSE](LICENSE) for details.
 
