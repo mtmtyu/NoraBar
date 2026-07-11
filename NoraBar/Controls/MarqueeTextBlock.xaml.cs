@@ -26,9 +26,9 @@ namespace NoraBar.Controls
         public static readonly DependencyProperty TextStyleProperty =
             DependencyProperty.Register(nameof(TextStyle), typeof(Style), typeof(MarqueeTextBlock), new PropertyMetadata(null));
 
-        public Style TextStyle
+        public Style? TextStyle
         {
-            get => (Style)GetValue(TextStyleProperty);
+            get => GetValue(TextStyleProperty) as Style;
             set => SetValue(TextStyleProperty, value);
         }
 
@@ -201,6 +201,8 @@ namespace NoraBar.Controls
 
         private void StartAnimation(double textWidth)
         {
+            StopAnimation();
+
             MainTextBlock.ClearValue(WidthProperty);
             DuplicateTextBlock.ClearValue(WidthProperty);
             

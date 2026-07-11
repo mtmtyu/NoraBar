@@ -114,4 +114,60 @@ public class MediaInfoUpdateCoordinatorTests
             return Task.FromResult<System.Windows.Media.Imaging.BitmapImage?>(null);
         }
     }
+
+    [Fact]
+    public async Task PublishAsync_SetsLoadingStateBeforeNotifyingMetadataSubscribers()
+    {
+        var artworkSource = new TaskCompletionSource<System.Windows.Media.Imaging.BitmapImage?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var coordinator = new MediaInfoUpdateCoordinator();
+        var metadata = new MediaMetadata("Title", "Artist", "Album");
+        int artworkLoadCount = 0;
+
+        coordinator.MediaInfoChanged += (_, _) => _ = coordinator.PublishAsync(metadata, LoadArtworkAsync);
+
+        Task updateTask = coordinator.PublishAsync(metadata, LoadArtworkAsync);
+
+        Assert.Equal(1, artworkLoadCount);
+
+        artworkSource.SetResult(null);
+        await updateTask;
+
+        Task<System.Windows.Media.Imaging.BitmapImage?> LoadArtworkAsync()
+        {
+            artworkLoadCount++;
+            return artworkSource.Task;
+        }
+    }
+
+    [Fact]
+    public async Task Reset_SuppressesInFlightArtworkAndAllowsNewMetadata()
+    {
+        var firstArtworkSource = new TaskCompletionSource<System.Windows.Media.Imaging.BitmapImage?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var coordinator = new MediaInfoUpdateCoordinator();
+        int metadataNotificationCount = 0;
+        int artworkNotificationCount = 0;
+
+        coordinator.MediaInfoChanged += (_, _) => metadataNotificationCount++;
+        coordinator.AlbumArtChanged += (_, _) => artworkNotificationCount++;
+
+        Task firstUpdate = coordinator.PublishAsync(
+            new MediaMetadata("First", "Artist", "Album"),
+            () => firstArtworkSource.Task);
+
+        coordinator.Reset();
+        firstArtworkSource.SetResult(null);
+        await firstUpdate;
+
+        Assert.Equal(0, artworkNotificationCount);
+
+        await coordinator.PublishAsync(
+            new MediaMetadata("Second", "Artist", "Album"),
+            () => Task.FromResult<System.Windows.Media.Imaging.BitmapImage?>(null));
+
+        Assert.Equal(2, metadataNotificationCount);
+        Assert.Equal(1, artworkNotificationCount);
+    }
+
 }

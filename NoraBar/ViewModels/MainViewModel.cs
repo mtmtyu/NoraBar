@@ -564,6 +564,38 @@ namespace NoraBar.ViewModels
             public string HtmlUrl { get; set; } = string.Empty;
         }
 
+        private async System.Threading.Tasks.Task<GitHubRelease?> FetchLatestReleaseAsync()
+        {
+            using var client = new System.Net.Http.HttpClient();
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("NoraBar-App-Update-Checker");
+            return await client.GetFromJsonAsync<GitHubRelease>(
+                "https://api.github.com/repos/mtmtyu/NoraBar/releases/latest");
+        }
+
+        private static bool IsUpdateAvailable(
+            GitHubRelease? release,
+            out System.Version? latestVersion)
+        {
+            latestVersion = null;
+            if (release == null || string.IsNullOrEmpty(release.TagName))
+            {
+                return false;
+            }
+
+            var localVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            return System.Version.TryParse(release.TagName.TrimStart('v'), out latestVersion)
+                && localVersion != null
+                && latestVersion > localVersion;
+        }
+
+        private void ShowAvailableUpdate(GitHubRelease release)
+        {
+            UpdateStatus = string.Format(T(LocalizationKey.UpdateAvailable), release.TagName);
+            HasUpdate = true;
+            LatestReleaseUrl = release.HtmlUrl;
+            IsUpdateDialogOpen = true;
+        }
+
         private async System.Threading.Tasks.Task CheckForUpdatesAsync()
         {
             IsCheckingUpdates = true;
@@ -573,26 +605,13 @@ namespace NoraBar.ViewModels
 
             try
             {
-                using var client = new System.Net.Http.HttpClient();
-                client.DefaultRequestHeaders.UserAgent.ParseAdd("NoraBar-App-Update-Checker");
-
-                var response = await client.GetFromJsonAsync<GitHubRelease>("https://api.github.com/repos/mtmtyu/NoraBar/releases/latest");
-                if (response != null && !string.IsNullOrEmpty(response.TagName))
+                var release = await FetchLatestReleaseAsync();
+                if (IsUpdateAvailable(release, out _) && release != null)
                 {
-                    var latestVerStr = response.TagName.TrimStart('v');
-                    var localVer = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-
-                    if (System.Version.TryParse(latestVerStr, out var latestVer) && localVer != null)
-                    {
-                        if (latestVer > localVer)
-                        {
-                            UpdateStatus = string.Format(T(LocalizationKey.UpdateAvailable), response.TagName);
-                            HasUpdate = true;
-                            LatestReleaseUrl = response.HtmlUrl;
-                            return;
-                        }
-                    }
+                    ShowAvailableUpdate(release);
+                    return;
                 }
+
                 UpdateStatus = T(LocalizationKey.UpToDate);
             }
             catch (System.Exception ex)
@@ -609,32 +628,18 @@ namespace NoraBar.ViewModels
         {
             try
             {
-                using var client = new System.Net.Http.HttpClient();
-                client.DefaultRequestHeaders.UserAgent.ParseAdd("NoraBar-App-Update-Checker");
-
-                var response = await client.GetFromJsonAsync<GitHubRelease>("https://api.github.com/repos/mtmtyu/NoraBar/releases/latest");
-                if (response != null && !string.IsNullOrEmpty(response.TagName))
+                var release = await FetchLatestReleaseAsync();
+                if (IsUpdateAvailable(release, out _) && release != null)
                 {
-                    var latestVerStr = response.TagName.TrimStart('v');
-                    var localVer = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-
-                    if (System.Version.TryParse(latestVerStr, out var latestVer) && localVer != null)
-                    {
-                        if (latestVer > localVer)
-                        {
-                            UpdateStatus = string.Format(T(LocalizationKey.UpdateAvailable), response.TagName);
-                            HasUpdate = true;
-                            LatestReleaseUrl = response.HtmlUrl;
-                            IsUpdateDialogOpen = true;
-                            return true;
-                        }
-                    }
+                    ShowAvailableUpdate(release);
+                    return true;
                 }
             }
             catch (System.Exception)
             {
                 // Fail silently
             }
+
             return false;
         }
 

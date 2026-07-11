@@ -249,8 +249,17 @@ namespace NoraBar.Services
                 return;
             }
 
-            var playbackInfo = session.GetPlaybackInfo();
-            var timeline = session.GetTimelineProperties();
+            GlobalSystemMediaTransportControlsSessionPlaybackInfo? playbackInfo;
+            GlobalSystemMediaTransportControlsSessionTimelineProperties? timeline;
+            try
+            {
+                playbackInfo = session.GetPlaybackInfo();
+                timeline = session.GetTimelineProperties();
+            }
+            catch
+            {
+                return;
+            }
             if (playbackInfo == null || timeline == null)
             {
                 await session.TryTogglePlayPauseAsync();

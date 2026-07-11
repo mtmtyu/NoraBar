@@ -22,6 +22,7 @@ namespace NoraBar.Services
             Func<Task<BitmapImage?>> loadAlbumArtAsync)
         {
             int updateVersion;
+            MediaInfoChangedEventArgs? metadataArgs = null;
 
             lock (_syncRoot)
             {
@@ -36,16 +37,21 @@ namespace NoraBar.Services
                     _currentMetadata = metadata;
                     _hasLoadedAlbumArt = false;
                     _updateVersion++;
-                    MediaInfoChanged?.Invoke(this, new MediaInfoChangedEventArgs
+                    metadataArgs = new MediaInfoChangedEventArgs
                     {
                         Title = metadata.Title,
                         Artist = metadata.Artist,
                         AlbumTitle = metadata.AlbumTitle
-                    });
+                    };
                 }
 
                 updateVersion = _updateVersion;
                 _isAlbumArtLoading = true;
+            }
+
+            if (metadataArgs is not null)
+            {
+                MediaInfoChanged?.Invoke(this, metadataArgs);
             }
 
             BitmapImage? albumArt;
@@ -65,6 +71,7 @@ namespace NoraBar.Services
                 return;
             }
 
+            AlbumArtChangedEventArgs? albumArtArgs = null;
             lock (_syncRoot)
             {
                 if (updateVersion != _updateVersion)
@@ -74,10 +81,15 @@ namespace NoraBar.Services
 
                 _isAlbumArtLoading = false;
                 _hasLoadedAlbumArt = albumArt != null;
-                AlbumArtChanged?.Invoke(this, new AlbumArtChangedEventArgs
+                albumArtArgs = new AlbumArtChangedEventArgs
                 {
                     AlbumArt = albumArt
-                });
+                };
+            }
+
+            if (albumArtArgs is not null)
+            {
+                AlbumArtChanged?.Invoke(this, albumArtArgs);
             }
         }
 
