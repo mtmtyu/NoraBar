@@ -249,8 +249,9 @@ namespace NoraBar.ViewModels
 
         public void Cleanup()
         {
-            _audioVisualizerService.Stop();
+            _mediaService.Dispose();
             _audioVisualizerService.Dispose();
+            ClearSpectrumData();
         }
 
         public async System.Threading.Tasks.Task<bool> RestartVisualizerAsync()
@@ -261,7 +262,20 @@ namespace NoraBar.ViewModels
                     _audioVisualizerService.Stop();
                     return _audioVisualizerService.Start();
                 }));
+            if (!IsVisualizerRunning)
+            {
+                ClearSpectrumData();
+            }
+
             return IsVisualizerRunning;
+        }
+
+        private void ClearSpectrumData()
+        {
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                SpectrumData = new float[SpectrumData.Length];
+            });
         }
 
         private void UpdateCurrentLyric(TimeSpan position)

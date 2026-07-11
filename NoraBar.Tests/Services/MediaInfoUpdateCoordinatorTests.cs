@@ -335,4 +335,29 @@ public class MediaInfoUpdateCoordinatorTests
 
         Assert.Equal(2, artworkLoadCount);
     }
+
+    [Fact]
+    public async Task PublishAsync_AllowsRetryWhenMetadataSubscriberThrows()
+    {
+        var coordinator = new MediaInfoUpdateCoordinator();
+        var metadata = new MediaMetadata("Title", "Artist", "Album");
+        int artworkLoadCount = 0;
+        EventHandler<MediaInfoChangedEventArgs> throwingHandler = (_, _) =>
+            throw new InvalidOperationException("Subscriber failed.");
+        coordinator.MediaInfoChanged += throwingHandler;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            coordinator.PublishAsync(metadata, LoadArtworkAsync));
+
+        coordinator.MediaInfoChanged -= throwingHandler;
+        await coordinator.PublishAsync(metadata, LoadArtworkAsync);
+
+        Assert.Equal(1, artworkLoadCount);
+
+        Task<System.Windows.Media.Imaging.BitmapImage?> LoadArtworkAsync()
+        {
+            artworkLoadCount++;
+            return Task.FromResult<System.Windows.Media.Imaging.BitmapImage?>(null);
+        }
+    }
 }

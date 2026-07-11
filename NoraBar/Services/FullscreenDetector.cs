@@ -25,8 +25,24 @@ namespace NoraBar.Services
         [DllImport("user32.dll")]
         private static extern IntPtr GetShellWindow();
 
+        private const int ShowMaximized = 3;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct WINDOWPLACEMENT
+        {
+            public int Length;
+            public int Flags;
+            public int ShowCmd;
+            public Point MinimumPosition;
+            public Point MaximumPosition;
+            public RECT NormalPosition;
+        }
+
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool GetWindowRect(IntPtr hwnd, out RECT lpRect);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool GetWindowPlacement(IntPtr hwnd, ref WINDOWPLACEMENT placement);
 
         /// <summary>
         /// Checks if a fullscreen application is currently active on the same screen as the given window.
@@ -49,6 +65,16 @@ namespace NoraBar.Services
                 return false;
             }
             var currentScreen = System.Windows.Forms.Screen.FromHandle(windowInterop.Handle);
+
+            var placement = new WINDOWPLACEMENT
+            {
+                Length = Marshal.SizeOf<WINDOWPLACEMENT>()
+            };
+            if (GetWindowPlacement(foregroundWindow, ref placement) &&
+                placement.ShowCmd == ShowMaximized)
+            {
+                return false;
+            }
 
             // Get the bounds of the foreground window
             if (GetWindowRect(foregroundWindow, out var rect))

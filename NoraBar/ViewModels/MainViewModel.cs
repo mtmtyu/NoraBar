@@ -609,7 +609,10 @@ namespace NoraBar.ViewModels
 
         private async System.Threading.Tasks.Task<UpdateCheckResult> FetchLatestReleaseAsync()
         {
-            using var client = new System.Net.Http.HttpClient();
+            using var client = new System.Net.Http.HttpClient
+            {
+                Timeout = TimeSpan.FromSeconds(15)
+            };
             client.DefaultRequestHeaders.UserAgent.ParseAdd("NoraBar-App-Update-Checker");
             GitHubRelease? release = await client.GetFromJsonAsync<GitHubRelease>(
                 "https://api.github.com/repos/mtmtyu/NoraBar/releases/latest");

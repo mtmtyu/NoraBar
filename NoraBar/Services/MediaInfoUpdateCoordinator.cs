@@ -81,7 +81,15 @@ namespace NoraBar.Services
 
             if (metadataArgs is not null && !cancellationToken.IsCancellationRequested)
             {
-                MediaInfoChanged?.Invoke(this, metadataArgs);
+                try
+                {
+                    MediaInfoChanged?.Invoke(this, metadataArgs);
+                }
+                catch
+                {
+                    ResetCanceledLoad(updateVersion);
+                    throw;
+                }
             }
 
             if (cancellationToken.IsCancellationRequested)

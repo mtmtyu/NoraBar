@@ -7,8 +7,9 @@ using Windows.Media.Control;
 
 namespace NoraBar.Services
 {
-    public class MediaControlService
+    public class MediaControlService : IDisposable
     {
+        private readonly record struct SessionContext(GlobalSystemMediaTransportControlsSession Session, CancellationToken CancellationToken);
         private const int MaxAlbumArtBytes = 5 * 1024 * 1024;
         private const int MaxAlbumArtDecodePixels = 512;
         private const int StreamCopyBufferSize = 81920;
@@ -23,6 +24,7 @@ namespace NoraBar.Services
         private readonly SemaphoreSlim _playPauseLock = new(1, 1);
         private readonly object _sessionUpdateLock = new();
         private CancellationTokenSource _sessionCancellation = new();
+        private bool _disposed;
 
         public event EventHandler<MediaInfoChangedEventArgs>? MediaInfoChanged;
         public event EventHandler<AlbumArtChangedEventArgs>? AlbumArtChanged;
@@ -105,7 +107,7 @@ namespace NoraBar.Services
 
         private void UpdateMediaProperties(object? state)
         {
-            _ = UpdateMediaPropertiesAsync();
+            _ = UpdateMediaPropertiesAsync(skipIfBusy: true);
         }
 
         private void SessionManager_CurrentSessionChanged(GlobalSystemMediaTransportControlsSessionManager sender, CurrentSessionChangedEventArgs args)
@@ -161,28 +163,35 @@ namespace NoraBar.Services
             UpdatePlaybackInfo();
         }
 
-        private async Task UpdateMediaPropertiesAsync()
+        private async Task UpdateMediaPropertiesAsync(bool skipIfBusy = false)
         {
             GlobalSystemMediaTransportControlsSessionMediaProperties? properties = null;
-            GlobalSystemMediaTransportControlsSession? session;
-            CancellationToken cancellationToken;
+            SessionContext? context;
             lock (_sessionUpdateLock)
             {
-                session = _currentSession;
-                cancellationToken = _sessionCancellation.Token;
+                context = _currentSession is null
+                    ? null
+                    : new SessionContext(_currentSession, _sessionCancellation.Token);
             }
 
-            if (session == null)
+            if (context is null)
             {
                 return;
             }
 
+            GlobalSystemMediaTransportControlsSession session = context.Value.Session;
+            CancellationToken cancellationToken = context.Value.CancellationToken;
             bool lockAcquired = false;
 
             try
             {
-                await _mediaPropertiesRefreshLock.WaitAsync(cancellationToken);
-                lockAcquired = true;
+                lockAcquired = skipIfBusy
+                    ? await _mediaPropertiesRefreshLock.WaitAsync(0, cancellationToken)
+                    : await _mediaPropertiesRefreshLock.WaitAsync(Timeout.Infinite, cancellationToken);
+                if (!lockAcquired)
+                {
+                    return;
+                }
                 properties = await session.TryGetMediaPropertiesAsync().AsTask(cancellationToken);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -196,7 +205,13 @@ namespace NoraBar.Services
             {
                 if (lockAcquired)
                 {
-                    _mediaPropertiesRefreshLock.Release();
+                    try
+                    {
+                        _mediaPropertiesRefreshLock.Release();
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                    }
                 }
             }
 
@@ -327,7 +342,13 @@ namespace NoraBar.Services
             }
             finally
             {
-                _playPauseLock.Release();
+                try
+                {
+                    _playPauseLock.Release();
+                }
+                catch (ObjectDisposedException)
+                {
+                }
             }
         }
 
@@ -452,6 +473,41 @@ namespace NoraBar.Services
             catch
             {
             }
+        }
+        public void Dispose()
+        {
+            lock (_sessionUpdateLock)
+            {
+                if (_disposed)
+                {
+                    return;
+                }
+
+                _disposed = true;
+                _progressTimer?.Dispose();
+                _progressTimer = null;
+                _mediaRefreshTimer?.Dispose();
+                _mediaRefreshTimer = null;
+
+                if (_sessionManager != null)
+                {
+                    _sessionManager.CurrentSessionChanged -= SessionManager_CurrentSessionChanged;
+                    _sessionManager = null;
+                }
+
+                if (_currentSession != null)
+                {
+                    _currentSession.MediaPropertiesChanged -= CurrentSession_MediaPropertiesChanged;
+                    _currentSession.PlaybackInfoChanged -= CurrentSession_PlaybackInfoChanged;
+                    _currentSession = null;
+                }
+
+                _sessionCancellation.Cancel();
+                _sessionCancellation.Dispose();
+            }
+
+            _mediaPropertiesRefreshLock.Dispose();
+            _playPauseLock.Dispose();
         }
     }
 

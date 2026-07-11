@@ -90,12 +90,27 @@ namespace NoraBar.Controls
 
         private void MarqueeTextBlock_Loaded(object sender, RoutedEventArgs e)
         {
+            IsVisibleChanged += MarqueeTextBlock_IsVisibleChanged;
             ApplyLocalFontSize();
             UpdateScrollAnimation();
         }
 
+        private void MarqueeTextBlock_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            if (IsVisible)
+            {
+                UpdateScrollAnimation();
+                return;
+            }
+
+            _pendingAnimationUpdate?.Abort();
+            _pendingAnimationUpdate = null;
+            StopAnimation();
+        }
+
         private void MarqueeTextBlock_Unloaded(object sender, RoutedEventArgs e)
         {
+            IsVisibleChanged -= MarqueeTextBlock_IsVisibleChanged;
             _pendingAnimationUpdate?.Abort();
             _pendingAnimationUpdate = null;
             StopAnimation();
@@ -152,7 +167,7 @@ namespace NoraBar.Controls
             _pendingAnimationUpdate = Dispatcher.BeginInvoke(new Action(() =>
             {
                 _pendingAnimationUpdate = null;
-                if (!IsLoaded)
+                if (!IsLoaded || !IsVisible)
                 {
                     return;
                 }

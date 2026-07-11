@@ -168,6 +168,13 @@ namespace NoraBar.Services
             DisposeResource(ref _soundInSource);
             DisposeResource(ref _realtimeSource);
             DisposeResource(ref _singleBlockNotificationStream);
+
+            lock (_lock)
+            {
+                Array.Clear(_complexBuffer);
+                _bufferIndex = 0;
+                _newDataAvailable = false;
+            }
         }
 
         private static void DisposeResource<T>(ref T? resource) where T : class, IDisposable
