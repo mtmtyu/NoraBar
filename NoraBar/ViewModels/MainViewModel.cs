@@ -672,11 +672,17 @@ namespace NoraBar.ViewModels
             }
         }
 
-        public async System.Threading.Tasks.Task<bool> CheckForUpdatesSilentlyAsync()
+        public async System.Threading.Tasks.Task<bool> CheckForUpdatesSilentlyAsync(System.Threading.CancellationToken cancellationToken = default)
         {
             try
             {
                 UpdateCheckResult release = await _updateCheckCoordinator.CheckAsync();
+                
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return false;
+                }
+
                 if (IsUpdateAvailable(release, out _))
                 {
                     ShowAvailableUpdate(release);

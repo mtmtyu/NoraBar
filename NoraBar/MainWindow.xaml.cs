@@ -33,6 +33,7 @@ namespace NoraBar
         private NotifyIcon? _notifyIcon;
         private ToolStripMenuItem? _settingsTrayMenuItem;
         private ToolStripMenuItem? _exitTrayMenuItem;
+        private System.Threading.CancellationTokenSource? _updateCheckCts;
 
         public MainWindow()
         {
@@ -71,8 +72,9 @@ namespace NoraBar
 
             if (_viewModel.CheckUpdateOnStartup)
             {
-                bool hasUpdate = await _viewModel.CheckForUpdatesSilentlyAsync();
-                if (hasUpdate)
+                _updateCheckCts = new System.Threading.CancellationTokenSource();
+                bool hasUpdate = await _viewModel.CheckForUpdatesSilentlyAsync(_updateCheckCts.Token);
+                if (hasUpdate && !_isClosingApp)
                 {
                     OpenSettings();
                 }
@@ -430,6 +432,8 @@ namespace NoraBar
         {
             if (_isClosingApp) return;
             _isClosingApp = true;
+
+            _updateCheckCts?.Cancel();
 
             // Prevent interaction during exit transition
             HudBorder.IsHitTestVisible = false;

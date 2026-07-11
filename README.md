@@ -41,6 +41,7 @@ NoraBar is a WPF application for Windows desktop. It usually waits as a thin 2px
 
 - **Settings window**
   - Switch the design style, progress bar visibility, synced lyrics, automatic text scrolling, startup behavior, display language, and HUD position.
+  - Disable expansion in fullscreen mode to prevent the HUD from obscuring fullscreen applications.
   - Includes startup update checks, manual update checks, an audio visualizer restart button, and third-party license information.
 
 ## Screenshots
@@ -114,7 +115,7 @@ Markdown files under `docs/wiki/` are synced to the GitHub Wiki when changes are
 
 ## License
 
-NoraBar uses CSCore and LRCLIB as third-party components/services. License information is available from the settings window in the app.
+NoraBar uses CSCore, LRCLIB, and Material.Icons.WPF as third-party components/libraries/services. License information is available from the settings window in the app.
 
 NoraBar is licensed under the GNU Affero General Public License v3.0. See [LICENSE](LICENSE) for details.
 

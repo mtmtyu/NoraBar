@@ -23,6 +23,9 @@ namespace NoraBar.Services
         private readonly object _lock = new object();
         private bool _newDataAvailable = false;
 
+        private readonly object _disposeLock = new object();
+        private bool _isStopping = false;
+
         public event EventHandler<float[]>? SpectrumDataUpdated;
 
         public bool Start()
@@ -56,12 +59,17 @@ namespace NoraBar.Services
 
                 // Read data continuously
                 byte[] buffer = new byte[_realtimeSource.WaveFormat.BytesPerSecond / 2];
+                _isStopping = false;
                 _soundInSource.DataAvailable += (s, e) =>
                 {
-                    int read;
-                    while (_realtimeSource != null && (read = _realtimeSource.Read(buffer, 0, buffer.Length)) > 0)
+                    lock (_disposeLock)
                     {
-                        // Pump data
+                        if (_isStopping || _realtimeSource == null) return;
+                        int read;
+                        while (_realtimeSource != null && (read = _realtimeSource.Read(buffer, 0, buffer.Length)) > 0)
+                        {
+                            // Pump data
+                        }
                     }
                 };
 
@@ -146,28 +154,33 @@ namespace NoraBar.Services
 
         public void Stop()
         {
-            DisposeResource(ref _timer);
+            _isStopping = true;
 
-            WasapiLoopbackCapture? capture = _capture;
-            _capture = null;
-            if (capture != null)
+            lock (_disposeLock)
             {
-                try
-                {
-                    capture.Stop();
-                }
-                catch (Exception)
-                {
-                }
-                finally
-                {
-                    DisposeResource(capture);
-                }
-            }
+                DisposeResource(ref _timer);
 
-            DisposeResource(ref _soundInSource);
-            DisposeResource(ref _realtimeSource);
-            DisposeResource(ref _singleBlockNotificationStream);
+                WasapiLoopbackCapture? capture = _capture;
+                _capture = null;
+                if (capture != null)
+                {
+                    try
+                    {
+                        capture.Stop();
+                    }
+                    catch (Exception)
+                    {
+                    }
+                    finally
+                    {
+                        DisposeResource(capture);
+                    }
+                }
+
+                DisposeResource(ref _soundInSource);
+                DisposeResource(ref _realtimeSource);
+                DisposeResource(ref _singleBlockNotificationStream);
+            }
 
             lock (_lock)
             {

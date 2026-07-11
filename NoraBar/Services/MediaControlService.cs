@@ -25,6 +25,7 @@ namespace NoraBar.Services
         private readonly object _sessionUpdateLock = new();
         private CancellationTokenSource _sessionCancellation = new();
         private bool _disposed;
+        private int _mediaPropertiesRequestId = 0;
 
         public event EventHandler<MediaInfoChangedEventArgs>? MediaInfoChanged;
         public event EventHandler<AlbumArtChangedEventArgs>? AlbumArtChanged;
@@ -165,6 +166,7 @@ namespace NoraBar.Services
 
         private async Task UpdateMediaPropertiesAsync(bool skipIfBusy = false)
         {
+            int currentRequestId = Interlocked.Increment(ref _mediaPropertiesRequestId);
             GlobalSystemMediaTransportControlsSessionMediaProperties? properties = null;
             SessionContext? context;
             lock (_sessionUpdateLock)
@@ -217,7 +219,8 @@ namespace NoraBar.Services
 
             if (properties == null ||
                 cancellationToken.IsCancellationRequested ||
-                session != _currentSession)
+                session != _currentSession ||
+                currentRequestId != _mediaPropertiesRequestId)
             {
                 return;
             }
