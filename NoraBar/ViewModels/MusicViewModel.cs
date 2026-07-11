@@ -211,10 +211,13 @@ namespace NoraBar.ViewModels
             _audioVisualizerService.Dispose();
         }
 
-        public bool RestartVisualizer()
+        public async System.Threading.Tasks.Task<bool> RestartVisualizerAsync()
         {
-            _audioVisualizerService.Stop();
-            IsVisualizerRunning = _audioVisualizerService.Start();
+            IsVisualizerRunning = await System.Threading.Tasks.Task.Run(() =>
+            {
+                _audioVisualizerService.Stop();
+                return _audioVisualizerService.Start();
+            });
             return IsVisualizerRunning;
         }
 

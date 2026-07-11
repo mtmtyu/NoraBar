@@ -112,4 +112,22 @@ public class PlaybackStateCoordinatorTests
         Assert.False(snapshot.IsPlaying);
         Assert.Equal(TimeSpan.FromSeconds(40), snapshot.Position);
     }
+
+    [Fact]
+    public void ClearPendingRequest_UsesReportedTimelineWithoutRepublishingState()
+    {
+        var coordinator = new PlaybackStateCoordinator();
+        var now = new DateTimeOffset(2026, 7, 11, 3, 0, 0, TimeSpan.Zero);
+        var publishedStates = new List<bool>();
+        coordinator.PlaybackStateChanged += (_, args) => publishedStates.Add(args.IsPlaying);
+        coordinator.ApplyRequestedState(false, TimeSpan.FromSeconds(40), TimeSpan.FromMinutes(3), now);
+
+        coordinator.ClearPendingRequest();
+        PlaybackSnapshot snapshot = coordinator.CreateSnapshot(
+            true, TimeSpan.FromSeconds(5), now, TimeSpan.FromMinutes(4), now);
+
+        Assert.True(snapshot.IsPlaying);
+        Assert.Equal(TimeSpan.FromSeconds(5), snapshot.Position);
+        Assert.Equal([false, true], publishedStates);
+    }
 }

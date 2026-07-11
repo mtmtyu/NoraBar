@@ -20,6 +20,7 @@ namespace NoraBar.Services
         private readonly MediaInfoUpdateCoordinator _mediaInfoUpdateCoordinator = new();
         private readonly PlaybackStateCoordinator _playbackStateCoordinator = new();
         private readonly SemaphoreSlim _mediaPropertiesRefreshLock = new(1, 1);
+        private readonly SemaphoreSlim _playPauseLock = new(1, 1);
         private readonly object _sessionUpdateLock = new();
         private CancellationTokenSource _sessionCancellation = new();
 
@@ -34,7 +35,10 @@ namespace NoraBar.Services
         public MediaControlService()
         {
             _mediaInfoUpdateCoordinator.MediaInfoChanged += (_, args) =>
+            {
+                _playbackStateCoordinator.ClearPendingRequest();
                 MediaInfoChanged?.Invoke(this, args);
+            };
             _mediaInfoUpdateCoordinator.AlbumArtChanged += (_, args) =>
                 AlbumArtChanged?.Invoke(this, args);
             _playbackStateCoordinator.PlaybackStateChanged += (_, args) =>
@@ -71,13 +75,14 @@ namespace NoraBar.Services
 
         private void UpdateProgress(object? state)
         {
-            if (_currentSession == null) return;
+            var session = _currentSession;
+            if (session == null) return;
             try
             {
-                var timeline = _currentSession.GetTimelineProperties();
-                var playbackInfo = _currentSession.GetPlaybackInfo();
+                var timeline = session.GetTimelineProperties();
+                var playbackInfo = session.GetPlaybackInfo();
 
-                if (timeline != null && playbackInfo != null)
+                if (timeline != null && playbackInfo != null && session == _currentSession)
                 {
                     bool reportedIsPlaying =
                         playbackInfo.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
@@ -150,23 +155,20 @@ namespace NoraBar.Services
         {
             await _mediaPropertiesRefreshLock.WaitAsync();
 
+            GlobalSystemMediaTransportControlsSessionMediaProperties? properties = null;
+            GlobalSystemMediaTransportControlsSession? session = null;
+            CancellationToken cancellationToken = default;
+
             try
             {
-                var session = _currentSession;
-                CancellationToken cancellationToken = _sessionCancellation.Token;
+                session = _currentSession;
+                cancellationToken = _sessionCancellation.Token;
                 if (session == null)
                 {
                     return;
                 }
 
-                var properties = await session.TryGetMediaPropertiesAsync();
-                if (properties == null || cancellationToken.IsCancellationRequested) return;
-                if (session != _currentSession) return;
-
-                await _mediaInfoUpdateCoordinator.PublishForSessionAsync(
-                    new MediaMetadata(properties.Title, properties.Artist, properties.AlbumTitle),
-                    () => LoadAlbumArtAsync(properties),
-                    cancellationToken);
+                properties = await session.TryGetMediaPropertiesAsync();
             }
             catch (Exception)
             {
@@ -176,24 +178,46 @@ namespace NoraBar.Services
             {
                 _mediaPropertiesRefreshLock.Release();
             }
+
+            if (properties == null ||
+                cancellationToken.IsCancellationRequested ||
+                session != _currentSession)
+            {
+                return;
+            }
+
+            try
+            {
+                await _mediaInfoUpdateCoordinator.PublishForSessionAsync(
+                    new MediaMetadata(properties.Title, properties.Artist, properties.AlbumTitle),
+                    () => LoadAlbumArtAsync(properties, cancellationToken),
+                    cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+            }
+            catch (Exception)
+            {
+            }
         }
 
         private static async Task<BitmapImage?> LoadAlbumArtAsync(
-            GlobalSystemMediaTransportControlsSessionMediaProperties properties)
+            GlobalSystemMediaTransportControlsSessionMediaProperties properties,
+            CancellationToken cancellationToken)
         {
             if (properties.Thumbnail == null)
             {
                 return null;
             }
 
-            using var stream = await properties.Thumbnail.OpenReadAsync();
+            using var stream = await properties.Thumbnail.OpenReadAsync().AsTask(cancellationToken);
             if (stream == null)
             {
                 return null;
             }
 
             var winStream = stream.AsStreamForRead();
-            using var memStream = await CopyThumbnailToMemoryAsync(winStream);
+            using var memStream = await CopyThumbnailToMemoryAsync(winStream, cancellationToken);
             if (memStream == null)
             {
                 return null;
@@ -216,7 +240,9 @@ namespace NoraBar.Services
             return albumArt;
         }
 
-        private static async Task<MemoryStream?> CopyThumbnailToMemoryAsync(Stream source)
+        private static async Task<MemoryStream?> CopyThumbnailToMemoryAsync(
+            Stream source,
+            CancellationToken cancellationToken)
         {
             var memoryStream = new MemoryStream();
             byte[] buffer = new byte[StreamCopyBufferSize];
@@ -224,7 +250,7 @@ namespace NoraBar.Services
             try
             {
                 int bytesRead;
-                while ((bytesRead = await source.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                while ((bytesRead = await source.ReadAsync(buffer, cancellationToken)) > 0)
                 {
                     if (memoryStream.Length + bytesRead > MaxAlbumArtBytes)
                     {
@@ -247,18 +273,44 @@ namespace NoraBar.Services
 
         private void UpdatePlaybackInfo()
         {
-            if (_currentSession == null) return;
+            var session = _currentSession;
+            if (session == null) return;
 
-            var playbackInfo = _currentSession.GetPlaybackInfo();
-            if (playbackInfo != null)
+            try
             {
+                var playbackInfo = session.GetPlaybackInfo();
+                if (playbackInfo == null || session != _currentSession)
+                {
+                    return;
+                }
+
                 bool isPlaying =
                     playbackInfo.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
                 _playbackStateCoordinator.ApplyAuthoritativeState(isPlaying);
             }
+            catch
+            {
+            }
         }
 
         public async Task PlayPauseAsync()
+        {
+            if (!await _playPauseLock.WaitAsync(0))
+            {
+                return;
+            }
+
+            try
+            {
+                await PlayPauseCoreAsync();
+            }
+            finally
+            {
+                _playPauseLock.Release();
+            }
+        }
+
+        private async Task PlayPauseCoreAsync()
         {
             var session = _currentSession;
             if (session == null)
@@ -279,7 +331,13 @@ namespace NoraBar.Services
             }
             if (playbackInfo == null || timeline == null)
             {
-                await session.TryTogglePlayPauseAsync();
+                try
+                {
+                    await session.TryTogglePlayPauseAsync();
+                }
+                catch
+                {
+                }
                 return;
             }
 
@@ -293,7 +351,15 @@ namespace NoraBar.Services
                 timeline.EndTime,
                 requestStartedAt);
 
-            bool succeeded = await session.TryTogglePlayPauseAsync();
+            bool succeeded;
+            try
+            {
+                succeeded = await session.TryTogglePlayPauseAsync();
+            }
+            catch
+            {
+                return;
+            }
             if (!succeeded || session != _currentSession)
             {
                 return;
@@ -320,19 +386,43 @@ namespace NoraBar.Services
 
         public async Task NextAsync()
         {
-            if (_currentSession != null)
+            var session = _currentSession;
+            if (session == null)
             {
-                await _currentSession.TrySkipNextAsync();
-                await UpdateMediaPropertiesAsync();
+                return;
+            }
+
+            try
+            {
+                bool succeeded = await session.TrySkipNextAsync();
+                if (succeeded && session == _currentSession)
+                {
+                    await UpdateMediaPropertiesAsync();
+                }
+            }
+            catch
+            {
             }
         }
 
         public async Task PreviousAsync()
         {
-            if (_currentSession != null)
+            var session = _currentSession;
+            if (session == null)
             {
-                await _currentSession.TrySkipPreviousAsync();
-                await UpdateMediaPropertiesAsync();
+                return;
+            }
+
+            try
+            {
+                bool succeeded = await session.TrySkipPreviousAsync();
+                if (succeeded && session == _currentSession)
+                {
+                    await UpdateMediaPropertiesAsync();
+                }
+            }
+            catch
+            {
             }
         }
     }

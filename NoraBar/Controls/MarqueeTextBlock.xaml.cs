@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using NoraBar.Models;
 
 namespace NoraBar.Controls
@@ -10,6 +11,7 @@ namespace NoraBar.Controls
     public partial class MarqueeTextBlock : UserControl
     {
         private Storyboard? _scrollStoryboard;
+        private DispatcherOperation? _pendingAnimationUpdate;
         private bool _isHovering = false;
         private const double ScrollSpeedPixelsPerSecond = 50.0;
         private const double Spacing = 30.0; // Space between original and duplicate text
@@ -94,6 +96,8 @@ namespace NoraBar.Controls
 
         private void MarqueeTextBlock_Unloaded(object sender, RoutedEventArgs e)
         {
+            _pendingAnimationUpdate?.Abort();
+            _pendingAnimationUpdate = null;
             StopAnimation();
         }
 
@@ -142,11 +146,17 @@ namespace NoraBar.Controls
 
         private void UpdateScrollAnimation()
         {
+            _pendingAnimationUpdate?.Abort();
             StopAnimation();
 
-            // Use ContextIdle to ensure layout passes have completed before measuring
-            Dispatcher.BeginInvoke(new Action(() =>
+            _pendingAnimationUpdate = Dispatcher.BeginInvoke(new Action(() =>
             {
+                _pendingAnimationUpdate = null;
+                if (!IsLoaded)
+                {
+                    return;
+                }
+
                 if (string.IsNullOrEmpty(Text) || ActualWidth == 0)
                 {
                     ResetPositions();
@@ -179,13 +189,13 @@ namespace NoraBar.Controls
                 {
                     ResetPositions();
                 }
-            }), System.Windows.Threading.DispatcherPriority.ContextIdle);
+            }), DispatcherPriority.ContextIdle);
         }
 
         private void ResetPositions()
         {
             MainTransform.X = 0;
-            
+
             // If scrolling is disabled or conditions are not met, enable ellipsis if configured
             if (ScrollMode == TextScrollMode.Disabled || (ScrollMode == TextScrollMode.HoverOnly && !_isHovering))
             {
@@ -205,9 +215,9 @@ namespace NoraBar.Controls
 
             MainTextBlock.ClearValue(WidthProperty);
             DuplicateTextBlock.ClearValue(WidthProperty);
-            
+
             DuplicateTextBlock.Visibility = Visibility.Visible;
-            
+
             double totalDistance = textWidth + Spacing;
             double durationSeconds = totalDistance / ScrollSpeedPixelsPerSecond;
             TimeSpan duration = TimeSpan.FromSeconds(durationSeconds);

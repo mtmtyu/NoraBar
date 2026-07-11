@@ -109,6 +109,16 @@ namespace NoraBar.Services
             PublishStateChanged(isPlaying, shouldPublish);
         }
 
+        public void ClearPendingRequest()
+        {
+            lock (_syncRoot)
+            {
+                _requestedIsPlaying = null;
+                _requestedPosition = TimeSpan.Zero;
+                _requestedAt = default;
+            }
+        }
+
         public void Reset()
         {
             lock (_syncRoot)

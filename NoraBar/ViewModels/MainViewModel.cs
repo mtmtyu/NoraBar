@@ -440,9 +440,9 @@ namespace NoraBar.ViewModels
             ShowResetDialogCommand = new RelayCommand(_ => IsResetDialogOpen = true);
             CloseResetDialogCommand = new RelayCommand(_ => IsResetDialogOpen = false);
             ResetAllSettingsCommand = new RelayCommand(_ => ResetAllSettings());
-            RestartVisualizerCommand = new RelayCommand(_ =>
+            RestartVisualizerCommand = new RelayCommand(async _ =>
             {
-                RestartVisualizerStatus = Music.RestartVisualizer()
+                RestartVisualizerStatus = await Music.RestartVisualizerAsync()
                     ? T(LocalizationKey.RestartVisualizerSucceeded)
                     : T(LocalizationKey.RestartVisualizerFailed);
             });

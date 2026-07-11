@@ -212,7 +212,8 @@ namespace NoraBar
             if (e.PropertyName == nameof(MainViewModel.CurrentVariant) ||
                 e.PropertyName == nameof(MainViewModel.CurrentState) ||
                 e.PropertyName == nameof(MainViewModel.ShowProgressBar) ||
-                e.PropertyName == nameof(MainViewModel.ShowLyrics))
+                e.PropertyName == nameof(MainViewModel.ShowLyrics) ||
+                e.PropertyName == nameof(MainViewModel.DisableExpandOnFullscreen))
             {
                 Dispatcher.Invoke(UpdateView);
             }
