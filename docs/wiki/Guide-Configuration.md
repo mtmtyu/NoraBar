@@ -88,7 +88,7 @@ Opens the repository page that contains the NoraBar source code.
 
 ### Open Source Licenses
 
-Shows the licenses for third-party libraries used by NoraBar. The app currently includes CSCore and LRCLIB license information.
+Shows the licenses for third-party libraries used by NoraBar. The app currently includes CSCore, Material.Icons.WPF, Material Icons, and LRCLIB license information.
 
 ## Settings File
 

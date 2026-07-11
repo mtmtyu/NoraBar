@@ -6,6 +6,7 @@ namespace NoraBar.Services
 
     internal sealed class PlaybackStateCoordinator
     {
+        private static readonly TimeSpan RequestedStateTimeout = TimeSpan.FromSeconds(2);
         private readonly object _syncRoot = new();
         private bool? _requestedIsPlaying;
         private TimeSpan _requestedPosition;
@@ -26,6 +27,13 @@ namespace NoraBar.Services
 
             lock (_syncRoot)
             {
+                if (_requestedIsPlaying.HasValue &&
+                    (reportedIsPlaying == _requestedIsPlaying.Value ||
+                     GetPositiveElapsed(now, _requestedAt) >= RequestedStateTimeout))
+                {
+                    _requestedIsPlaying = null;
+                }
+
                 bool isPlaying = _requestedIsPlaying ?? reportedIsPlaying;
                 TimeSpan position;
 

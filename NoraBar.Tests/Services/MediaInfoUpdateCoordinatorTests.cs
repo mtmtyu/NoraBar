@@ -97,7 +97,7 @@ public class MediaInfoUpdateCoordinatorTests
     }
 
     [Fact]
-    public async Task PublishAsync_RetriesArtworkWhenItIsInitiallyUnavailable()
+    public async Task PublishAsync_DoesNotRetryArtworkWhenItIsUnavailableForTheSameMetadata()
     {
         var coordinator = new MediaInfoUpdateCoordinator();
         var metadata = new MediaMetadata("Available title", "Artist", "Album");
@@ -106,7 +106,7 @@ public class MediaInfoUpdateCoordinatorTests
         await coordinator.PublishAsync(metadata, LoadArtworkAsync);
         await coordinator.PublishAsync(metadata, LoadArtworkAsync);
 
-        Assert.Equal(2, artworkLoadCount);
+        Assert.Equal(1, artworkLoadCount);
 
         Task<System.Windows.Media.Imaging.BitmapImage?> LoadArtworkAsync()
         {
@@ -137,6 +137,28 @@ public class MediaInfoUpdateCoordinatorTests
         {
             artworkLoadCount++;
             return artworkSource.Task;
+        }
+    }
+
+    [Fact]
+    public async Task PublishAsync_StopsRetryingArtworkAfterThreeFailures()
+    {
+        var coordinator = new MediaInfoUpdateCoordinator();
+        var metadata = new MediaMetadata("Title", "Artist", "Album");
+        int artworkLoadCount = 0;
+
+        for (int attempt = 0; attempt < 4; attempt++)
+        {
+            await coordinator.PublishAsync(metadata, LoadArtworkAsync);
+        }
+
+        Assert.Equal(3, artworkLoadCount);
+
+        Task<System.Windows.Media.Imaging.BitmapImage?> LoadArtworkAsync()
+        {
+            artworkLoadCount++;
+            return Task.FromException<System.Windows.Media.Imaging.BitmapImage?>(
+                new IOException("Artwork is unavailable."));
         }
     }
 

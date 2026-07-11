@@ -12,13 +12,15 @@ namespace NoraBar.Services
         private const int MaxAlbumArtBytes = 5 * 1024 * 1024;
         private const int MaxAlbumArtDecodePixels = 512;
         private const int StreamCopyBufferSize = 81920;
-        private const int MediaRefreshIntervalMilliseconds = 500;
+        private const int ProgressRefreshIntervalMilliseconds = 500;
+        private const int MediaRefreshIntervalMilliseconds = 10_000;
 
         private GlobalSystemMediaTransportControlsSessionManager? _sessionManager;
         private GlobalSystemMediaTransportControlsSession? _currentSession;
         private readonly MediaInfoUpdateCoordinator _mediaInfoUpdateCoordinator = new();
         private readonly PlaybackStateCoordinator _playbackStateCoordinator = new();
-        private int _isRefreshingMediaProperties;
+        private readonly SemaphoreSlim _mediaPropertiesRefreshLock = new(1, 1);
+        private CancellationTokenSource _sessionCancellation = new();
 
         public event EventHandler<MediaInfoChangedEventArgs>? MediaInfoChanged;
         public event EventHandler<AlbumArtChangedEventArgs>? AlbumArtChanged;
@@ -26,6 +28,7 @@ namespace NoraBar.Services
         public event EventHandler<MediaTimelineChangedEventArgs>? MediaTimelineChanged;
 
         private System.Threading.Timer? _progressTimer;
+        private System.Threading.Timer? _mediaRefreshTimer;
 
         public MediaControlService()
         {
@@ -52,6 +55,11 @@ namespace NoraBar.Services
                     UpdateProgress,
                     null,
                     0,
+                    ProgressRefreshIntervalMilliseconds);
+                _mediaRefreshTimer = new System.Threading.Timer(
+                    UpdateMediaProperties,
+                    null,
+                    MediaRefreshIntervalMilliseconds,
                     MediaRefreshIntervalMilliseconds);
             }
             catch (Exception)
@@ -62,8 +70,6 @@ namespace NoraBar.Services
 
         private void UpdateProgress(object? state)
         {
-            _ = UpdateMediaPropertiesAsync();
-
             if (_currentSession == null) return;
             try
             {
@@ -91,6 +97,11 @@ namespace NoraBar.Services
             catch { }
         }
 
+        private void UpdateMediaProperties(object? state)
+        {
+            _ = UpdateMediaPropertiesAsync();
+        }
+
         private void SessionManager_CurrentSessionChanged(GlobalSystemMediaTransportControlsSessionManager sender, CurrentSessionChangedEventArgs args)
         {
             UpdateCurrentSession(sender.GetCurrentSession());
@@ -105,6 +116,9 @@ namespace NoraBar.Services
             }
 
             _currentSession = session;
+            _sessionCancellation.Cancel();
+            _sessionCancellation.Dispose();
+            _sessionCancellation = new CancellationTokenSource();
             _mediaInfoUpdateCoordinator.Reset();
             _playbackStateCoordinator.Reset();
 
@@ -130,26 +144,25 @@ namespace NoraBar.Services
 
         private async Task UpdateMediaPropertiesAsync()
         {
-            if (Interlocked.CompareExchange(ref _isRefreshingMediaProperties, 1, 0) != 0)
-            {
-                return;
-            }
+            await _mediaPropertiesRefreshLock.WaitAsync();
 
             try
             {
                 var session = _currentSession;
+                CancellationToken cancellationToken = _sessionCancellation.Token;
                 if (session == null)
                 {
                     return;
                 }
 
                 var properties = await session.TryGetMediaPropertiesAsync();
-                if (properties == null) return;
+                if (properties == null || cancellationToken.IsCancellationRequested) return;
                 if (session != _currentSession) return;
 
-                _ = _mediaInfoUpdateCoordinator.PublishAsync(
+                await _mediaInfoUpdateCoordinator.PublishForSessionAsync(
                     new MediaMetadata(properties.Title, properties.Artist, properties.AlbumTitle),
-                    () => LoadAlbumArtAsync(properties));
+                    () => LoadAlbumArtAsync(properties),
+                    cancellationToken);
             }
             catch (Exception)
             {
@@ -157,7 +170,7 @@ namespace NoraBar.Services
             }
             finally
             {
-                Volatile.Write(ref _isRefreshingMediaProperties, 0);
+                _mediaPropertiesRefreshLock.Release();
             }
         }
 
