@@ -110,11 +110,12 @@ Markdown files under `docs/wiki/` are synced to the GitHub Wiki when changes are
 - XAML
 - Windows Media Control API
 - CSCore
+- Material.Icons.WPF
 - Windows Forms NotifyIcon
 
 ## License
 
-NoraBar uses CSCore and LRCLIB as third-party components/services. License information is available from the settings window in the app.
+NoraBar uses CSCore, Material.Icons.WPF, and LRCLIB as third-party components/services. License information is available from the settings window in the app.
 
 NoraBar is licensed under the GNU Affero General Public License v3.0. See [LICENSE](LICENSE) for details.
 
