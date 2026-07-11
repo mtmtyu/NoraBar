@@ -415,6 +415,58 @@
 
                     <!-- Navigation Items -->
                     <StackPanel Grid.Row="1">
+                        <!-- General Settings -->
+                        <Button Command="{Binding NavigateCommand}" CommandParameter="General" Style="{StaticResource SidebarButtonStyle}">
+                            <Grid Width="160">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="28"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border x:Name="GeneralIndicator" Grid.Column="0" Width="3" Height="16" CornerRadius="1.5" HorizontalAlignment="Left">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="Transparent"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DataContext.CurrentPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="General">
+                                                    <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                </Border>
+
+                                <TextBlock Grid.Column="1" Text="&#xE713;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#8AFFFFFF"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DataContext.CurrentPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="General">
+                                                    <Setter Property="Foreground" Value="White"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+
+                                <TextBlock Grid.Column="2" Text="{Binding GeneralSettingsText}" FontSize="13" VerticalAlignment="Center" Margin="10,0,0,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#8AFFFFFF"/>
+                                            <Setter Property="FontWeight" Value="Normal"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DataContext.CurrentPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="General">
+                                                    <Setter Property="Foreground" Value="White"/>
+                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </Button>
+
                         <!-- HUD Settings -->
                         <Button Command="{Binding NavigateCommand}" CommandParameter="HUD" Style="{StaticResource SidebarButtonStyle}">
                             <Grid Width="160">
@@ -558,6 +610,125 @@
                             </ObjectAnimationUsingKeyFrames>
                         </Storyboard>
                     </Grid.Resources>
+                    <!-- General Settings Page -->
+                    <ScrollViewer>
+                        <ScrollViewer.Style>
+                            <Style TargetType="ScrollViewer" BasedOn="{StaticResource AnimatedPageStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentPage}" Value="General">
+                                        <DataTrigger.EnterActions>
+                                            <BeginStoryboard Storyboard="{StaticResource FadeInPage}" />
+                                        </DataTrigger.EnterActions>
+                                        <DataTrigger.ExitActions>
+                                            <BeginStoryboard Storyboard="{StaticResource FadeOutPage}" />
+                                        </DataTrigger.ExitActions>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ScrollViewer.Style>
+                        <StackPanel>
+                            <TextBlock Text="{Binding GeneralSettingsText}" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,20" FontFamily="Segoe UI Variable, Segoe UI"/>
+
+                            <!-- Card 3: Startup Toggle -->
+                            <Border Style="{StaticResource SettingCardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding StartupText}" Style="{StaticResource CardHeaderStyle}" />
+                                        <TextBlock Text="{Binding StartupDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
+                                    </StackPanel>
+
+                                    <CheckBox Grid.Column="1"
+                                              Style="{StaticResource ToggleSwitchStyle}"
+                                              IsChecked="{Binding IsStartupEnabled}"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- Card 3.5: Check Update on Startup Toggle -->
+                            <Border Style="{StaticResource SettingCardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding CheckUpdateOnStartupText}" Style="{StaticResource CardHeaderStyle}" />
+                                        <TextBlock Text="{Binding CheckUpdateOnStartupDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
+                                    </StackPanel>
+
+                                    <CheckBox Grid.Column="1"
+                                              Style="{StaticResource ToggleSwitchStyle}"
+                                              IsChecked="{Binding CheckUpdateOnStartup}"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- Card 4: Language Selector -->
+                            <Border Style="{StaticResource SettingCardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                                        <TextBlock Text="{Binding LanguageText}" Style="{StaticResource CardHeaderStyle}" />
+                                        <TextBlock Text="{Binding LanguageDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
+                                    </StackPanel>
+
+                                    <ComboBox Grid.Column="1"
+                                              ItemsSource="{Binding AvailableLanguages}"
+                                              DisplayMemberPath="DisplayName"
+                                              SelectedValue="{Binding SelectedLanguage}"
+                                              SelectedValuePath="Language"
+                                              Width="160"
+                                              Height="32"
+                                              VerticalAlignment="Center" />
+                                </Grid>
+                            </Border>
+
+                            <!-- Card 6: Reset Settings -->
+                            <Border Style="{StaticResource SettingCardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                                        <TextBlock Text="{Binding ResetSettingsText}" Style="{StaticResource CardHeaderStyle}" Foreground="#FF6B6B" />
+                                        <TextBlock Text="{Binding ResetSettingsDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
+                                    </StackPanel>
+
+                                    <Button Grid.Column="1"
+                                            Command="{Binding ShowResetDialogCommand}"
+                                            Content="{Binding ResetAllSettingsText}"
+                                            Background="#2A1A1A" Foreground="#FF6B6B" BorderBrush="#3A2020" BorderThickness="1"
+                                            Padding="10,5" VerticalAlignment="Center" Height="32">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" x:Name="Brd">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Brd" Property="Background" Value="#3D2020"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+
                     <!-- HUD Settings Page -->
                     <ScrollViewer>
                         <ScrollViewer.Style>
@@ -575,7 +746,136 @@
                             </Style>
                         </ScrollViewer.Style>
                         <StackPanel>
-                            <TextBlock Text="{Binding HudSettingsText}" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,20" FontFamily="Segoe UI Variable, Segoe UI"/>
+
+                            <!-- Shared Display Settings Section -->
+                            <TextBlock Text="{Binding SharedDisplaySettingsText}" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,20" FontFamily="Segoe UI Variable, Segoe UI"/>
+
+                            <!-- Card 5: Window Position -->
+                            <Border Style="{StaticResource SettingCardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                                        <TextBlock Text="{Binding WindowPositionText}" Style="{StaticResource CardHeaderStyle}" />
+                                        <TextBlock Text="{Binding WindowPositionDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
+                                    </StackPanel>
+
+                                    <Button Grid.Column="1"
+                                            Command="{Binding ResetPositionCommand}"
+                                            Content="{Binding ResetPositionText}"
+                                            Visibility="{Binding HasCustomPosition, Converter={StaticResource BoolToVis}}"
+                                            Background="#1AFFFFFF" Foreground="White" BorderBrush="#20FFFFFF" BorderThickness="1"
+                                            Padding="10,5" Margin="0,0,8,0" VerticalAlignment="Center" Height="32">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" x:Name="Brd">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Brd" Property="Background" Value="#25FFFFFF"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+
+                                    <ToggleButton Grid.Column="2"
+                                                  IsChecked="{Binding IsPositionEditMode}"
+                                                  Background="#1AFFFFFF" Foreground="White" BorderBrush="#20FFFFFF" BorderThickness="1"
+                                                  Padding="10,5" VerticalAlignment="Center" Height="32">
+                                        <ToggleButton.Style>
+                                            <Style TargetType="ToggleButton">
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="ToggleButton">
+                                                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" x:Name="Brd">
+                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="Brd" Property="Background" Value="#25FFFFFF"/>
+                                                                </Trigger>
+                                                                <Trigger Property="IsChecked" Value="True">
+                                                                    <Setter TargetName="Brd" Property="Background" Value="{StaticResource AccentBrush}"/>
+                                                                    <Setter TargetName="Brd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </ToggleButton.Style>
+                                        <ToggleButton.Content>
+                                            <TextBlock>
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="{Binding DataContext.ChangePositionText, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsPositionEditMode}" Value="True">
+                                                                <Setter Property="Text" Value="{Binding DataContext.FinishPositionEditText, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </ToggleButton.Content>
+                                    </ToggleButton>
+                                </Grid>
+                            </Border>
+
+                            <!-- Card 3.6: Disable Expand On Fullscreen Toggle -->
+                            <Border Style="{StaticResource SettingCardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding DisableExpandOnFullscreenText}" Style="{StaticResource CardHeaderStyle}" />
+                                        <TextBlock Text="{Binding DisableExpandOnFullscreenDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
+                                    </StackPanel>
+
+                                    <CheckBox Grid.Column="1"
+                                              Style="{StaticResource ToggleSwitchStyle}"
+                                              IsChecked="{Binding DisableExpandOnFullscreen}"
+                                              VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
+                            <Separator Margin="0,10,0,20" Background="#30FFFFFF" Height="1"/>
+
+                            <!-- Selected HUD Settings Section -->
+                            <TextBlock Text="{Binding SelectedHudSettingsText}" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,20,0,20" FontFamily="Segoe UI Variable, Segoe UI"/>
+
+                            <!-- Card 0: HUD Selection -->
+                            <Border Style="{StaticResource SettingCardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                                        <TextBlock Text="{Binding HudSelectionText}" Style="{StaticResource CardHeaderStyle}" />
+                                        <TextBlock Text="{Binding HudSelectionDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
+                                    </StackPanel>
+
+                                    <ComboBox Grid.Column="1"
+                                              ItemsSource="{Binding AvailableHuds}"
+                                              SelectedValue="{Binding SelectedHud}"
+                                              Width="160"
+                                              Height="32"
+                                              VerticalAlignment="Center">
+                                    </ComboBox>
+                                </Grid>
+                            </Border>
+
 
                             <!-- Card 1: Design Style -->
                             <Border Style="{StaticResource SettingCardStyle}">
@@ -668,167 +968,10 @@
                                 </Grid>
                             </Border>
 
-                            <!-- Card 3: Startup Toggle -->
-                            <Border Style="{StaticResource SettingCardStyle}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
 
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding StartupText}" Style="{StaticResource CardHeaderStyle}" />
-                                        <TextBlock Text="{Binding StartupDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
-                                    </StackPanel>
 
-                                    <CheckBox Grid.Column="1"
-                                              Style="{StaticResource ToggleSwitchStyle}"
-                                              IsChecked="{Binding IsStartupEnabled}"
-                                              VerticalAlignment="Center"/>
-                                </Grid>
-                            </Border>
 
-                            <!-- Card 3.5: Check Update on Startup Toggle -->
-                            <Border Style="{StaticResource SettingCardStyle}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
 
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding CheckUpdateOnStartupText}" Style="{StaticResource CardHeaderStyle}" />
-                                        <TextBlock Text="{Binding CheckUpdateOnStartupDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
-                                    </StackPanel>
-
-                                    <CheckBox Grid.Column="1"
-                                              Style="{StaticResource ToggleSwitchStyle}"
-                                              IsChecked="{Binding CheckUpdateOnStartup}"
-                                              VerticalAlignment="Center"/>
-                                </Grid>
-                            </Border>
-
-                            <!-- Card 3.6: Disable Expand On Fullscreen Toggle -->
-                            <Border Style="{StaticResource SettingCardStyle}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding DisableExpandOnFullscreenText}" Style="{StaticResource CardHeaderStyle}" />
-                                        <TextBlock Text="{Binding DisableExpandOnFullscreenDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
-                                    </StackPanel>
-
-                                    <CheckBox Grid.Column="1"
-                                              Style="{StaticResource ToggleSwitchStyle}"
-                                              IsChecked="{Binding DisableExpandOnFullscreen}"
-                                              VerticalAlignment="Center"/>
-                                </Grid>
-                            </Border>
-
-                            <!-- Card 4: Language Selector -->
-                            <Border Style="{StaticResource SettingCardStyle}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
-                                        <TextBlock Text="{Binding LanguageText}" Style="{StaticResource CardHeaderStyle}" />
-                                        <TextBlock Text="{Binding LanguageDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
-                                    </StackPanel>
-
-                                    <ComboBox Grid.Column="1"
-                                              ItemsSource="{Binding AvailableLanguages}"
-                                              DisplayMemberPath="DisplayName"
-                                              SelectedValue="{Binding SelectedLanguage}"
-                                              SelectedValuePath="Language"
-                                              Width="160"
-                                              Height="32"
-                                              VerticalAlignment="Center" />
-                                </Grid>
-                            </Border>
-
-                            <!-- Card 5: Window Position -->
-                            <Border Style="{StaticResource SettingCardStyle}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
-                                        <TextBlock Text="{Binding WindowPositionText}" Style="{StaticResource CardHeaderStyle}" />
-                                        <TextBlock Text="{Binding WindowPositionDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
-                                    </StackPanel>
-
-                                    <Button Grid.Column="1"
-                                            Command="{Binding ResetPositionCommand}"
-                                            Content="{Binding ResetPositionText}"
-                                            Visibility="{Binding HasCustomPosition, Converter={StaticResource BoolToVis}}"
-                                            Background="#1AFFFFFF" Foreground="White" BorderBrush="#20FFFFFF" BorderThickness="1"
-                                            Padding="10,5" Margin="0,0,8,0" VerticalAlignment="Center" Height="32">
-                                        <Button.Template>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" x:Name="Brd">
-                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Brd" Property="Background" Value="#25FFFFFF"/>
-                                                    </Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Button.Template>
-                                    </Button>
-
-                                    <ToggleButton Grid.Column="2"
-                                                  IsChecked="{Binding IsPositionEditMode}"
-                                                  Background="#1AFFFFFF" Foreground="White" BorderBrush="#20FFFFFF" BorderThickness="1"
-                                                  Padding="10,5" VerticalAlignment="Center" Height="32">
-                                        <ToggleButton.Style>
-                                            <Style TargetType="ToggleButton">
-                                                <Setter Property="Template">
-                                                    <Setter.Value>
-                                                        <ControlTemplate TargetType="ToggleButton">
-                                                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" x:Name="Brd">
-                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                            </Border>
-                                                            <ControlTemplate.Triggers>
-                                                                <Trigger Property="IsMouseOver" Value="True">
-                                                                    <Setter TargetName="Brd" Property="Background" Value="#25FFFFFF"/>
-                                                                </Trigger>
-                                                                <Trigger Property="IsChecked" Value="True">
-                                                                    <Setter TargetName="Brd" Property="Background" Value="{StaticResource AccentBrush}"/>
-                                                                    <Setter TargetName="Brd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
-                                                                </Trigger>
-                                                            </ControlTemplate.Triggers>
-                                                        </ControlTemplate>
-                                                    </Setter.Value>
-                                                </Setter>
-                                            </Style>
-                                        </ToggleButton.Style>
-                                        <ToggleButton.Content>
-                                            <TextBlock>
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="Text" Value="{Binding DataContext.ChangePositionText, RelativeSource={RelativeSource AncestorType=Window}}" />
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsPositionEditMode}" Value="True">
-                                                                <Setter Property="Text" Value="{Binding DataContext.FinishPositionEditText, RelativeSource={RelativeSource AncestorType=Window}}" />
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
-                                        </ToggleButton.Content>
-                                    </ToggleButton>
-                                </Grid>
-                            </Border>
 
                             <!-- Card 5.5: Restart Audio Visualizer -->
                             <Border Style="{StaticResource SettingCardStyle}">
@@ -864,39 +1007,6 @@
                                 </Grid>
                             </Border>
 
-                            <!-- Card 6: Reset Settings -->
-                            <Border Style="{StaticResource SettingCardStyle}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
-                                        <TextBlock Text="{Binding ResetSettingsText}" Style="{StaticResource CardHeaderStyle}" Foreground="#FF6B6B" />
-                                        <TextBlock Text="{Binding ResetSettingsDescriptionText}" Style="{StaticResource CardSubHeaderStyle}" />
-                                    </StackPanel>
-
-                                    <Button Grid.Column="1"
-                                            Command="{Binding ShowResetDialogCommand}"
-                                            Content="{Binding ResetAllSettingsText}"
-                                            Background="#2A1A1A" Foreground="#FF6B6B" BorderBrush="#3A2020" BorderThickness="1"
-                                            Padding="10,5" VerticalAlignment="Center" Height="32">
-                                        <Button.Template>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" x:Name="Brd">
-                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="Brd" Property="Background" Value="#3D2020"/>
-                                                    </Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Button.Template>
-                                    </Button>
-                                </Grid>
-                            </Border>
                         </StackPanel>
                     </ScrollViewer>
 

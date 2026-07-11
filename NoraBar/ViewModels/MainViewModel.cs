@@ -226,7 +226,7 @@ namespace NoraBar.ViewModels
             }
         }
 
-        private string _currentPage = "HUD";
+        private string _currentPage = "General";
         public string CurrentPage
         {
             get => _currentPage;
@@ -237,8 +237,13 @@ namespace NoraBar.ViewModels
 
         public string SettingsWindowTitle => T(LocalizationKey.WindowTitle);
         public string AppSubtitleText => T(LocalizationKey.AppSubtitle);
+        public string GeneralSettingsText => T(LocalizationKey.GeneralSettings);
         public string HudSettingsText => T(LocalizationKey.HudSettings);
         public string AboutText => T(LocalizationKey.About);
+        public string HudSelectionText => T(LocalizationKey.HudSelection);
+        public string HudSelectionDescriptionText => T(LocalizationKey.HudSelectionDescription);
+        public string SharedDisplaySettingsText => T(LocalizationKey.SharedDisplaySettings);
+        public string SelectedHudSettingsText => T(LocalizationKey.SelectedHudSettings);
         public string DesignStyleText => T(LocalizationKey.DesignStyle);
         public string DesignStyleDescriptionText => T(LocalizationKey.DesignStyleDescription);
         public string ProgressBarText => T(LocalizationKey.ProgressBar);
@@ -400,7 +405,9 @@ namespace NoraBar.ViewModels
             SetVariantCommand = new RelayCommand(ExecuteSetVariant);
             SetStateCommand = new RelayCommand(ExecuteSetState);
 
-            NavigateCommand = new RelayCommand(p => CurrentPage = p as string ?? "HUD");
+            _availableHuds = new[] { T(LocalizationKey.MusicHudName) };
+
+            NavigateCommand = new RelayCommand(p => CurrentPage = p as string ?? "General");
             CheckUpdateCommand = new RelayCommand(async _ => await CheckForUpdatesAsync());
             OpenGitHubCommand = new RelayCommand(_ =>
             {
@@ -673,9 +680,31 @@ namespace NoraBar.ViewModels
 
         private void RefreshLocalizedText()
         {
+            var oldSelectedHudIndex = -1;
+            if (AvailableHuds != null && SelectedHud != null)
+            {
+                oldSelectedHudIndex = Array.IndexOf(_availableHuds, SelectedHud);
+            }
+
+            AvailableHuds = new[] { T(LocalizationKey.MusicHudName) };
+
+            if (oldSelectedHudIndex >= 0 && oldSelectedHudIndex < _availableHuds.Length)
+            {
+                SelectedHud = _availableHuds[oldSelectedHudIndex];
+            }
+            else if (_availableHuds.Length > 0)
+            {
+                SelectedHud = _availableHuds[0];
+            }
+
             OnPropertyChanged(nameof(SettingsWindowTitle));
             OnPropertyChanged(nameof(AppSubtitleText));
+            OnPropertyChanged(nameof(GeneralSettingsText));
+            OnPropertyChanged(nameof(HudSelectionText));
+            OnPropertyChanged(nameof(HudSelectionDescriptionText));
             OnPropertyChanged(nameof(HudSettingsText));
+            OnPropertyChanged(nameof(SharedDisplaySettingsText));
+            OnPropertyChanged(nameof(SelectedHudSettingsText));
             OnPropertyChanged(nameof(AboutText));
             OnPropertyChanged(nameof(DesignStyleText));
             OnPropertyChanged(nameof(DesignStyleDescriptionText));
@@ -732,6 +761,32 @@ namespace NoraBar.ViewModels
             OnPropertyChanged(nameof(RestartVisualizerText));
             OnPropertyChanged(nameof(RestartVisualizerDescriptionText));
             OnPropertyChanged(nameof(RestartVisualizerButtonText));
+        }
+
+        private string[] _availableHuds;
+        public IReadOnlyList<string> AvailableHuds
+        {
+            get => _availableHuds;
+            private set => SetProperty(ref _availableHuds, value as string[]);
+        }
+        
+        private string _selectedHud;
+        public string SelectedHud
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(_selectedHud)) return _selectedHud;
+                if (_availableHuds != null && _availableHuds.Length > 0) return _availableHuds[0];
+                return "音楽HUD";
+            }
+            set
+            {
+                if (string.IsNullOrEmpty(value)) return;
+                if (SetProperty(ref _selectedHud, value))
+                {
+                    SaveSettings();
+                }
+            }
         }
     }
 }

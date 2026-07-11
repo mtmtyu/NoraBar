@@ -74,7 +74,13 @@ namespace NoraBar.Services
         RestartVisualizerDescription,
         RestartVisualizerButton,
         DisableExpandOnFullscreen,
-        DisableExpandOnFullscreenDescription
+        DisableExpandOnFullscreenDescription,
+        GeneralSettings,
+        HudSelection,
+        HudSelectionDescription,
+        SharedDisplaySettings,
+        SelectedHudSettings,
+        MusicHudName
     }
 
     public static class LocalizationService
@@ -153,7 +159,13 @@ namespace NoraBar.Services
                     [LocalizationKey.RestartVisualizerDescription] = "ビジュアライザーが動かなくなった場合に、オーディオ入力を再初期化します。",
                     [LocalizationKey.RestartVisualizerButton] = "再起動",
                     [LocalizationKey.DisableExpandOnFullscreen] = "フルスクリーン時に展開を無効化",
-                    [LocalizationKey.DisableExpandOnFullscreenDescription] = "HUDがある画面でフルスクリーンのソフトウェアが起動している間、HUDの展開を無効化します。"
+                    [LocalizationKey.DisableExpandOnFullscreenDescription] = "HUDがある画面でフルスクリーンのソフトウェアが起動している間、HUDの展開を無効化します。",
+                    [LocalizationKey.GeneralSettings] = "一般",
+                    [LocalizationKey.HudSelection] = "HUDの選択",
+                    [LocalizationKey.HudSelectionDescription] = "設定するHUDを選択します。",
+                    [LocalizationKey.SharedDisplaySettings] = "共通表示設定",
+                    [LocalizationKey.SelectedHudSettings] = "選択中のHUD設定",
+                    [LocalizationKey.MusicHudName] = "音楽HUD"
                 },
                 [AppLanguage.English] = new Dictionary<LocalizationKey, string>
                 {
@@ -226,7 +238,13 @@ namespace NoraBar.Services
                     [LocalizationKey.RestartVisualizerDescription] = "Reinitializes audio capture if the visualizer stops working.",
                     [LocalizationKey.RestartVisualizerButton] = "Restart",
                     [LocalizationKey.DisableExpandOnFullscreen] = "Disable Expansion in Fullscreen",
-                    [LocalizationKey.DisableExpandOnFullscreenDescription] = "Disables HUD expansion while a fullscreen application is running on the HUD's screen."
+                    [LocalizationKey.DisableExpandOnFullscreenDescription] = "Disables HUD expansion while a fullscreen application is running on the HUD's screen.",
+                    [LocalizationKey.GeneralSettings] = "General",
+                    [LocalizationKey.HudSelection] = "HUD Selection",
+                    [LocalizationKey.HudSelectionDescription] = "Select the desktop HUD to configure.",
+                    [LocalizationKey.SharedDisplaySettings] = "Shared Display Settings",
+                    [LocalizationKey.SelectedHudSettings] = "Selected HUD Settings",
+                    [LocalizationKey.MusicHudName] = "Music HUD"
                 }
             };
 
