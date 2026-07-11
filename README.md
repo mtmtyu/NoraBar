@@ -35,6 +35,9 @@ NoraBar is a WPF application for Windows desktop. It usually waits as a thin 2px
   - Displays the current lyric line in the HUD in sync with playback.
   - Can be turned on or off from the settings window.
 
+- **Fullscreen detection**
+  - Automatically prevents the HUD from expanding while fullscreen applications (like games or videos) are running.
+
 - **Two design styles**
   - `Minimal Floating Pill`: a compact, lightweight style for everyday use.
   - `Productivity Command Island`: a wider style that gives album art and progress more room.
