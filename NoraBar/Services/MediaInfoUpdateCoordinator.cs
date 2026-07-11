@@ -160,5 +160,12 @@ namespace NoraBar.Services
                 _updateVersion++;
             }
         }
+
+        public void Clear()
+        {
+            Reset();
+            MediaInfoChanged?.Invoke(this, new MediaInfoChangedEventArgs());
+            AlbumArtChanged?.Invoke(this, new AlbumArtChangedEventArgs());
+        }
     }
 }

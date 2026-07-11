@@ -11,6 +11,7 @@ namespace NoraBar.ViewModels
         private readonly MediaControlService _mediaService;
         private readonly AudioVisualizerService _audioVisualizerService;
         private readonly LyricsService _lyricsService;
+        private readonly VisualizerRestartCoordinator _visualizerRestartCoordinator = new();
         private System.Collections.Generic.List<LyricLine>? _currentLyrics;
         private double _lastDurationSeconds = 0;
         private TimeSpan _lastPosition = TimeSpan.Zero;
@@ -213,11 +214,12 @@ namespace NoraBar.ViewModels
 
         public async System.Threading.Tasks.Task<bool> RestartVisualizerAsync()
         {
-            IsVisualizerRunning = await System.Threading.Tasks.Task.Run(() =>
-            {
-                _audioVisualizerService.Stop();
-                return _audioVisualizerService.Start();
-            });
+            IsVisualizerRunning = await _visualizerRestartCoordinator.RestartAsync(
+                () => System.Threading.Tasks.Task.Run(() =>
+                {
+                    _audioVisualizerService.Stop();
+                    return _audioVisualizerService.Start();
+                }));
             return IsVisualizerRunning;
         }
 

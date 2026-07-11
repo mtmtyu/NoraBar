@@ -214,6 +214,37 @@ public class MediaInfoUpdateCoordinatorTests
     }
 
     [Fact]
+    public async Task Clear_PublishesEmptyMediaInformationAndSuppressesInFlightArtwork()
+    {
+        var artworkSource = new TaskCompletionSource<System.Windows.Media.Imaging.BitmapImage?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var coordinator = new MediaInfoUpdateCoordinator();
+        MediaInfoChangedEventArgs? receivedMetadata = null;
+        AlbumArtChangedEventArgs? receivedArtwork = null;
+        int artworkNotificationCount = 0;
+        coordinator.MediaInfoChanged += (_, args) => receivedMetadata = args;
+        coordinator.AlbumArtChanged += (_, args) =>
+        {
+            receivedArtwork = args;
+            artworkNotificationCount++;
+        };
+
+        Task update = coordinator.PublishAsync(
+            new MediaMetadata("Title", "Artist", "Album"),
+            () => artworkSource.Task);
+
+        coordinator.Clear();
+        artworkSource.SetResult(null);
+        await update;
+
+        Assert.Null(receivedMetadata?.Title);
+        Assert.Null(receivedMetadata?.Artist);
+        Assert.Null(receivedMetadata?.AlbumTitle);
+        Assert.Null(receivedArtwork?.AlbumArt);
+        Assert.Equal(1, artworkNotificationCount);
+    }
+
+    [Fact]
     public async Task PublishForSessionAsync_AllowsRetryWhenCanceledDuringArtworkLoading()
     {
         var coordinator = new MediaInfoUpdateCoordinator();

@@ -127,16 +127,26 @@ namespace NoraBar.Services
                 _sessionCancellation.Cancel();
                 _sessionCancellation.Dispose();
                 _sessionCancellation = new CancellationTokenSource();
-                _mediaInfoUpdateCoordinator.Reset();
-                _playbackStateCoordinator.Reset();
 
                 if (_currentSession != null)
                 {
+                    _mediaInfoUpdateCoordinator.Reset();
+                    _playbackStateCoordinator.Reset();
                     _currentSession.MediaPropertiesChanged += CurrentSession_MediaPropertiesChanged;
                     _currentSession.PlaybackInfoChanged += CurrentSession_PlaybackInfoChanged;
 
                     _ = UpdateMediaPropertiesAsync();
                     UpdatePlaybackInfo();
+                }
+                else
+                {
+                    _mediaInfoUpdateCoordinator.Clear();
+                    _playbackStateCoordinator.Clear();
+                    MediaTimelineChanged?.Invoke(this, new MediaTimelineChangedEventArgs
+                    {
+                        Position = TimeSpan.Zero,
+                        EndTime = TimeSpan.Zero
+                    });
                 }
             }
         }

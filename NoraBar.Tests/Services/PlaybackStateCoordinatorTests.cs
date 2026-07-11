@@ -114,6 +114,20 @@ public class PlaybackStateCoordinatorTests
     }
 
     [Fact]
+    public void ApplyAuthoritativeState_DoesNotPublishAStateThatConflictsWithPendingRequest()
+    {
+        var coordinator = new PlaybackStateCoordinator();
+        var now = new DateTimeOffset(2026, 7, 11, 3, 0, 0, TimeSpan.Zero);
+        var publishedStates = new List<bool>();
+        coordinator.PlaybackStateChanged += (_, args) => publishedStates.Add(args.IsPlaying);
+
+        coordinator.ApplyRequestedState(false, TimeSpan.FromSeconds(40), TimeSpan.FromMinutes(3), now);
+        coordinator.ApplyAuthoritativeState(true);
+
+        Assert.Equal([false], publishedStates);
+    }
+
+    [Fact]
     public void ClearPendingRequest_UsesReportedTimelineWithoutRepublishingState()
     {
         var coordinator = new PlaybackStateCoordinator();
@@ -129,5 +143,18 @@ public class PlaybackStateCoordinatorTests
         Assert.True(snapshot.IsPlaying);
         Assert.Equal(TimeSpan.FromSeconds(5), snapshot.Position);
         Assert.Equal([false, true], publishedStates);
+    }
+
+    [Fact]
+    public void Clear_PublishesStoppedStateAfterResettingPendingRequest()
+    {
+        var coordinator = new PlaybackStateCoordinator();
+        var publishedStates = new List<bool>();
+        coordinator.PlaybackStateChanged += (_, args) => publishedStates.Add(args.IsPlaying);
+        coordinator.ApplyRequestedState(true, TimeSpan.FromSeconds(40), TimeSpan.FromMinutes(3), DateTimeOffset.UtcNow);
+
+        coordinator.Clear();
+
+        Assert.Equal([true, false], publishedStates);
     }
 }

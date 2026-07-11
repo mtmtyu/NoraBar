@@ -99,14 +99,16 @@ namespace NoraBar.Services
 
         public void ApplyAuthoritativeState(bool isPlaying)
         {
+            bool stateToPublish;
             bool shouldPublish;
 
             lock (_syncRoot)
             {
-                shouldPublish = MarkStateForPublication(isPlaying);
+                stateToPublish = _requestedIsPlaying ?? isPlaying;
+                shouldPublish = MarkStateForPublication(stateToPublish);
             }
 
-            PublishStateChanged(isPlaying, shouldPublish);
+            PublishStateChanged(stateToPublish, shouldPublish);
         }
 
         public void ClearPendingRequest()
@@ -128,6 +130,19 @@ namespace NoraBar.Services
                 _requestedAt = default;
                 _lastPublishedIsPlaying = null;
             }
+        }
+
+        public void Clear()
+        {
+            lock (_syncRoot)
+            {
+                _requestedIsPlaying = null;
+                _requestedPosition = TimeSpan.Zero;
+                _requestedAt = default;
+                _lastPublishedIsPlaying = false;
+            }
+
+            PublishStateChanged(false, true);
         }
 
         private bool MarkStateForPublication(bool isPlaying)
