@@ -121,6 +121,11 @@ namespace NoraBar.Services
                     return;
                 }
 
+                if (albumArt is null)
+                {
+                    _albumArtLoadAttempts--;
+                }
+
                 _albumArtLoadState = albumArt is null
                     ? AlbumArtLoadState.NotAvailable
                     : AlbumArtLoadState.Loaded;

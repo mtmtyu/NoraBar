@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using NoraBar.Models;
 using NoraBar.Services;
 using NoraBar.ViewModels;
@@ -24,7 +25,9 @@ namespace NoraBar
 {
     public partial class MainWindow : Window
     {
+        private static readonly TimeSpan FullscreenRecheckInterval = TimeSpan.FromMilliseconds(500);
         private readonly MainViewModel _viewModel;
+        private readonly DispatcherTimer _fullscreenRecheckTimer;
         private bool _isClosingApp = false;
         private Views.SettingsWindow? _settingsWindow;
         private NotifyIcon? _notifyIcon;
@@ -35,6 +38,11 @@ namespace NoraBar
         {
             InitializeComponent();
             _viewModel = new MainViewModel();
+            _fullscreenRecheckTimer = new DispatcherTimer
+            {
+                Interval = FullscreenRecheckInterval
+            };
+            _fullscreenRecheckTimer.Tick += FullscreenRecheckTimer_Tick;
             this.DataContext = _viewModel;
 
             ApplyWindowPosition();
@@ -254,6 +262,7 @@ namespace NoraBar
         {
             if (_isClosingApp) return;
 
+            _fullscreenRecheckTimer.Stop();
             double targetWidth = 200;
             double targetHeight = 2;
             bool isIdle = _viewModel.CurrentState == IslandState.Idle;
@@ -304,11 +313,25 @@ namespace NoraBar
                 // Expand: immediately set content and fade in
                 IslandHost.Content = view;
                 AnimateSize(targetWidth, targetHeight, false);
+                if (_viewModel.DisableExpandOnFullscreen)
+                {
+                    _fullscreenRecheckTimer.Start();
+                }
             }
             else
             {
                 // Shrink: collapse first, fade out, and set content to null when complete
                 AnimateSize(targetWidth, targetHeight, true);
+            }
+        }
+
+        private void FullscreenRecheckTimer_Tick(object? sender, EventArgs e)
+        {
+            if (_viewModel.CurrentState != IslandState.Idle &&
+                _viewModel.DisableExpandOnFullscreen &&
+                FullscreenDetector.IsFullscreenAppActive(this))
+            {
+                UpdateView();
             }
         }
 
@@ -428,6 +451,7 @@ namespace NoraBar
 
         protected override void OnClosed(EventArgs e)
         {
+            _fullscreenRecheckTimer.Stop();
             _viewModel.Music.Cleanup();
 
             if (_settingsWindow != null)

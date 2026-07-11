@@ -379,6 +379,7 @@ namespace NoraBar.ViewModels
 
         public ICommand SetVariantCommand { get; }
         public ICommand SetStateCommand { get; }
+        private readonly UpdateCheckCoordinator _updateCheckCoordinator;
 
         public MainViewModel()
         {
@@ -393,6 +394,7 @@ namespace NoraBar.ViewModels
             _windowTop = settings.WindowTop;
             _checkUpdateOnStartup = settings.CheckUpdateOnStartup;
             _disableExpandOnFullscreen = settings.DisableExpandOnFullscreen;
+            _updateCheckCoordinator = new UpdateCheckCoordinator(FetchLatestReleaseAsync);
 
             Music.ShowLyrics = _showLyrics;
             Music.TextScrollMode = _textScrollMode;
@@ -605,20 +607,21 @@ namespace NoraBar.ViewModels
             public string HtmlUrl { get; set; } = string.Empty;
         }
 
-        private async System.Threading.Tasks.Task<GitHubRelease?> FetchLatestReleaseAsync()
+        private async System.Threading.Tasks.Task<UpdateCheckResult> FetchLatestReleaseAsync()
         {
             using var client = new System.Net.Http.HttpClient();
             client.DefaultRequestHeaders.UserAgent.ParseAdd("NoraBar-App-Update-Checker");
-            return await client.GetFromJsonAsync<GitHubRelease>(
+            GitHubRelease? release = await client.GetFromJsonAsync<GitHubRelease>(
                 "https://api.github.com/repos/mtmtyu/NoraBar/releases/latest");
+            return new UpdateCheckResult(release?.TagName, release?.HtmlUrl);
         }
 
         private static bool IsUpdateAvailable(
-            GitHubRelease? release,
+            UpdateCheckResult release,
             out System.Version? latestVersion)
         {
             latestVersion = null;
-            if (release == null || string.IsNullOrEmpty(release.TagName))
+            if (string.IsNullOrEmpty(release.TagName))
             {
                 return false;
             }
@@ -629,11 +632,11 @@ namespace NoraBar.ViewModels
                 && latestVersion > localVersion;
         }
 
-        private void ShowAvailableUpdate(GitHubRelease release)
+        private void ShowAvailableUpdate(UpdateCheckResult release)
         {
             UpdateStatus = string.Format(T(LocalizationKey.UpdateAvailable), release.TagName);
             HasUpdate = true;
-            LatestReleaseUrl = release.HtmlUrl;
+            LatestReleaseUrl = release.ReleaseUrl ?? string.Empty;
             IsUpdateDialogOpen = true;
         }
 
@@ -642,12 +645,13 @@ namespace NoraBar.ViewModels
             IsCheckingUpdates = true;
             UpdateStatus = T(LocalizationKey.CheckingUpdates);
             HasUpdate = false;
+            LatestReleaseUrl = string.Empty;
             IsUpdateDialogOpen = true;
 
             try
             {
-                var release = await FetchLatestReleaseAsync();
-                if (IsUpdateAvailable(release, out _) && release != null)
+                UpdateCheckResult release = await _updateCheckCoordinator.CheckAsync();
+                if (IsUpdateAvailable(release, out _))
                 {
                     ShowAvailableUpdate(release);
                     return;
@@ -669,8 +673,8 @@ namespace NoraBar.ViewModels
         {
             try
             {
-                var release = await FetchLatestReleaseAsync();
-                if (IsUpdateAvailable(release, out _) && release != null)
+                UpdateCheckResult release = await _updateCheckCoordinator.CheckAsync();
+                if (IsUpdateAvailable(release, out _))
                 {
                     ShowAvailableUpdate(release);
                     return true;

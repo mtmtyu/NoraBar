@@ -137,6 +137,29 @@ public class MediaInfoUpdateCoordinatorTests
     }
 
     [Fact]
+    public async Task PublishAsync_RetriesArtworkAfterThreeUnavailableResults()
+    {
+        var coordinator = new MediaInfoUpdateCoordinator();
+        var metadata = new MediaMetadata("Available title", "Artist", "Album");
+        int artworkLoadCount = 0;
+        var availableArtwork = new System.Windows.Media.Imaging.BitmapImage();
+
+        for (int attempt = 0; attempt < 4; attempt++)
+        {
+            await coordinator.PublishAsync(metadata, LoadArtworkAsync);
+        }
+
+        Assert.Equal(4, artworkLoadCount);
+
+        Task<System.Windows.Media.Imaging.BitmapImage?> LoadArtworkAsync()
+        {
+            artworkLoadCount++;
+            return Task.FromResult<System.Windows.Media.Imaging.BitmapImage?>(
+                artworkLoadCount == 4 ? availableArtwork : null);
+        }
+    }
+
+    [Fact]
     public async Task PublishAsync_SetsLoadingStateBeforeNotifyingMetadataSubscribers()
     {
         var artworkSource = new TaskCompletionSource<System.Windows.Media.Imaging.BitmapImage?>(
