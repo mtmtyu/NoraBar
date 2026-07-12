@@ -19,6 +19,8 @@ namespace NoraBar.ViewModels
         private string _currentArtistName = "";
         private string _currentAlbumName = "";
 
+        private readonly System.Collections.Generic.Dictionary<string, Services.LyricsResult> _lyricsCache = new();
+
         private string _title = "Not Playing";
         public string Title
         {
@@ -156,11 +158,61 @@ namespace NoraBar.ViewModels
 
             _mediaService.MediaInfoChanged += async (s, e) =>
             {
+                string newTrackName = e.Title ?? "";
+                string newArtistName = e.Artist ?? "";
+                string newAlbumName = e.AlbumTitle ?? "";
+
+                if (_currentTrackName == newTrackName && _currentArtistName == newArtistName)
+                {
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        Title = string.IsNullOrEmpty(_currentTrackName) ? "Unknown" : _currentTrackName;
+                        Artist = string.IsNullOrEmpty(_currentArtistName) ? "Unknown" : _currentArtistName;
+                        AlbumArt = e.AlbumArt;
+                    });
+                    return;
+                }
+
                 int currentRequestId = ++_lyricsRequestId;
 
-                _currentTrackName = e.Title ?? "";
-                _currentArtistName = e.Artist ?? "";
-                _currentAlbumName = e.AlbumTitle ?? "";
+                _currentTrackName = newTrackName;
+                _currentArtistName = newArtistName;
+                _currentAlbumName = newAlbumName;
+                
+                string cacheKey = $"{_currentTrackName}|{_currentArtistName}";
+
+                if (_lyricsCache.TryGetValue(cacheKey, out var cachedResult))
+                {
+                    _currentLyrics = cachedResult.Lyrics;
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        Title = string.IsNullOrEmpty(_currentTrackName) ? "Unknown" : _currentTrackName;
+                        Artist = string.IsNullOrEmpty(_currentArtistName) ? "Unknown" : _currentArtistName;
+                        AlbumArt = e.AlbumArt;
+
+                        if (_currentLyrics == null || _currentLyrics.Count == 0)
+                        {
+                            if (cachedResult.Error == Services.LyricsResultError.NotFound)
+                            {
+                                CurrentLyric = LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LyricsNotFound);
+                            }
+                            else if (cachedResult.Error == Services.LyricsResultError.NetworkError)
+                            {
+                                CurrentLyric = LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LyricsNetworkError);
+                            }
+                            else
+                            {
+                                CurrentLyric = "";
+                            }
+                        }
+                    });
+
+                    if (_currentLyrics != null && _currentLyrics.Count > 0)
+                    {
+                        UpdateCurrentLyric(_lastPosition);
+                    }
+                    return;
+                }
 
                 _currentLyrics = null;
 
@@ -304,6 +356,9 @@ namespace NoraBar.ViewModels
             }
 
             _currentLyrics = result.Lyrics;
+
+            string cacheKey = $"{tTitle}|{tArtist}";
+            _lyricsCache[cacheKey] = result;
 
             if (_currentLyrics == null || _currentLyrics.Count == 0)
             {
