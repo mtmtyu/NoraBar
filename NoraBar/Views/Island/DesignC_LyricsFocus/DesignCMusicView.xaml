@@ -18,8 +18,8 @@
         </Style>
     </UserControl.Resources>
 
-    <Border Background="Transparent">
-        <Grid Margin="16,16,16,16">
+    <Border Style="{StaticResource IslandBorderStyle}" Padding="16,14,16,14" MouseWheel="UserControl_MouseWheel">
+        <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="300" />
                 <ColumnDefinition Width="Auto" /> <!-- Space for separator -->
@@ -42,7 +42,7 @@
                     </Grid.ColumnDefinitions>
 
                     <!-- Jacket Border -->
-                    <Border Grid.Column="0" Width="80" Height="80" CornerRadius="8" ClipToBounds="True" Background="#1AFFFFFF" Margin="0,0,12,0">
+                    <Border Grid.Column="0" Width="70" Height="70" CornerRadius="8" ClipToBounds="True" Background="#1AFFFFFF" Margin="0,0,12,0">
                         <Image Source="{Binding Music.AlbumArt}" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality"/>
                     </Border>
 
@@ -50,7 +50,7 @@
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <commonControls:MarqueeTextBlock Text="{Binding Music.Title, NotifyOnTargetUpdated=True}" 
                                                          TextStyle="{StaticResource DesignCTitleText}" 
-                                                         Margin="0,0,0,4" 
+                                                         Margin="0,0,0,2" 
                                                          TextTrimming="CharacterEllipsis" 
                                                          ScrollMode="{Binding Music.TextScrollMode}"/>
                         <commonControls:MarqueeTextBlock Text="{Binding Music.Artist}" 
@@ -61,7 +61,7 @@
                 </Grid>
 
                 <!-- Progress Bar Row -->
-                <Grid Grid.Row="1" Margin="0,16,0,0">
+                <Grid Grid.Row="1" Margin="0,10,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
@@ -80,10 +80,10 @@
                 </Grid>
 
                 <!-- Playback Controls -->
-                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
-                    <controls:IconButton IconText="&#xE892;" Margin="0,0,16,0" Width="36" Height="36" Command="{Binding Music.PreviousCommand}" />
-                    <controls:IconButton IconText="{Binding Music.IsPlaying, Converter={StaticResource PlayPauseIconConverter}}" Margin="0,0,16,0" Width="42" Height="42" Command="{Binding Music.PlayPauseCommand}" />
-                    <controls:IconButton IconText="&#xE893;" Width="36" Height="36" Command="{Binding Music.NextCommand}" />
+                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
+                    <controls:IconButton IconText="&#xE892;" Margin="0,0,12,0" Width="32" Height="32" Command="{Binding Music.PreviousCommand}" />
+                    <controls:IconButton IconText="{Binding Music.IsPlaying, Converter={StaticResource PlayPauseIconConverter}}" Margin="0,0,12,0" Width="36" Height="36" Command="{Binding Music.PlayPauseCommand}" />
+                    <controls:IconButton IconText="&#xE893;" Width="32" Height="32" Command="{Binding Music.NextCommand}" />
                 </StackPanel>
             </Grid>
 

@@ -19,6 +19,22 @@ namespace NoraBar.Views.Island.DesignC_LyricsFocus
             this.DataContextChanged += DesignCMusicView_DataContextChanged;
         }
 
+        private void UserControl_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+        {
+            if (DataContext is MainViewModel mainVm && mainVm.Music.HasMultipleSessions)
+            {
+                if (e.Delta > 0)
+                {
+                    mainVm.Music.SwitchToPreviousSessionCommand.Execute(null);
+                }
+                else if (e.Delta < 0)
+                {
+                    mainVm.Music.SwitchToNextSessionCommand.Execute(null);
+                }
+                e.Handled = true;
+            }
+        }
+
         private void DesignCMusicView_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
             if (_musicVm != null)
