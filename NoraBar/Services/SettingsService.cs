@@ -1,12 +1,25 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using NoraBar.Hud;
 using NoraBar.Models;
 
 namespace NoraBar.Services
 {
     public class UserSettings
     {
+        public const int CurrentSchemaVersion = 1;
+
+        public int SchemaVersion { get; set; } = CurrentSchemaVersion;
+        public string DefaultHudId { get; set; } = BuiltInHudIds.Music;
+        public List<string> EnabledHudModuleIds { get; set; } = [BuiltInHudIds.Music];
+        public Dictionary<string, JsonElement> Modules { get; set; } = new(StringComparer.Ordinal);
+
+        [JsonExtensionData]
+        public Dictionary<string, JsonElement> AdditionalProperties { get; set; } = new(StringComparer.Ordinal);
+
         public DesignVariant Variant { get; set; } = DesignVariant.MinimalFloatingPill;
         public bool ShowProgressBar { get; set; } = true;
         public AppLanguage Language { get; set; } = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ja" ? AppLanguage.Japanese : AppLanguage.English;
@@ -24,7 +37,6 @@ namespace NoraBar.Services
         private const string SettingsDirectoryName = "NoraBar";
         private const string SettingsFileName = "settings.json";
 
-        private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
         private static readonly string SettingsDirectoryPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             SettingsDirectoryName);
@@ -42,7 +54,7 @@ namespace NoraBar.Services
                 if (File.Exists(FilePath))
                 {
                     string json = File.ReadAllText(FilePath);
-                    return JsonSerializer.Deserialize<UserSettings>(json) ?? new UserSettings();
+                    return UserSettingsJson.DeserializeOrDefault(json);
                 }
                 
                 if (isFirstRun)
@@ -64,7 +76,7 @@ namespace NoraBar.Services
                 MigrateLegacySettingsIfNeeded();
                 Directory.CreateDirectory(SettingsDirectoryPath);
 
-                string json = JsonSerializer.Serialize(settings, SerializerOptions);
+                string json = UserSettingsJson.Serialize(settings);
                 File.WriteAllText(FilePath, json);
             }
             catch (Exception)
