@@ -898,6 +898,7 @@
                                               VerticalAlignment="Center">
                                         <ComboBoxItem Content="Minimal (Design A)" Tag="{x:Static models:DesignVariant.MinimalFloatingPill}"/>
                                         <ComboBoxItem Content="Productivity (Design B)" Tag="{x:Static models:DesignVariant.ProductivityCommandIsland}"/>
+                                        <ComboBoxItem Content="Lyrics focused (Design C)" Tag="{x:Static models:DesignVariant.LyricsFocusedSidebar}"/>
                                     </ComboBox>
                                 </Grid>
                             </Border>

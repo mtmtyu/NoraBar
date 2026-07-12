@@ -5,6 +5,7 @@ using System.Windows.Input;
 using NoraBar.ViewModels;
 using NoraBar.Views.Island.DesignA_Minimal;
 using NoraBar.Views.Island.DesignB_Productivity;
+using NoraBar.Views.Island.DesignC_LyricsFocus;
 
 namespace NoraBar.Views
 {
@@ -233,19 +234,28 @@ namespace NoraBar.Views
                 targetHeight = _viewModel.ShowProgressBar ? 106 : 80;
                 if (_viewModel.ShowLyrics) targetHeight += 24;
             }
-            else
+            else if (_viewModel.CurrentVariant == Models.DesignVariant.ProductivityCommandIsland)
             {
                 previewView = new DesignBMusicView();
                 targetWidth = 560;
                 targetHeight = _viewModel.ShowProgressBar ? 120 : 90;
                 if (_viewModel.ShowLyrics) targetHeight += 24;
             }
+            else if (_viewModel.CurrentVariant == Models.DesignVariant.LyricsFocusedSidebar)
+            {
+                previewView = new DesignCMusicView();
+                targetWidth = 650;
+                targetHeight = 180;
+            }
 
-            // Bind current VM as DataContext for preview so that metadata and progress display correctly
-            previewView.DataContext = _viewModel;
-            PreviewHost.Content = previewView;
-            PreviewHost.Width = targetWidth;
-            PreviewHost.Height = targetHeight;
+            if (previewView != null)
+            {
+                // Bind current VM as DataContext for preview so that metadata and progress display correctly
+                previewView.DataContext = _viewModel;
+                PreviewHost.Content = previewView;
+                PreviewHost.Width = targetWidth;
+                PreviewHost.Height = targetHeight;
+            }
         }
     }
 }

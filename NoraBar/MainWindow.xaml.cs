@@ -12,6 +12,7 @@ using NoraBar.Services;
 using NoraBar.ViewModels;
 using NoraBar.Views.Island.DesignA_Minimal;
 using NoraBar.Views.Island.DesignB_Productivity;
+using NoraBar.Views.Island.DesignC_LyricsFocus;
 
 using NotifyIcon = System.Windows.Forms.NotifyIcon;
 using ContextMenuStrip = System.Windows.Forms.ContextMenuStrip;
@@ -284,7 +285,7 @@ namespace NoraBar
                     if (_viewModel.Music.HasMultipleSessions) targetHeight += 12;
                 }
             }
-            else // ProductivityCommandIsland (Design B)
+            else if (_viewModel.CurrentVariant == DesignVariant.ProductivityCommandIsland)
             {
                 if (isIdle)
                 {
@@ -298,6 +299,20 @@ namespace NoraBar
                     targetHeight = _viewModel.ShowProgressBar ? 120 : 90;
                     if (_viewModel.ShowLyrics) targetHeight += 24;
                     if (_viewModel.Music.HasMultipleSessions) targetHeight += 16;
+                }
+            }
+            else if (_viewModel.CurrentVariant == DesignVariant.LyricsFocusedSidebar)
+            {
+                if (isIdle)
+                {
+                    targetWidth = 200;
+                    targetHeight = 2;
+                }
+                else // Music State
+                {
+                    view = new DesignCMusicView();
+                    targetWidth = 650;
+                    targetHeight = 180;
                 }
             }
 
