@@ -393,3 +393,4 @@ FodyWeavers.xsd
 # Build Output
 out/
 Output/
+.test-output/
