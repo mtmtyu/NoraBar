@@ -27,11 +27,39 @@ internal sealed class FakeHudModule : IHudModule
 
     public int DisposeCount { get; private set; }
 
+    public Exception? InitializeException { get; set; }
+
     public Exception? ActivateException { get; set; }
+
+    public Queue<Exception?> ActivateResults { get; } = new();
+
+    public Exception? DeactivateException { get; set; }
 
     public Exception? DisposeException { get; set; }
 
     public bool InvalidateDuringActivate { get; set; }
+
+    public int InvalidationsDuringActivate { get; set; }
+
+    public TaskCompletionSource<bool>? ActivateStartedSignal { get; set; }
+
+    public Task? ActivateWaitTask { get; set; }
+
+    public TaskCompletionSource<bool>? InitializeStartedSignal { get; set; }
+
+    public Task? InitializeWaitTask { get; set; }
+
+    public TaskCompletionSource<bool>? DeactivateStartedSignal { get; set; }
+
+    public Task? DeactivateWaitTask { get; set; }
+
+    public Exception? SubscribeException { get; set; }
+
+    public Exception? SubscribeAfterAddException { get; set; }
+
+    public Exception? UnsubscribeException { get; set; }
+
+    public bool UnsubscribeExceptionOnce { get; set; }
 
     public TaskCompletionSource<bool>? DisposeStartedSignal { get; set; }
 
@@ -42,30 +70,68 @@ internal sealed class FakeHudModule : IHudModule
         add
         {
             _calls?.Add($"{Id}:subscribe");
+            if (SubscribeException is not null)
+            {
+                throw SubscribeException;
+            }
+
             _presentationInvalidated += value;
+            if (SubscribeAfterAddException is not null)
+            {
+                throw SubscribeAfterAddException;
+            }
         }
         remove
         {
             _calls?.Add($"{Id}:unsubscribe");
+            if (UnsubscribeException is not null)
+            {
+                Exception exception = UnsubscribeException;
+                if (UnsubscribeExceptionOnce)
+                {
+                    UnsubscribeException = null;
+                }
+
+                throw exception;
+            }
+
             _presentationInvalidated -= value;
         }
     }
 
-    public ValueTask InitializeAsync(CancellationToken cancellationToken)
+    public async ValueTask InitializeAsync(CancellationToken cancellationToken)
     {
         InitializeCount++;
         _calls?.Add($"{Id}:initialize");
-        return ValueTask.CompletedTask;
+        InitializeStartedSignal?.TrySetResult(true);
+        if (InitializeWaitTask is not null)
+        {
+            await InitializeWaitTask.WaitAsync(cancellationToken);
+        }
+
+        if (InitializeException is not null)
+        {
+            throw InitializeException;
+        }
     }
 
-    public ValueTask ActivateAsync(CancellationToken cancellationToken)
+    public async ValueTask ActivateAsync(CancellationToken cancellationToken)
     {
         ActivateCount++;
         _calls?.Add($"{Id}:activate");
 
-        if (ActivateException is not null)
+        ActivateStartedSignal?.TrySetResult(true);
+        if (ActivateWaitTask is not null)
         {
-            return ValueTask.FromException(ActivateException);
+            await ActivateWaitTask;
+        }
+
+        Exception? activateException = ActivateResults.Count > 0
+            ? ActivateResults.Dequeue()
+            : ActivateException;
+        if (activateException is not null)
+        {
+            throw activateException;
         }
 
         if (InvalidateDuringActivate)
@@ -73,14 +139,27 @@ internal sealed class FakeHudModule : IHudModule
             RaisePresentationInvalidated();
         }
 
-        return ValueTask.CompletedTask;
+        for (int index = 0; index < InvalidationsDuringActivate; index++)
+        {
+            RaisePresentationInvalidated();
+        }
     }
 
-    public ValueTask DeactivateAsync(CancellationToken cancellationToken)
+    public async ValueTask DeactivateAsync(CancellationToken cancellationToken)
     {
         DeactivateCount++;
         _calls?.Add($"{Id}:deactivate");
-        return ValueTask.CompletedTask;
+
+        DeactivateStartedSignal?.TrySetResult(true);
+        if (DeactivateWaitTask is not null)
+        {
+            await DeactivateWaitTask.WaitAsync(cancellationToken);
+        }
+
+        if (DeactivateException is not null)
+        {
+            throw DeactivateException;
+        }
     }
 
     public FrameworkElement GetView(HudViewContext context)
