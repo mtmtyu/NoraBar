@@ -1,0 +1,148 @@
+<UserControl x:Class="NoraBar.Views.Island.DesignC_LyricsFocus.DesignCMusicView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:controls="clr-namespace:NoraBar.Views.Controls"
+             xmlns:commonControls="clr-namespace:NoraBar.Controls"
+             mc:Ignorable="d" 
+             d:DesignHeight="180" d:DesignWidth="650">
+    <UserControl.Resources>
+        <Style x:Key="DesignCTitleText" TargetType="TextBlock" BasedOn="{StaticResource TitleText}">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style x:Key="DesignCCaptionText" TargetType="TextBlock" BasedOn="{StaticResource CaptionText}">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="#99FFFFFF"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Border Background="Transparent">
+        <Grid Margin="16,16,16,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="300" />
+                <ColumnDefinition Width="Auto" /> <!-- Space for separator -->
+                <ColumnDefinition Width="*" /> <!-- Lyrics container -->
+            </Grid.ColumnDefinitions>
+
+            <!-- Left column: Player UI -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" /> <!-- Album art & Track info -->
+                    <RowDefinition Height="Auto" /> <!-- Progress Bar -->
+                    <RowDefinition Height="Auto" /> <!-- Playback Controls -->
+                </Grid.RowDefinitions>
+
+                <!-- Album Art & Track Info -->
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Jacket Border -->
+                    <Border Grid.Column="0" Width="80" Height="80" CornerRadius="8" ClipToBounds="True" Background="#1AFFFFFF" Margin="0,0,12,0">
+                        <Image Source="{Binding Music.AlbumArt}" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    </Border>
+
+                    <!-- Song Info -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <commonControls:MarqueeTextBlock Text="{Binding Music.Title, NotifyOnTargetUpdated=True}" 
+                                                         TextStyle="{StaticResource DesignCTitleText}" 
+                                                         Margin="0,0,0,4" 
+                                                         TextTrimming="CharacterEllipsis" 
+                                                         ScrollMode="{Binding Music.TextScrollMode}"/>
+                        <commonControls:MarqueeTextBlock Text="{Binding Music.Artist}" 
+                                                         TextStyle="{StaticResource DesignCCaptionText}" 
+                                                         TextTrimming="CharacterEllipsis" 
+                                                         ScrollMode="{Binding Music.TextScrollMode}"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Progress Bar Row -->
+                <Grid Grid.Row="1" Margin="0,16,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="{Binding Music.PositionText}" Style="{StaticResource CaptionText}" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                    <ProgressBar Grid.Column="1" 
+                                 Minimum="0" Maximum="100" 
+                                 Value="{Binding Music.ProgressValue}" 
+                                 Height="3" 
+                                 Foreground="{StaticResource AccentBrush}" 
+                                 Background="#1AFFFFFF" 
+                                 BorderThickness="0" 
+                                 VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Music.DurationText}" Style="{StaticResource CaptionText}" Foreground="{StaticResource TextSecondaryBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                </Grid>
+
+                <!-- Playback Controls -->
+                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
+                    <controls:IconButton IconText="&#xE892;" Margin="0,0,16,0" Width="36" Height="36" Command="{Binding Music.PreviousCommand}" />
+                    <controls:IconButton IconText="{Binding Music.IsPlaying, Converter={StaticResource PlayPauseIconConverter}}" Margin="0,0,16,0" Width="42" Height="42" Command="{Binding Music.PlayPauseCommand}" />
+                    <controls:IconButton IconText="&#xE893;" Width="36" Height="36" Command="{Binding Music.NextCommand}" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Column Separator -->
+            <Border Grid.Column="1" Width="1" Background="#1AFFFFFF" Margin="16,0,16,0" VerticalAlignment="Stretch" />
+
+            <!-- Right Column: Synced Multi-line Lyrics -->
+            <Grid Grid.Column="2" VerticalAlignment="Stretch">
+                <ListBox x:Name="LyricsListBox"
+                         ItemsSource="{Binding Music.LyricsList}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         ScrollViewer.VerticalScrollBarVisibility="Hidden"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         Focusable="False"
+                         HorizontalContentAlignment="Stretch"
+                         IsHitTestVisible="False">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Padding" Value="0"/>
+                            <Setter Property="Margin" Value="0"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <ContentPresenter />
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Text}" 
+                                       TextAlignment="Center" 
+                                       TextWrapping="Wrap"
+                                       Margin="0,8,0,8"
+                                       HorizontalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="FontSize" Value="13"/>
+                                        <Setter Property="Foreground" Value="#55FFFFFF"/>
+                                        <Setter Property="FontWeight" Value="Normal"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                <Setter Property="FontSize" Value="17"/>
+                                                <Setter Property="Foreground" Value="#FFFFFFFF"/>
+                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>
