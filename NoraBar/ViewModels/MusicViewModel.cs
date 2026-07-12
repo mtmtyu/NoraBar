@@ -101,6 +101,15 @@ namespace NoraBar.ViewModels
 
         public ObservableCollection<DotItem> SessionDots { get; } = new ObservableCollection<DotItem>();
 
+        public ObservableCollection<LyricLineViewModel> LyricsList { get; } = new ObservableCollection<LyricLineViewModel>();
+
+        private int _currentLyricIndex = -1;
+        public int CurrentLyricIndex
+        {
+            get => _currentLyricIndex;
+            set => SetProperty(ref _currentLyricIndex, value);
+        }
+
         private bool _showLyrics = true;
         public bool ShowLyrics
         {
@@ -184,6 +193,7 @@ namespace NoraBar.ViewModels
                 if (_lyricsCache.TryGetValue(cacheKey, out var cachedResult))
                 {
                     _currentLyrics = cachedResult.Lyrics;
+                    RebuildLyricsList();
                     System.Windows.Application.Current.Dispatcher.Invoke(() =>
                     {
                         Title = string.IsNullOrEmpty(_currentTrackName) ? "Unknown" : _currentTrackName;
@@ -215,6 +225,7 @@ namespace NoraBar.ViewModels
                 }
 
                 _currentLyrics = null;
+                RebuildLyricsList();
 
                 System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
@@ -307,6 +318,23 @@ namespace NoraBar.ViewModels
             _audioVisualizerService.Start();
         }
 
+        private void RebuildLyricsList()
+        {
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                LyricsList.Clear();
+                _currentLyricIndex = -1;
+                CurrentLyricIndex = -1;
+                if (_currentLyrics != null)
+                {
+                    foreach (var line in _currentLyrics)
+                    {
+                        LyricsList.Add(new LyricLineViewModel(line));
+                    }
+                }
+            });
+        }
+
         private void UpdateCurrentLyric(TimeSpan position)
         {
             if (_currentLyrics == null || _currentLyrics.Count == 0 || !ShowLyrics)
@@ -314,12 +342,12 @@ namespace NoraBar.ViewModels
                 return;
             }
 
-            string currentText = "";
+            int newIndex = -1;
             for (int i = 0; i < _currentLyrics.Count; i++)
             {
                 if (position >= _currentLyrics[i].StartTime)
                 {
-                    currentText = _currentLyrics[i].Text;
+                    newIndex = i;
                 }
                 else
                 {
@@ -329,9 +357,26 @@ namespace NoraBar.ViewModels
 
             System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                if (CurrentLyric != currentText)
+                if (newIndex != _currentLyricIndex)
                 {
-                    CurrentLyric = currentText;
+                    if (_currentLyricIndex >= 0 && _currentLyricIndex < LyricsList.Count)
+                    {
+                        LyricsList[_currentLyricIndex].IsCurrent = false;
+                    }
+
+                    _currentLyricIndex = newIndex;
+                    CurrentLyricIndex = newIndex;
+
+                    if (_currentLyricIndex >= 0 && _currentLyricIndex < LyricsList.Count)
+                    {
+                        LyricsList[_currentLyricIndex].IsCurrent = true;
+                    }
+
+                    string currentText = _currentLyricIndex >= 0 ? _currentLyrics[_currentLyricIndex].Text : "";
+                    if (CurrentLyric != currentText)
+                    {
+                        CurrentLyric = currentText;
+                    }
                 }
             }, System.Windows.Threading.DispatcherPriority.Render);
         }
@@ -356,6 +401,7 @@ namespace NoraBar.ViewModels
             }
 
             _currentLyrics = result.Lyrics;
+            RebuildLyricsList();
 
             string cacheKey = $"{tTitle}|{tArtist}";
             _lyricsCache[cacheKey] = result;

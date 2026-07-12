@@ -3,6 +3,7 @@ namespace NoraBar.Models
     public enum DesignVariant
     {
         MinimalFloatingPill,
-        ProductivityCommandIsland
+        ProductivityCommandIsland,
+        LyricsFocusedSidebar
     }
 }

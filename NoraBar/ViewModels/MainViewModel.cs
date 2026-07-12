@@ -49,6 +49,7 @@ namespace NoraBar.ViewModels
                     SaveSettings();
                     OnPropertyChanged(nameof(IsMinimalVariant));
                     OnPropertyChanged(nameof(IsProductivityVariant));
+                    OnPropertyChanged(nameof(IsLyricsVariant));
                 }
             }
         }
@@ -184,6 +185,15 @@ namespace NoraBar.ViewModels
             set
             {
                 if (value) CurrentVariant = DesignVariant.ProductivityCommandIsland;
+            }
+        }
+
+        public bool IsLyricsVariant
+        {
+            get => CurrentVariant == DesignVariant.LyricsFocusedSidebar;
+            set
+            {
+                if (value) CurrentVariant = DesignVariant.LyricsFocusedSidebar;
             }
         }
 
