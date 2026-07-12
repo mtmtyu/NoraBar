@@ -44,6 +44,7 @@ namespace NoraBar
             UpdateView();
 
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+            _viewModel.Music.PropertyChanged += MusicViewModel_PropertyChanged;
 
             // Initialize system tray resident features
             InitializeSystemTray();
@@ -230,6 +231,14 @@ namespace NoraBar
             }
         }
 
+        private void MusicViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(MusicViewModel.HasMultipleSessions))
+            {
+                Dispatcher.Invoke(UpdateView);
+            }
+        }
+
         private void UpdateLocalizedShellText()
         {
             string settingsText = LocalizationService.GetText(_viewModel.SelectedLanguage, LocalizationKey.SettingsMenu);
@@ -272,6 +281,7 @@ namespace NoraBar
                     targetWidth = 450;
                     targetHeight = _viewModel.ShowProgressBar ? 106 : 80;
                     if (_viewModel.ShowLyrics) targetHeight += 24;
+                    if (_viewModel.Music.HasMultipleSessions) targetHeight += 12;
                 }
             }
             else // ProductivityCommandIsland (Design B)
@@ -287,6 +297,7 @@ namespace NoraBar
                     targetWidth = 560;
                     targetHeight = _viewModel.ShowProgressBar ? 120 : 90;
                     if (_viewModel.ShowLyrics) targetHeight += 24;
+                    if (_viewModel.Music.HasMultipleSessions) targetHeight += 16;
                 }
             }
 

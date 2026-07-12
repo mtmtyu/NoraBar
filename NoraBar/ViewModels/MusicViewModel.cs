@@ -1,4 +1,5 @@
 using System;
+using System.Collections.ObjectModel;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using NoraBar.Services;
@@ -89,6 +90,15 @@ namespace NoraBar.ViewModels
             set => SetProperty(ref _currentLyric, value);
         }
 
+        private bool _hasMultipleSessions;
+        public bool HasMultipleSessions
+        {
+            get => _hasMultipleSessions;
+            set => SetProperty(ref _hasMultipleSessions, value);
+        }
+
+        public ObservableCollection<DotItem> SessionDots { get; } = new ObservableCollection<DotItem>();
+
         private bool _showLyrics = true;
         public bool ShowLyrics
         {
@@ -118,6 +128,10 @@ namespace NoraBar.ViewModels
         public ICommand NextCommand { get; }
         public ICommand PreviousCommand { get; }
 
+        public ICommand SwitchToNextSessionCommand { get; }
+        public ICommand SwitchToPreviousSessionCommand { get; }
+        public ICommand SwitchToSessionCommand { get; }
+
         private int _lyricsRequestId = 0;
 
         public MusicViewModel()
@@ -131,6 +145,14 @@ namespace NoraBar.ViewModels
             PlayPauseCommand = new RelayCommand(async _ => await _mediaService.PlayPauseAsync());
             NextCommand = new RelayCommand(async _ => await _mediaService.NextAsync());
             PreviousCommand = new RelayCommand(async _ => await _mediaService.PreviousAsync());
+
+            SwitchToNextSessionCommand = new RelayCommand(_ => _mediaService.SwitchToNextSession());
+            SwitchToPreviousSessionCommand = new RelayCommand(_ => _mediaService.SwitchToPreviousSession());
+            SwitchToSessionCommand = new RelayCommand(param => {
+                if (param is int index) {
+                    _mediaService.SwitchToSession(index);
+                }
+            });
 
             _mediaService.MediaInfoChanged += async (s, e) =>
             {
@@ -181,6 +203,30 @@ namespace NoraBar.ViewModels
                     else
                     {
                         ProgressValue = 0;
+                    }
+                }, System.Windows.Threading.DispatcherPriority.Render);
+            };
+
+            _mediaService.SessionsInfoChanged += (s, e) =>
+            {
+                System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    HasMultipleSessions = e.SessionCount > 1;
+                    
+                    if (SessionDots.Count != e.SessionCount)
+                    {
+                        SessionDots.Clear();
+                        for (int i = 0; i < e.SessionCount; i++)
+                        {
+                            SessionDots.Add(new DotItem { Index = i, IsActive = (i == e.CurrentSessionIndex) });
+                        }
+                    }
+                    else
+                    {
+                        for (int i = 0; i < SessionDots.Count; i++)
+                        {
+                            SessionDots[i].IsActive = (i == e.CurrentSessionIndex);
+                        }
                     }
                 }, System.Windows.Threading.DispatcherPriority.Render);
             };
@@ -282,5 +328,17 @@ namespace NoraBar.ViewModels
                 UpdateCurrentLyric(_lastPosition);
             }
         }
+    }
+
+    public class DotItem : ViewModelBase
+    {
+        private bool _isActive;
+        public bool IsActive
+        {
+            get => _isActive;
+            set => SetProperty(ref _isActive, value);
+        }
+
+        public int Index { get; set; }
     }
 }
