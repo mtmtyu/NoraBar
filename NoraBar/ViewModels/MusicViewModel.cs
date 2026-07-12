@@ -323,7 +323,6 @@ namespace NoraBar.ViewModels
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
                 LyricsList.Clear();
-                _currentLyricIndex = -1;
                 CurrentLyricIndex = -1;
                 if (_currentLyrics != null)
                 {
@@ -364,7 +363,6 @@ namespace NoraBar.ViewModels
                         LyricsList[_currentLyricIndex].IsCurrent = false;
                     }
 
-                    _currentLyricIndex = newIndex;
                     CurrentLyricIndex = newIndex;
 
                     if (_currentLyricIndex >= 0 && _currentLyricIndex < LyricsList.Count)

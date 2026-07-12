@@ -96,6 +96,7 @@
                          ItemsSource="{Binding Music.LyricsList}"
                          Background="Transparent"
                          BorderThickness="0"
+                         ScrollViewer.CanContentScroll="False"
                          ScrollViewer.VerticalScrollBarVisibility="Hidden"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                          Focusable="False"
@@ -142,6 +143,26 @@
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
+
+                <TextBlock Text="{Binding Music.CurrentLyric}"
+                           Foreground="#99FFFFFF"
+                           FontSize="14"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           IsHitTestVisible="False">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Music.LyricsList.Count}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
             </Grid>
         </Grid>
     </Border>
