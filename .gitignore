@@ -394,3 +394,6 @@ FodyWeavers.xsd
 out/
 Output/
 .test-output/
+
+# proposals
+docs/proposals/
