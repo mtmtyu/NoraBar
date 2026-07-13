@@ -31,6 +31,37 @@ public sealed class HudRouterPublicationTests
     }
 
     [Fact]
+    public async Task SetPresentationState_ReleasesGateBeforeSlowSubscriberCompletes()
+    {
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        HudRouter router = await CreateInitializedRouterAsync(music);
+        using var subscriberEntered = new ManualResetEventSlim();
+        using var releaseSubscriber = new ManualResetEventSlim();
+        int stateChangedCount = 0;
+        router.StateChanged += (_, _) =>
+        {
+            if (Interlocked.Increment(ref stateChangedCount) == 1)
+            {
+                subscriberEntered.Set();
+                Assert.True(releaseSubscriber.Wait(TimeSpan.FromSeconds(5)));
+            }
+        };
+
+        Task<bool> firstChange = Task.Run(() =>
+            router.SetPresentationState(HudPresentationState.Expanded));
+        Assert.True(subscriberEntered.Wait(TimeSpan.FromSeconds(5)));
+
+        bool concurrentChangeSucceeded = router.SetPresentationState(
+            HudPresentationState.Pinned);
+        releaseSubscriber.Set();
+
+        Assert.True(await firstChange.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.True(concurrentChangeSucceeded);
+        Assert.Equal(2, stateChangedCount);
+        Assert.Equal(HudPresentationState.Pinned, router.PresentationState);
+    }
+
+    [Fact]
     public async Task PresentationChanged_AllowsSubscriberToChangeStateSynchronously()
     {
         var music = new FakeHudModule(BuiltInHudIds.Music);
