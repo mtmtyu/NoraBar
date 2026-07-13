@@ -27,6 +27,12 @@ internal sealed class FakeHudModule : IHudModule
 
     public int DisposeCount { get; private set; }
 
+    public int PresentationSubscribeCount { get; private set; }
+
+    public int PresentationUnsubscribeCount { get; private set; }
+
+    public int PresentationHandlerCount => _presentationInvalidated?.GetInvocationList().Length ?? 0;
+
     public Exception? InitializeException { get; set; }
 
     public Exception? ActivateException { get; set; }
@@ -69,6 +75,7 @@ internal sealed class FakeHudModule : IHudModule
     {
         add
         {
+            PresentationSubscribeCount++;
             _calls?.Add($"{Id}:subscribe");
             if (SubscribeException is not null)
             {
@@ -83,6 +90,7 @@ internal sealed class FakeHudModule : IHudModule
         }
         remove
         {
+            PresentationUnsubscribeCount++;
             _calls?.Add($"{Id}:unsubscribe");
             if (UnsubscribeException is not null)
             {
@@ -194,4 +202,6 @@ internal sealed class FakeHudModule : IHudModule
         _calls?.Add($"{Id}:invalidate");
         _presentationInvalidated?.Invoke(this, EventArgs.Empty);
     }
+
+    public EventHandler? CapturePresentationInvalidatedHandlers() => _presentationInvalidated;
 }

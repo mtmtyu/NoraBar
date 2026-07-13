@@ -154,6 +154,67 @@ public sealed class HudRouterTests
     }
 
     [Fact]
+    public async Task NavigateToAsync_DiscardsPendingInvalidationFromPreviousSubscription()
+    {
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var launcher = new FakeHudModule("launcher");
+        HudRouter router = await CreateInitializedRouterAsync(music, launcher);
+        Task? navigation = null;
+        Task? invalidationLoop = null;
+        using var stopInvalidations = new CancellationTokenSource();
+        int presentationChangedCount = 0;
+        router.PresentationChanged += (_, _) =>
+        {
+            if (Interlocked.Increment(ref presentationChangedCount) == 1)
+            {
+                navigation = router.NavigateToAsync(launcher.Id, CancellationToken.None);
+                invalidationLoop = Task.Run(() =>
+                {
+                    while (!stopInvalidations.IsCancellationRequested)
+                    {
+                        music.RaisePresentationInvalidated();
+                        Thread.Yield();
+                    }
+                });
+            }
+        };
+
+        music.RaisePresentationInvalidated();
+        Task actualNavigation = Assert.IsAssignableFrom<Task>(navigation);
+        try
+        {
+            await actualNavigation.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        finally
+        {
+            stopInvalidations.Cancel();
+            await Assert.IsAssignableFrom<Task>(invalidationLoop)
+                .WaitAsync(TimeSpan.FromSeconds(5));
+        }
+
+        Assert.Same(launcher, router.CurrentModule);
+        Assert.Equal(1, presentationChangedCount);
+    }
+
+    [Fact]
+    public async Task NavigateToAsync_IgnoresOldHandlerCapturedBeforeUnsubscribe()
+    {
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var launcher = new FakeHudModule("launcher");
+        HudRouter router = await CreateInitializedRouterAsync(music, launcher);
+        EventHandler? oldHandler = music.CapturePresentationInvalidatedHandlers();
+        int presentationChangedCount = 0;
+        router.PresentationChanged += (_, _) => presentationChangedCount++;
+
+        await router.NavigateToAsync(launcher.Id, CancellationToken.None);
+        int countAfterNavigation = presentationChangedCount;
+
+        Assert.NotNull(oldHandler);
+        oldHandler(music, EventArgs.Empty);
+        Assert.Equal(countAfterNavigation, presentationChangedCount);
+    }
+
+    [Fact]
     public async Task NavigateToAsync_DrainsInvalidationsRaisedWhilePendingNotificationIsPublishing()
     {
         var notificationDrained = new TaskCompletionSource(
@@ -453,11 +514,43 @@ public sealed class HudRouterTests
         Assert.Same(unsubscribeException, exception.InnerException);
         Assert.Same(music, router.CurrentModule);
         Assert.True(router.GetSnapshot().IsInitialized);
+        Assert.Equal(2, music.PresentationUnsubscribeCount);
+        Assert.Equal(1, music.PresentationHandlerCount);
         Assert.True(router.SetPresentationState(HudPresentationState.Expanded));
         music.RaisePresentationInvalidated();
         Assert.Equal(1, presentationCount);
         await router.NavigateToAsync(launcher.Id, CancellationToken.None);
         Assert.Same(launcher, router.CurrentModule);
+        Assert.Equal(0, music.PresentationHandlerCount);
+    }
+
+    [Fact]
+    public async Task NavigateToAsync_WhenTargetSubscribeAndCleanupFail_RemovesStaleTargetBeforeRetry()
+    {
+        var subscribeException = new InvalidOperationException("launcher subscribe failed after add");
+        var cleanupException = new InvalidOperationException("launcher cleanup failed");
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var launcher = new FakeHudModule("launcher")
+        {
+            SubscribeAfterAddException = subscribeException,
+            UnsubscribeException = cleanupException,
+            UnsubscribeExceptionOnce = true
+        };
+        HudRouter router = await CreateInitializedRouterAsync(music, launcher);
+
+        HudNavigationException exception = await Assert.ThrowsAsync<HudNavigationException>(
+            () => router.NavigateToAsync(launcher.Id, CancellationToken.None));
+        launcher.SubscribeAfterAddException = null;
+        await router.NavigateToAsync(launcher.Id, CancellationToken.None);
+
+        Assert.Same(subscribeException, exception.InnerException);
+        Assert.Contains(cleanupException, exception.RecoveryExceptions);
+        Assert.Equal(2, launcher.PresentationUnsubscribeCount);
+        Assert.Equal(1, launcher.PresentationHandlerCount);
+
+        await router.NavigateToAsync(music.Id, CancellationToken.None);
+
+        Assert.Equal(0, launcher.PresentationHandlerCount);
     }
 
     [Fact]

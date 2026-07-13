@@ -12,6 +12,7 @@ public sealed class HudRouter
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
     private readonly SemaphoreSlim _publicationGate = new(1, 1);
     private readonly HashSet<IHudModule> _initializedModules = [];
+    private readonly List<ModulePresentationSubscription> _pendingModulePresentationRemovals = [];
     private List<string> _enabledHudModuleIds;
     private string _effectiveDefaultHudId;
     private string? _currentHudId;
@@ -20,8 +21,9 @@ public sealed class HudRouter
     private bool _isInitialized;
     private bool _isShuttingDown;
     private bool _isTransitioning;
-    private bool _hasPendingPresentationInvalidation;
+    private ModulePresentationSubscription? _pendingPresentationInvalidationSubscription;
     private bool _isPresentationInvalidationDrainScheduled;
+    private ModulePresentationSubscription? _modulePresentationSubscription;
 
     public HudRouter(
         HudRegistry registry,
@@ -127,7 +129,7 @@ public sealed class HudRouter
                     }
 
                     _isTransitioning = true;
-                    _hasPendingPresentationInvalidation = false;
+                    _pendingPresentationInvalidationSubscription = null;
                 }
             }
             finally
@@ -158,7 +160,7 @@ public sealed class HudRouter
                 await UpdateStateAsync(() =>
                 {
                     _isTransitioning = false;
-                    _hasPendingPresentationInvalidation = false;
+                    _pendingPresentationInvalidationSubscription = null;
                 });
 
                 if (cleanupExceptions.Count > 0)
@@ -215,7 +217,7 @@ public sealed class HudRouter
                 lock (_stateLock)
                 {
                     _isTransitioning = true;
-                    _hasPendingPresentationInvalidation = false;
+                    _pendingPresentationInvalidationSubscription = null;
                 }
             }
             finally
@@ -284,7 +286,7 @@ public sealed class HudRouter
                 lock (_stateLock)
                 {
                     _isTransitioning = true;
-                    _hasPendingPresentationInvalidation = false;
+                    _pendingPresentationInvalidationSubscription = null;
                 }
             }
             finally
@@ -388,7 +390,7 @@ public sealed class HudRouter
 
                     _isShuttingDown = true;
                     _isTransitioning = true;
-                    _hasPendingPresentationInvalidation = false;
+                    _pendingPresentationInvalidationSubscription = null;
                     currentModule = _currentModule;
                 }
             }
@@ -520,7 +522,7 @@ public sealed class HudRouter
             }
 
             _isTransitioning = false;
-            _hasPendingPresentationInvalidation = false;
+            _pendingPresentationInvalidationSubscription = null;
         }, publishPendingPresentation: false);
         throw new HudNavigationException(targetModule.Id, navigationException, recoveryExceptions);
     }
@@ -575,16 +577,21 @@ public sealed class HudRouter
         _initializedModules.Add(module);
     }
 
-    private void OnModulePresentationInvalidated(object? sender, EventArgs eventArgs)
+    private void OnModulePresentationInvalidated(
+        ModulePresentationSubscription subscription,
+        object? sender,
+        EventArgs eventArgs)
     {
         if (!TryEnterPublication())
         {
             bool scheduleDrain = false;
             lock (_stateLock)
             {
-                if (!_isShuttingDown && (_isInitialized || _isTransitioning))
+                if (ReferenceEquals(_modulePresentationSubscription, subscription)
+                    && !_isShuttingDown
+                    && (_isInitialized || _isTransitioning))
                 {
-                    _hasPendingPresentationInvalidation = true;
+                    _pendingPresentationInvalidationSubscription = subscription;
                     if (!_isPresentationInvalidationDrainScheduled)
                     {
                         _isPresentationInvalidationDrainScheduled = true;
@@ -606,14 +613,15 @@ public sealed class HudRouter
             bool notifyPresentation;
             lock (_stateLock)
             {
-                if (_isShuttingDown)
+                if (!ReferenceEquals(_modulePresentationSubscription, subscription)
+                    || _isShuttingDown)
                 {
                     return;
                 }
 
                 if (_isTransitioning)
                 {
-                    _hasPendingPresentationInvalidation = true;
+                    _pendingPresentationInvalidationSubscription = subscription;
                     return;
                 }
 
@@ -636,11 +644,86 @@ public sealed class HudRouter
         }
     }
 
-    private void Subscribe(IHudModule module) =>
-        module.PresentationInvalidated += OnModulePresentationInvalidated;
+    private void Subscribe(IHudModule module)
+    {
+        lock (_stateLock)
+        {
+            if (_modulePresentationSubscription is not null)
+            {
+                throw new InvalidOperationException("A HUD module presentation subscription is already active.");
+            }
+        }
 
-    private void Unsubscribe(IHudModule module) =>
-        module.PresentationInvalidated -= OnModulePresentationInvalidated;
+        RetryPendingPresentationRemovals(module);
+
+        var subscription = new ModulePresentationSubscription(this, module);
+        lock (_stateLock)
+        {
+            if (_modulePresentationSubscription is not null)
+            {
+                throw new InvalidOperationException("A HUD module presentation subscription is already active.");
+            }
+
+            _modulePresentationSubscription = subscription;
+        }
+
+        module.PresentationInvalidated += subscription.Handler;
+    }
+
+    private void Unsubscribe(IHudModule module)
+    {
+        lock (_stateLock)
+        {
+            ModulePresentationSubscription? subscription = _modulePresentationSubscription;
+            if (subscription is not null && ReferenceEquals(subscription.Module, module))
+            {
+                _modulePresentationSubscription = null;
+                if (ReferenceEquals(_pendingPresentationInvalidationSubscription, subscription))
+                {
+                    _pendingPresentationInvalidationSubscription = null;
+                }
+
+                _pendingModulePresentationRemovals.Add(subscription);
+            }
+        }
+
+        RetryPendingPresentationRemovals(module);
+    }
+
+    private void RetryPendingPresentationRemovals(IHudModule module)
+    {
+        ModulePresentationSubscription[] subscriptions;
+        lock (_stateLock)
+        {
+            subscriptions = _pendingModulePresentationRemovals
+                .Where(subscription => ReferenceEquals(subscription.Module, module))
+                .ToArray();
+        }
+
+        Exception? firstFailure = null;
+        foreach (ModulePresentationSubscription subscription in subscriptions)
+        {
+            try
+            {
+                module.PresentationInvalidated -= subscription.Handler;
+            }
+            catch (Exception exception)
+            {
+                firstFailure ??= exception;
+                continue;
+            }
+
+            lock (_stateLock)
+            {
+                _pendingModulePresentationRemovals.Remove(subscription);
+            }
+        }
+
+        if (firstFailure is not null)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(firstFailure).Throw();
+        }
+    }
 
     private void EnsureCanNavigate()
     {
@@ -726,9 +809,11 @@ public sealed class HudRouter
 
     private bool TakePendingPresentationInvalidation()
     {
-        bool pending = _hasPendingPresentationInvalidation;
-        _hasPendingPresentationInvalidation = false;
-        return pending;
+        ModulePresentationSubscription? pendingSubscription =
+            _pendingPresentationInvalidationSubscription;
+        _pendingPresentationInvalidationSubscription = null;
+        return pendingSubscription is not null
+            && ReferenceEquals(pendingSubscription, _modulePresentationSubscription);
     }
 
     private bool TryEnterPublication() =>
@@ -870,4 +955,23 @@ public sealed class HudRouter
     private void OnStateChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
 
     private void OnPresentationChanged() => PresentationChanged?.Invoke(this, EventArgs.Empty);
+
+    private sealed class ModulePresentationSubscription
+    {
+        private readonly HudRouter _router;
+
+        public ModulePresentationSubscription(HudRouter router, IHudModule module)
+        {
+            _router = router;
+            Module = module;
+            Handler = HandlePresentationInvalidated;
+        }
+
+        public IHudModule Module { get; }
+
+        public EventHandler Handler { get; }
+
+        private void HandlePresentationInvalidated(object? sender, EventArgs eventArgs) =>
+            _router.OnModulePresentationInvalidated(this, sender, eventArgs);
+    }
 }
