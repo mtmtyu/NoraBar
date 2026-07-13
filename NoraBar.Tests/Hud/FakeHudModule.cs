@@ -131,7 +131,7 @@ internal sealed class FakeHudModule : IHudModule
         ActivateStartedSignal?.TrySetResult(true);
         if (ActivateWaitTask is not null)
         {
-            await ActivateWaitTask;
+            await ActivateWaitTask.WaitAsync(cancellationToken);
         }
 
         Exception? activateException = ActivateResults.Count > 0
