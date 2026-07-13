@@ -126,7 +126,7 @@ public sealed class MusicHudModuleTests
         module.PresentationInvalidated += (_, _) => invalidationCount++;
         await module.InitializeAsync(CancellationToken.None);
 
-        source.RaiseShellPropertyChanged(nameof(MainViewModel.CurrentState));
+        source.RaiseShellPropertyChanged(nameof(MainViewModel.CurrentPage));
         source.RaiseShellPropertyChanged(nameof(MainViewModel.TextScrollMode));
         source.RaiseMusicPropertyChanged(nameof(MusicViewModel.Title));
 

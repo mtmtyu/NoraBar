@@ -58,13 +58,6 @@ namespace NoraBar.ViewModels
             }
         }
 
-        private IslandState _currentState = IslandState.Idle;
-        public IslandState CurrentState
-        {
-            get => _currentState;
-            set => SetProperty(ref _currentState, value);
-        }
-
         private bool _showProgressBar;
         public bool ShowProgressBar
         {
@@ -390,7 +383,6 @@ namespace NoraBar.ViewModels
         public MusicViewModel Music { get; } = new MusicViewModel();
 
         public ICommand SetVariantCommand { get; }
-        public ICommand SetStateCommand { get; }
 
         public MainViewModel()
         {
@@ -417,7 +409,6 @@ namespace NoraBar.ViewModels
             Music.TextScrollMode = _textScrollMode;
 
             SetVariantCommand = new RelayCommand(ExecuteSetVariant);
-            SetStateCommand = new RelayCommand(ExecuteSetState);
 
             _availableHuds = new[] { T(LocalizationKey.MusicHudName) };
 
@@ -544,18 +535,6 @@ namespace NoraBar.ViewModels
             else if (parameter is string variantStr && System.Enum.TryParse(variantStr, out DesignVariant parsedVariant))
             {
                 CurrentVariant = parsedVariant;
-            }
-        }
-
-        private void ExecuteSetState(object? parameter)
-        {
-            if (parameter is IslandState state)
-            {
-                CurrentState = state;
-            }
-            else if (parameter is string stateStr && System.Enum.TryParse(stateStr, out IslandState parsedState))
-            {
-                CurrentState = parsedState;
             }
         }
 
