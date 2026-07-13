@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -533,11 +534,15 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            MessageBox.Show(
-                $"NoraBarの終了処理中にエラーが発生しました。{Environment.NewLine}{exception.Message}",
-                "NoraBar",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+            Trace.TraceError(exception.ToString());
+            if (!Dispatcher.HasShutdownStarted && !Dispatcher.HasShutdownFinished)
+            {
+                MessageBox.Show(
+                    $"NoraBarの終了処理中にエラーが発生しました。{Environment.NewLine}{exception.Message}",
+                    "NoraBar",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
         }
     }
 }
