@@ -8,6 +8,10 @@ namespace NoraBar.ViewModels
 {
     public class MainViewModel : ViewModelBase
     {
+        private readonly UserSettings _settings;
+
+        internal UserSettings SettingsSnapshot => _settings;
+
         public sealed class LanguageOption
         {
             public LanguageOption(AppLanguage language, string displayName)
@@ -52,13 +56,6 @@ namespace NoraBar.ViewModels
                     OnPropertyChanged(nameof(IsLyricsVariant));
                 }
             }
-        }
-
-        private IslandState _currentState = IslandState.Idle;
-        public IslandState CurrentState
-        {
-            get => _currentState;
-            set => SetProperty(ref _currentState, value);
         }
 
         private bool _showProgressBar;
@@ -386,21 +383,20 @@ namespace NoraBar.ViewModels
         public MusicViewModel Music { get; } = new MusicViewModel();
 
         public ICommand SetVariantCommand { get; }
-        public ICommand SetStateCommand { get; }
 
         public MainViewModel()
         {
-            var settings = SettingsService.Load();
-            _currentVariant = settings.Variant;
-            _showProgressBar = settings.ShowProgressBar;
-            _showLyrics = settings.ShowLyrics;
-            _textScrollMode = settings.TextScrollMode;
-            _selectedLanguage = settings.Language;
-            _hasCustomPosition = settings.HasCustomPosition;
-            _windowLeft = settings.WindowLeft;
-            _windowTop = settings.WindowTop;
-            _checkUpdateOnStartup = settings.CheckUpdateOnStartup;
-            _disableExpandOnFullscreen = settings.DisableExpandOnFullscreen;
+            _settings = SettingsService.Load();
+            _currentVariant = _settings.Variant;
+            _showProgressBar = _settings.ShowProgressBar;
+            _showLyrics = _settings.ShowLyrics;
+            _textScrollMode = _settings.TextScrollMode;
+            _selectedLanguage = _settings.Language;
+            _hasCustomPosition = _settings.HasCustomPosition;
+            _windowLeft = _settings.WindowLeft;
+            _windowTop = _settings.WindowTop;
+            _checkUpdateOnStartup = _settings.CheckUpdateOnStartup;
+            _disableExpandOnFullscreen = _settings.DisableExpandOnFullscreen;
 
             AvailableScrollModes = new[]
             {
@@ -413,7 +409,6 @@ namespace NoraBar.ViewModels
             Music.TextScrollMode = _textScrollMode;
 
             SetVariantCommand = new RelayCommand(ExecuteSetVariant);
-            SetStateCommand = new RelayCommand(ExecuteSetState);
 
             _availableHuds = new[] { T(LocalizationKey.MusicHudName) };
 
@@ -488,19 +483,47 @@ namespace NoraBar.ViewModels
 
         private void SaveSettings()
         {
-            SettingsService.Save(new UserSettings
-            {
-                Variant = CurrentVariant,
-                ShowProgressBar = ShowProgressBar,
-                ShowLyrics = ShowLyrics,
-                TextScrollMode = TextScrollMode,
-                Language = SelectedLanguage,
-                HasCustomPosition = HasCustomPosition,
-                WindowLeft = WindowLeft,
-                WindowTop = WindowTop,
-                CheckUpdateOnStartup = CheckUpdateOnStartup,
-                DisableExpandOnFullscreen = DisableExpandOnFullscreen
-            });
+            UpdateKnownSettings(
+                _settings,
+                CurrentVariant,
+                ShowProgressBar,
+                ShowLyrics,
+                TextScrollMode,
+                SelectedLanguage,
+                HasCustomPosition,
+                WindowLeft,
+                WindowTop,
+                CheckUpdateOnStartup,
+                DisableExpandOnFullscreen);
+
+            SettingsService.Save(_settings);
+        }
+
+        internal static void UpdateKnownSettings(
+            UserSettings settings,
+            DesignVariant variant,
+            bool showProgressBar,
+            bool showLyrics,
+            TextScrollMode textScrollMode,
+            AppLanguage language,
+            bool hasCustomPosition,
+            double windowLeft,
+            double windowTop,
+            bool checkUpdateOnStartup,
+            bool disableExpandOnFullscreen)
+        {
+            ArgumentNullException.ThrowIfNull(settings);
+
+            settings.Variant = variant;
+            settings.ShowProgressBar = showProgressBar;
+            settings.ShowLyrics = showLyrics;
+            settings.TextScrollMode = textScrollMode;
+            settings.Language = language;
+            settings.HasCustomPosition = hasCustomPosition;
+            settings.WindowLeft = windowLeft;
+            settings.WindowTop = windowTop;
+            settings.CheckUpdateOnStartup = checkUpdateOnStartup;
+            settings.DisableExpandOnFullscreen = disableExpandOnFullscreen;
         }
 
         private void ExecuteSetVariant(object? parameter)
@@ -512,18 +535,6 @@ namespace NoraBar.ViewModels
             else if (parameter is string variantStr && System.Enum.TryParse(variantStr, out DesignVariant parsedVariant))
             {
                 CurrentVariant = parsedVariant;
-            }
-        }
-
-        private void ExecuteSetState(object? parameter)
-        {
-            if (parameter is IslandState state)
-            {
-                CurrentState = state;
-            }
-            else if (parameter is string stateStr && System.Enum.TryParse(stateStr, out IslandState parsedState))
-            {
-                CurrentState = parsedState;
             }
         }
 
