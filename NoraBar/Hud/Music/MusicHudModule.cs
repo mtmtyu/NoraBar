@@ -75,33 +75,16 @@ internal sealed class MusicHudModule : IHudModule
             }
 
             List<Exception>? residualRemovalExceptions = null;
-            if (removeResidualShell)
-            {
-                bool removed = TryCleanupStep(
-                    () => _source.ShellPropertyChanged -= OnShellPropertyChanged,
-                    ref residualRemovalExceptions);
-                if (removed)
-                {
-                    lock (_syncRoot)
-                    {
-                        _shellSubscribed = false;
-                    }
-                }
-            }
-
-            if (removeResidualMusic)
-            {
-                bool removed = TryCleanupStep(
-                    () => _source.MusicPropertyChanged -= OnMusicPropertyChanged,
-                    ref residualRemovalExceptions);
-                if (removed)
-                {
-                    lock (_syncRoot)
-                    {
-                        _musicSubscribed = false;
-                    }
-                }
-            }
+            TryRemoveSubscription(
+                removeResidualShell,
+                () => _source.ShellPropertyChanged -= OnShellPropertyChanged,
+                () => _shellSubscribed = false,
+                ref residualRemovalExceptions);
+            TryRemoveSubscription(
+                removeResidualMusic,
+                () => _source.MusicPropertyChanged -= OnMusicPropertyChanged,
+                () => _musicSubscribed = false,
+                ref residualRemovalExceptions);
 
             if (residualRemovalExceptions is not null)
             {
@@ -121,27 +104,22 @@ internal sealed class MusicHudModule : IHudModule
             catch (Exception exception)
             {
                 exceptions = [exception];
-                bool musicRemoved = !musicAddAttempted;
-                if (musicAddAttempted)
-                {
-                    musicRemoved = TryCleanupStep(
-                        () => _source.MusicPropertyChanged -= OnMusicPropertyChanged,
-                        ref exceptions);
-                }
-
-                bool shellRemoved = !shellAddAttempted;
-                if (shellAddAttempted)
-                {
-                    shellRemoved = TryCleanupStep(
-                        () => _source.ShellPropertyChanged -= OnShellPropertyChanged,
-                        ref exceptions);
-                }
-
                 lock (_syncRoot)
                 {
-                    _musicSubscribed = !musicRemoved;
-                    _shellSubscribed = !shellRemoved;
+                    _shellSubscribed = shellAddAttempted;
+                    _musicSubscribed = musicAddAttempted;
                 }
+
+                TryRemoveSubscription(
+                    musicAddAttempted,
+                    () => _source.MusicPropertyChanged -= OnMusicPropertyChanged,
+                    () => _musicSubscribed = false,
+                    ref exceptions);
+                TryRemoveSubscription(
+                    shellAddAttempted,
+                    () => _source.ShellPropertyChanged -= OnShellPropertyChanged,
+                    () => _shellSubscribed = false,
+                    ref exceptions);
 
                 if (exceptions is { Count: > 1 })
                 {
@@ -303,33 +281,16 @@ internal sealed class MusicHudModule : IHudModule
                 _isInitialized = false;
             }
 
-            if (unsubscribeShell)
-            {
-                bool removed = TryCleanupStep(
-                    () => _source.ShellPropertyChanged -= OnShellPropertyChanged,
-                    ref exceptions);
-                if (removed)
-                {
-                    lock (_syncRoot)
-                    {
-                        _shellSubscribed = false;
-                    }
-                }
-            }
-
-            if (unsubscribeMusic)
-            {
-                bool removed = TryCleanupStep(
-                    () => _source.MusicPropertyChanged -= OnMusicPropertyChanged,
-                    ref exceptions);
-                if (removed)
-                {
-                    lock (_syncRoot)
-                    {
-                        _musicSubscribed = false;
-                    }
-                }
-            }
+            TryRemoveSubscription(
+                unsubscribeShell,
+                () => _source.ShellPropertyChanged -= OnShellPropertyChanged,
+                () => _shellSubscribed = false,
+                ref exceptions);
+            TryRemoveSubscription(
+                unsubscribeMusic,
+                () => _source.MusicPropertyChanged -= OnMusicPropertyChanged,
+                () => _musicSubscribed = false,
+                ref exceptions);
 
             Task notificationsDrained;
             lock (_syncRoot)
@@ -435,6 +396,23 @@ internal sealed class MusicHudModule : IHudModule
                     _notificationsDrained.TrySetResult(true);
                 }
             }
+        }
+    }
+
+    private void TryRemoveSubscription(
+        bool shouldRemove,
+        Action unsubscriptionAction,
+        Action clearSubscriptionFlag,
+        ref List<Exception>? exceptions)
+    {
+        if (!shouldRemove || !TryCleanupStep(unsubscriptionAction, ref exceptions))
+        {
+            return;
+        }
+
+        lock (_syncRoot)
+        {
+            clearSubscriptionFlag();
         }
     }
 
