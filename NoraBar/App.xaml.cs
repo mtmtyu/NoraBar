@@ -35,7 +35,7 @@ public partial class App : Application
             _hudRegistry = new HudRegistry();
             _hudRegistry.Register(_musicHudModule);
 
-            UserSettings settings = _viewModel.CurrentSettings;
+            UserSettings settings = _viewModel.SettingsSnapshot;
             _hudRouter = new HudRouter(
                 _hudRegistry,
                 settings.DefaultHudId,
