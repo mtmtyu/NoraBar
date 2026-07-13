@@ -20,6 +20,25 @@ public sealed class HudRouterTests
     }
 
     [Fact]
+    public async Task InitializeAsync_PublishesInvalidationRaisedDuringInitialActivation()
+    {
+        var music = new FakeHudModule(BuiltInHudIds.Music)
+        {
+            InvalidateDuringActivate = true
+        };
+        var router = new HudRouter(
+            CreateRegistry(music),
+            BuiltInHudIds.Music,
+            [BuiltInHudIds.Music]);
+        int presentationChangedCount = 0;
+        router.PresentationChanged += (_, _) => presentationChangedCount++;
+
+        await router.InitializeAsync(CancellationToken.None);
+
+        Assert.Equal(1, presentationChangedCount);
+    }
+
+    [Fact]
     public async Task PresentationChanges_DoNotChangeModuleLifecycle()
     {
         var music = new FakeHudModule(BuiltInHudIds.Music);
@@ -57,6 +76,39 @@ public sealed class HudRouterTests
         Assert.Equal(new[] { BuiltInHudIds.Music }, router.EnabledHudModuleIds);
         Assert.Equal(BuiltInHudIds.Music, router.EffectiveDefaultHudId);
         Assert.Same(music, router.CurrentModule);
+    }
+
+    [Fact]
+    public void RuntimeConfiguration_IgnoresInvalidUnknownAndDuplicateIds()
+    {
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var launcher = new FakeHudModule("launcher");
+        string[] configuredIds =
+            [null!, "", " ", "missing", "LAUNCHER", "launcher", "launcher", "\t"];
+
+        var router = new HudRouter(
+            CreateRegistry(music, launcher),
+            "launcher",
+            configuredIds);
+
+        Assert.Equal(["launcher"], router.EnabledHudModuleIds);
+        Assert.Equal("launcher", router.EffectiveDefaultHudId);
+    }
+
+    [Fact]
+    public void RuntimeConfiguration_WhenNoValidConfiguredIdRemainsUsesMusicFallback()
+    {
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var launcher = new FakeHudModule("launcher");
+        string[] configuredIds = [null!, "", " ", "missing", "\r\n"];
+
+        var router = new HudRouter(
+            CreateRegistry(launcher, music),
+            "missing",
+            configuredIds);
+
+        Assert.Equal([BuiltInHudIds.Music], router.EnabledHudModuleIds);
+        Assert.Equal(BuiltInHudIds.Music, router.EffectiveDefaultHudId);
     }
 
     [Fact]
@@ -99,6 +151,37 @@ public sealed class HudRouterTests
         router.PresentationChanged += (_, _) => count++;
         await router.NavigateToAsync("launcher", CancellationToken.None);
         Assert.Equal(1, count);
+    }
+
+    [Fact]
+    public async Task NavigateToAsync_DrainsInvalidationsRaisedWhilePendingNotificationIsPublishing()
+    {
+        var notificationDrained = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var launcher = new FakeHudModule("launcher") { InvalidateDuringActivate = true };
+        HudRouter router = await CreateInitializedRouterAsync(music, launcher);
+        int presentationChangedCount = 0;
+        router.PresentationChanged += (_, _) =>
+        {
+            int notificationCount = Interlocked.Increment(ref presentationChangedCount);
+            if (notificationCount == 2)
+            {
+                notificationDrained.TrySetResult();
+            }
+
+            if (notificationCount == 1)
+            {
+                launcher.RaisePresentationInvalidated();
+                launcher.RaisePresentationInvalidated();
+                launcher.RaisePresentationInvalidated();
+            }
+        };
+
+        await router.NavigateToAsync(launcher.Id, CancellationToken.None);
+
+        await notificationDrained.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(2, presentationChangedCount);
     }
 
     [Fact]
@@ -479,6 +562,94 @@ public sealed class HudRouterTests
         Assert.Equal(0, count);
         release.SetResult(true);
         await navigation;
+    }
+
+    [Fact]
+    public async Task NavigateToAsync_WaitsUntilPresentationStateNotificationCompletes()
+    {
+        var deactivateStarted = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var music = new FakeHudModule(BuiltInHudIds.Music)
+        {
+            DeactivateStartedSignal = deactivateStarted
+        };
+        var launcher = new FakeHudModule("launcher");
+        HudRouter router = await CreateInitializedRouterAsync(music, launcher);
+        Task? navigation = null;
+        bool deactivatedDuringNotification = false;
+        router.StateChanged += (_, _) =>
+        {
+            HudRouterSnapshot snapshot = router.GetSnapshot();
+            if (!ReferenceEquals(snapshot.CurrentModule, music)
+                || snapshot.PresentationState != HudPresentationState.Expanded)
+            {
+                return;
+            }
+
+            navigation = router.NavigateToAsync(launcher.Id, CancellationToken.None);
+            deactivatedDuringNotification = deactivateStarted.Task.IsCompleted;
+        };
+
+        Assert.True(router.SetPresentationState(HudPresentationState.Expanded));
+        Assert.NotNull(navigation);
+        Assert.False(deactivatedDuringNotification);
+        await navigation;
+
+        Assert.Same(launcher, router.CurrentModule);
+    }
+
+    [Fact]
+    public async Task SetPresentationState_DoesNotPublishDuringNavigationStateNotification()
+    {
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var launcher = new FakeHudModule("launcher");
+        HudRouter router = await CreateInitializedRouterAsync(music, launcher);
+        bool? changedDuringNotification = null;
+        HudPresentationState? stateDuringNotification = null;
+        router.StateChanged += (_, _) =>
+        {
+            if (!ReferenceEquals(router.GetSnapshot().CurrentModule, launcher))
+            {
+                return;
+            }
+
+            changedDuringNotification = router.SetPresentationState(
+                HudPresentationState.Expanded);
+            stateDuringNotification = router.PresentationState;
+        };
+
+        await router.NavigateToAsync(launcher.Id, CancellationToken.None);
+
+        Assert.False(changedDuringNotification);
+        Assert.Equal(HudPresentationState.Collapsed, stateDuringNotification);
+        Assert.True(router.SetPresentationState(HudPresentationState.Expanded));
+    }
+
+    [Fact]
+    public async Task CollapseFromPointerLeave_DoesNotPublishDuringNavigationStateNotification()
+    {
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var launcher = new FakeHudModule("launcher");
+        HudRouter router = await CreateInitializedRouterAsync(music, launcher);
+        Assert.True(router.SetPresentationState(HudPresentationState.Expanded));
+        bool? changedDuringNotification = null;
+        HudPresentationState? stateDuringNotification = null;
+        router.StateChanged += (_, _) =>
+        {
+            if (!ReferenceEquals(router.GetSnapshot().CurrentModule, launcher))
+            {
+                return;
+            }
+
+            changedDuringNotification = router.CollapseFromPointerLeave();
+            stateDuringNotification = router.PresentationState;
+        };
+
+        await router.NavigateToAsync(launcher.Id, CancellationToken.None);
+
+        Assert.False(changedDuringNotification);
+        Assert.Equal(HudPresentationState.Expanded, stateDuringNotification);
+        Assert.True(router.CollapseFromPointerLeave());
     }
 
     [Fact]

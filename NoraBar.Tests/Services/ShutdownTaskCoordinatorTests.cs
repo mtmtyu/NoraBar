@@ -105,7 +105,8 @@ public sealed class ShutdownTaskCoordinatorTests
     public async Task RunOnce_AfterStartupCompletion_RunsOperationOnCallingSynchronizationContext()
     {
         var coordinator = new ShutdownTaskCoordinator();
-        using var ready = new ManualResetEventSlim();
+        var ready = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
         using var context = new PumpSynchronizationContext();
         IDisposable? startupCompletion = null;
         Task? shutdown = null;
@@ -125,7 +126,7 @@ public sealed class ShutdownTaskCoordinatorTests
                 context.Complete();
                 return Task.CompletedTask;
             });
-            ready.Set();
+            ready.SetResult();
             context.RunOnCurrentThread();
         })
         {
@@ -133,7 +134,7 @@ public sealed class ShutdownTaskCoordinatorTests
         };
 
         thread.Start();
-        Assert.True(ready.Wait(TimeSpan.FromSeconds(5)));
+        await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         Assert.NotNull(startupCompletion);
         Assert.NotNull(shutdown);

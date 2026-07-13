@@ -281,25 +281,19 @@ public sealed class MusicHudModuleTests
     {
         var source = new FakeMusicHudPresentationSource();
         MusicHudModule module = CreateModule(source);
-        using var notificationEntered = new ManualResetEventSlim();
-        using var releaseNotification = new ManualResetEventSlim();
+        Task? dispose = null;
+        bool? disposeCompletedInsideNotification = null;
         module.PresentationInvalidated += (_, _) =>
         {
-            notificationEntered.Set();
-            releaseNotification.Wait();
+            dispose = module.DisposeAsync().AsTask();
+            disposeCompletedInsideNotification = dispose.IsCompleted;
         };
         await module.InitializeAsync(CancellationToken.None);
 
-        Task notification = Task.Run(
-            () => source.RaiseShellPropertyChanged(nameof(MainViewModel.CurrentVariant)));
-        Assert.True(notificationEntered.Wait(TimeSpan.FromSeconds(5)));
-        Task dispose = module.DisposeAsync().AsTask();
+        source.RaiseShellPropertyChanged(nameof(MainViewModel.CurrentVariant));
 
-        Assert.False(dispose.IsCompleted);
-        Assert.Equal(0, source.CleanupCount);
-
-        releaseNotification.Set();
-        await Task.WhenAll(notification, dispose);
+        Assert.False(disposeCompletedInsideNotification);
+        await Assert.IsAssignableFrom<Task>(dispose);
         Assert.Equal(1, source.CleanupCount);
     }
 

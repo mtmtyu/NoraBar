@@ -10,6 +10,7 @@ public sealed class HudRouter
     private readonly string[] _configuredEnabledHudModuleIds;
     private readonly object _stateLock = new();
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
+    private readonly SemaphoreSlim _publicationGate = new(1, 1);
     private readonly HashSet<IHudModule> _initializedModules = [];
     private List<string> _enabledHudModuleIds;
     private string _effectiveDefaultHudId;
@@ -20,6 +21,7 @@ public sealed class HudRouter
     private bool _isShuttingDown;
     private bool _isTransitioning;
     private bool _hasPendingPresentationInvalidation;
+    private bool _isPresentationInvalidationDrainScheduled;
 
     public HudRouter(
         HudRegistry registry,
@@ -114,15 +116,23 @@ public sealed class HudRouter
         await _lifecycleGate.WaitAsync(cancellationToken);
         try
         {
-            lock (_stateLock)
+            await _publicationGate.WaitAsync(cancellationToken);
+            try
             {
-                if (_isInitialized || _isShuttingDown)
+                lock (_stateLock)
                 {
-                    return;
-                }
+                    if (_isInitialized || _isShuttingDown)
+                    {
+                        return;
+                    }
 
-                _isTransitioning = true;
-                _hasPendingPresentationInvalidation = false;
+                    _isTransitioning = true;
+                    _hasPendingPresentationInvalidation = false;
+                }
+            }
+            finally
+            {
+                _publicationGate.Release();
             }
 
             IHudModule module = GetRegisteredModule(_effectiveDefaultHudId);
@@ -145,11 +155,11 @@ public sealed class HudRouter
                         cleanupExceptions);
                 }
 
-                lock (_stateLock)
+                await UpdateStateAsync(() =>
                 {
                     _isTransitioning = false;
                     _hasPendingPresentationInvalidation = false;
-                }
+                });
 
                 if (cleanupExceptions.Count > 0)
                 {
@@ -159,22 +169,14 @@ public sealed class HudRouter
                 throw;
             }
 
-            bool notifyPresentation;
-            lock (_stateLock)
+            await PublishStateChangedAsync(() =>
             {
                 _currentHudId = module.Id;
                 _currentModule = module;
                 _presentationState = HudPresentationState.Collapsed;
                 _isInitialized = true;
                 _isTransitioning = false;
-                notifyPresentation = TakePendingPresentationInvalidation();
-            }
-
-            OnStateChanged();
-            if (notifyPresentation)
-            {
-                OnPresentationChanged();
-            }
+            });
         }
         finally
         {
@@ -188,22 +190,37 @@ public sealed class HudRouter
         await _lifecycleGate.WaitAsync(cancellationToken);
         try
         {
-            EnsureCanNavigate();
-            List<string> enabledIds;
-            string effectiveDefaultHudId;
-            IHudModule? currentModule;
-            lock (_stateLock)
+            IHudModule targetModule;
+            await _publicationGate.WaitAsync(cancellationToken);
+            try
             {
-                enabledIds = [.. _enabledHudModuleIds];
-                effectiveDefaultHudId = _effectiveDefaultHudId;
-                currentModule = _currentModule;
-            }
+                EnsureCanNavigate();
+                List<string> enabledIds;
+                string effectiveDefaultHudId;
+                IHudModule? currentModule;
+                lock (_stateLock)
+                {
+                    enabledIds = [.. _enabledHudModuleIds];
+                    effectiveDefaultHudId = _effectiveDefaultHudId;
+                    currentModule = _currentModule;
+                }
 
-            string targetHudId = ResolveNavigationTarget(hudId, enabledIds, effectiveDefaultHudId);
-            IHudModule targetModule = GetRegisteredModule(targetHudId);
-            if (ReferenceEquals(targetModule, currentModule))
+                string targetHudId = ResolveNavigationTarget(hudId, enabledIds, effectiveDefaultHudId);
+                targetModule = GetRegisteredModule(targetHudId);
+                if (ReferenceEquals(targetModule, currentModule))
+                {
+                    return;
+                }
+
+                lock (_stateLock)
+                {
+                    _isTransitioning = true;
+                    _hasPendingPresentationInvalidation = false;
+                }
+            }
+            finally
             {
-                return;
+                _publicationGate.Release();
             }
 
             await TransitionToAsync(targetModule, cancellationToken);
@@ -220,46 +237,72 @@ public sealed class HudRouter
         await _lifecycleGate.WaitAsync(cancellationToken);
         try
         {
-            EnsureCanNavigate();
-            List<string> currentEnabledIds;
-            string? currentHudId;
-            IHudModule? currentModule;
-            lock (_stateLock)
+            List<string> updatedIds;
+            string updatedDefault;
+            IHudModule? fallback = null;
+            await _publicationGate.WaitAsync(cancellationToken);
+            try
             {
-                currentEnabledIds = [.. _enabledHudModuleIds];
-                currentHudId = _currentHudId;
-                currentModule = _currentModule;
-            }
-
-            List<string> updatedIds = currentEnabledIds
-                .Where(id => !string.Equals(id, hudId, StringComparison.Ordinal))
-                .ToList();
-            EnsureRuntimeModuleAvailable(updatedIds);
-            string updatedDefault = ResolveEffectiveDefault(updatedIds);
-
-            if (string.Equals(currentHudId, hudId, StringComparison.Ordinal))
-            {
-                string fallbackId = ResolveNavigationTarget(updatedDefault, updatedIds, updatedDefault);
-                IHudModule fallback = GetRegisteredModule(fallbackId);
-                if (!ReferenceEquals(fallback, currentModule))
+                EnsureCanNavigate();
+                List<string> currentEnabledIds;
+                string currentEffectiveDefaultHudId;
+                string? currentHudId;
+                IHudModule? currentModule;
+                lock (_stateLock)
                 {
-                    await TransitionToAsync(fallback, cancellationToken);
+                    currentEnabledIds = [.. _enabledHudModuleIds];
+                    currentEffectiveDefaultHudId = _effectiveDefaultHudId;
+                    currentHudId = _currentHudId;
+                    currentModule = _currentModule;
+                }
+
+                updatedIds = currentEnabledIds
+                    .Where(id => !string.Equals(id, hudId, StringComparison.Ordinal))
+                    .ToList();
+                EnsureRuntimeModuleAvailable(updatedIds);
+                updatedDefault = ResolveEffectiveDefault(updatedIds);
+                bool changed = !currentEnabledIds.SequenceEqual(updatedIds, StringComparer.Ordinal)
+                    || !string.Equals(
+                        currentEffectiveDefaultHudId,
+                        updatedDefault,
+                        StringComparison.Ordinal);
+                if (!changed)
+                {
+                    return;
+                }
+
+                if (string.Equals(currentHudId, hudId, StringComparison.Ordinal))
+                {
+                    string fallbackId = ResolveNavigationTarget(updatedDefault, updatedIds, updatedDefault);
+                    IHudModule resolvedFallback = GetRegisteredModule(fallbackId);
+                    if (!ReferenceEquals(resolvedFallback, currentModule))
+                    {
+                        fallback = resolvedFallback;
+                    }
+                }
+
+                lock (_stateLock)
+                {
+                    _isTransitioning = true;
+                    _hasPendingPresentationInvalidation = false;
                 }
             }
-
-            bool changed;
-            lock (_stateLock)
+            finally
             {
-                changed = !_enabledHudModuleIds.SequenceEqual(updatedIds, StringComparer.Ordinal)
-                    || !string.Equals(_effectiveDefaultHudId, updatedDefault, StringComparison.Ordinal);
+                _publicationGate.Release();
+            }
+
+            if (fallback is not null)
+            {
+                await TransitionToAsync(fallback, cancellationToken, publishState: false);
+            }
+
+            await PublishStateChangedAsync(() =>
+            {
                 _enabledHudModuleIds = updatedIds;
                 _effectiveDefaultHudId = updatedDefault;
-            }
-
-            if (changed)
-            {
-                OnStateChanged();
-            }
+                _isTransitioning = false;
+            });
         }
         finally
         {
@@ -269,36 +312,62 @@ public sealed class HudRouter
 
     public bool SetPresentationState(HudPresentationState presentationState)
     {
-        lock (_stateLock)
+        if (!TryEnterPublication())
         {
-            if (!_isInitialized || _isShuttingDown || _isTransitioning
-                || _presentationState == presentationState)
-            {
-                return false;
-            }
-
-            _presentationState = presentationState;
+            return false;
         }
 
-        OnStateChanged();
-        return true;
+        try
+        {
+            lock (_stateLock)
+            {
+                if (!_isInitialized || _isShuttingDown || _isTransitioning
+                    || _presentationState == presentationState)
+                {
+                    return false;
+                }
+
+                _presentationState = presentationState;
+            }
+
+            OnStateChanged();
+            PublishPendingPresentationInvalidation();
+            return true;
+        }
+        finally
+        {
+            _publicationGate.Release();
+        }
     }
 
     public bool CollapseFromPointerLeave()
     {
-        lock (_stateLock)
+        if (!TryEnterPublication())
         {
-            if (!_isInitialized || _isShuttingDown || _isTransitioning
-                || _presentationState is HudPresentationState.Collapsed or HudPresentationState.Pinned)
-            {
-                return false;
-            }
-
-            _presentationState = HudPresentationState.Collapsed;
+            return false;
         }
 
-        OnStateChanged();
-        return true;
+        try
+        {
+            lock (_stateLock)
+            {
+                if (!_isInitialized || _isShuttingDown || _isTransitioning
+                    || _presentationState is HudPresentationState.Collapsed or HudPresentationState.Pinned)
+                {
+                    return false;
+                }
+
+                _presentationState = HudPresentationState.Collapsed;
+            }
+
+            OnStateChanged();
+            PublishPendingPresentationInvalidation();
+            return true;
+        }
+        finally
+        {
+            _publicationGate.Release();
+        }
     }
 
     public async Task ShutdownAsync(CancellationToken cancellationToken)
@@ -307,17 +376,25 @@ public sealed class HudRouter
         try
         {
             IHudModule? currentModule;
-            lock (_stateLock)
+            await _publicationGate.WaitAsync(cancellationToken);
+            try
             {
-                if (_isShuttingDown)
+                lock (_stateLock)
                 {
-                    return;
-                }
+                    if (_isShuttingDown)
+                    {
+                        return;
+                    }
 
-                _isShuttingDown = true;
-                _isTransitioning = true;
-                _hasPendingPresentationInvalidation = false;
-                currentModule = _currentModule;
+                    _isShuttingDown = true;
+                    _isTransitioning = true;
+                    _hasPendingPresentationInvalidation = false;
+                    currentModule = _currentModule;
+                }
+            }
+            finally
+            {
+                _publicationGate.Release();
             }
 
             var shutdownExceptions = new List<Exception>();
@@ -329,15 +406,13 @@ public sealed class HudRouter
                     shutdownExceptions);
             }
 
-            lock (_stateLock)
+            await PublishStateChangedAsync(() =>
             {
                 _currentHudId = null;
                 _currentModule = null;
                 _isInitialized = false;
                 _isTransitioning = false;
-            }
-
-            OnStateChanged();
+            }, publishPendingPresentation: false);
             ThrowShutdownFailures(shutdownExceptions);
         }
         finally
@@ -346,15 +421,16 @@ public sealed class HudRouter
         }
     }
 
-    private async Task TransitionToAsync(IHudModule targetModule, CancellationToken cancellationToken)
+    private async Task TransitionToAsync(
+        IHudModule targetModule,
+        CancellationToken cancellationToken,
+        bool publishState = true)
     {
         IHudModule previousModule;
         lock (_stateLock)
         {
             previousModule = _currentModule
                 ?? throw new InvalidOperationException("The HUD router has no current module.");
-            _isTransitioning = true;
-            _hasPendingPresentationInvalidation = false;
         }
 
         bool targetLifecycleStarted = false;
@@ -379,19 +455,22 @@ public sealed class HudRouter
                 targetSubscriptionAttempted);
         }
 
-        bool notifyPresentation;
-        lock (_stateLock)
+        if (publishState)
         {
-            _currentHudId = targetModule.Id;
-            _currentModule = targetModule;
-            _isTransitioning = false;
-            notifyPresentation = TakePendingPresentationInvalidation();
+            await PublishStateChangedAsync(() =>
+            {
+                _currentHudId = targetModule.Id;
+                _currentModule = targetModule;
+                _isTransitioning = false;
+            });
         }
-
-        OnStateChanged();
-        if (notifyPresentation)
+        else
         {
-            OnPresentationChanged();
+            await UpdateStateAsync(() =>
+            {
+                _currentHudId = targetModule.Id;
+                _currentModule = targetModule;
+            });
         }
     }
 
@@ -425,7 +504,7 @@ public sealed class HudRouter
             }
         }
 
-        lock (_stateLock)
+        await PublishStateChangedAsync(() =>
         {
             if (recoveredModule is not null)
             {
@@ -442,9 +521,7 @@ public sealed class HudRouter
 
             _isTransitioning = false;
             _hasPendingPresentationInvalidation = false;
-        }
-
-        OnStateChanged();
+        }, publishPendingPresentation: false);
         throw new HudNavigationException(targetModule.Id, navigationException, recoveryExceptions);
     }
 
@@ -500,26 +577,63 @@ public sealed class HudRouter
 
     private void OnModulePresentationInvalidated(object? sender, EventArgs eventArgs)
     {
-        lock (_stateLock)
+        if (!TryEnterPublication())
         {
-            if (_isShuttingDown)
+            bool scheduleDrain = false;
+            lock (_stateLock)
             {
-                return;
+                if (!_isShuttingDown && (_isInitialized || _isTransitioning))
+                {
+                    _hasPendingPresentationInvalidation = true;
+                    if (!_isPresentationInvalidationDrainScheduled)
+                    {
+                        _isPresentationInvalidationDrainScheduled = true;
+                        scheduleDrain = true;
+                    }
+                }
             }
 
-            if (_isTransitioning)
+            if (scheduleDrain)
             {
-                _hasPendingPresentationInvalidation = true;
-                return;
+                SchedulePresentationInvalidationDrain();
             }
 
-            if (!_isInitialized)
-            {
-                return;
-            }
+            return;
         }
 
-        OnPresentationChanged();
+        try
+        {
+            bool notifyPresentation;
+            lock (_stateLock)
+            {
+                if (_isShuttingDown)
+                {
+                    return;
+                }
+
+                if (_isTransitioning)
+                {
+                    _hasPendingPresentationInvalidation = true;
+                    return;
+                }
+
+                if (!_isInitialized)
+                {
+                    return;
+                }
+
+                notifyPresentation = true;
+            }
+
+            if (notifyPresentation)
+            {
+                OnPresentationChanged();
+            }
+        }
+        finally
+        {
+            _publicationGate.Release();
+        }
     }
 
     private void Subscribe(IHudModule module) =>
@@ -548,9 +662,11 @@ public sealed class HudRouter
         IEnumerable<string> configuredIds)
     {
         var enabledIds = new List<string>();
-        foreach (string id in configuredIds)
+        foreach (string? id in configuredIds)
         {
-            if (!enabledIds.Contains(id, StringComparer.Ordinal) && _registry.TryGet(id, out _))
+            if (!string.IsNullOrWhiteSpace(id)
+                && !enabledIds.Contains(id, StringComparer.Ordinal)
+                && _registry.TryGet(id, out _))
             {
                 enabledIds.Add(id);
             }
@@ -613,6 +729,103 @@ public sealed class HudRouter
         bool pending = _hasPendingPresentationInvalidation;
         _hasPendingPresentationInvalidation = false;
         return pending;
+    }
+
+    private bool TryEnterPublication() =>
+        _publicationGate.WaitAsync(TimeSpan.Zero).GetAwaiter().GetResult();
+
+    private void SchedulePresentationInvalidationDrain()
+    {
+        Task drainTask = DrainPendingPresentationInvalidationAsync();
+        // Deferred event handlers have no originating caller to receive failures.
+        _ = drainTask.ContinueWith(
+            static completedTask => _ = completedTask.Exception,
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+    }
+
+    private async Task DrainPendingPresentationInvalidationAsync()
+    {
+        await _publicationGate.WaitAsync(CancellationToken.None);
+        try
+        {
+            bool notifyPresentation;
+            lock (_stateLock)
+            {
+                _isPresentationInvalidationDrainScheduled = false;
+                notifyPresentation = _isInitialized
+                    && !_isShuttingDown
+                    && !_isTransitioning
+                    && TakePendingPresentationInvalidation();
+            }
+
+            if (notifyPresentation)
+            {
+                OnPresentationChanged();
+            }
+        }
+        finally
+        {
+            _publicationGate.Release();
+        }
+    }
+
+    private async Task UpdateStateAsync(Action stateMutation)
+    {
+        await _publicationGate.WaitAsync(CancellationToken.None);
+        try
+        {
+            lock (_stateLock)
+            {
+                stateMutation();
+            }
+        }
+        finally
+        {
+            _publicationGate.Release();
+        }
+    }
+
+    private async Task PublishStateChangedAsync(
+        Action stateMutation,
+        bool publishPendingPresentation = true)
+    {
+        await _publicationGate.WaitAsync(CancellationToken.None);
+        try
+        {
+            lock (_stateLock)
+            {
+                stateMutation();
+            }
+
+            OnStateChanged();
+            if (publishPendingPresentation)
+            {
+                PublishPendingPresentationInvalidation();
+            }
+        }
+        finally
+        {
+            _publicationGate.Release();
+        }
+    }
+
+    private void PublishPendingPresentationInvalidation()
+    {
+        bool notifyPresentation;
+        lock (_stateLock)
+        {
+            notifyPresentation = _isInitialized
+                && !_isShuttingDown
+                && !_isTransitioning
+                && TakePendingPresentationInvalidation();
+        }
+
+        if (notifyPresentation)
+        {
+            OnPresentationChanged();
+        }
     }
 
     private static async Task CaptureFailureAsync(
