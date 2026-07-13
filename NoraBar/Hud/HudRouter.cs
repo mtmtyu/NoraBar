@@ -319,6 +319,7 @@ public sealed class HudRouter
             return false;
         }
 
+        bool notifyPresentation;
         try
         {
             lock (_stateLock)
@@ -330,16 +331,16 @@ public sealed class HudRouter
                 }
 
                 _presentationState = presentationState;
+                notifyPresentation = TakePublishablePendingPresentationInvalidation();
             }
-
-            OnStateChanged();
-            PublishPendingPresentationInvalidation();
-            return true;
         }
         finally
         {
             _publicationGate.Release();
         }
+
+        PublishRouterNotifications(publishState: true, notifyPresentation);
+        return true;
     }
 
     public bool CollapseFromPointerLeave()
@@ -349,6 +350,7 @@ public sealed class HudRouter
             return false;
         }
 
+        bool notifyPresentation;
         try
         {
             lock (_stateLock)
@@ -360,16 +362,16 @@ public sealed class HudRouter
                 }
 
                 _presentationState = HudPresentationState.Collapsed;
+                notifyPresentation = TakePublishablePendingPresentationInvalidation();
             }
-
-            OnStateChanged();
-            PublishPendingPresentationInvalidation();
-            return true;
         }
         finally
         {
             _publicationGate.Release();
         }
+
+        PublishRouterNotifications(publishState: true, notifyPresentation);
+        return true;
     }
 
     public async Task ShutdownAsync(CancellationToken cancellationToken)
@@ -608,39 +610,33 @@ public sealed class HudRouter
             return;
         }
 
+        bool notifyPresentation = false;
         try
         {
-            bool notifyPresentation;
             lock (_stateLock)
             {
-                if (!ReferenceEquals(_modulePresentationSubscription, subscription)
-                    || _isShuttingDown)
+                if (ReferenceEquals(_modulePresentationSubscription, subscription)
+                    && !_isShuttingDown)
                 {
-                    return;
+                    if (_isTransitioning)
+                    {
+                        _pendingPresentationInvalidationSubscription = subscription;
+                    }
+                    else if (_isInitialized)
+                    {
+                        notifyPresentation = true;
+                    }
                 }
-
-                if (_isTransitioning)
-                {
-                    _pendingPresentationInvalidationSubscription = subscription;
-                    return;
-                }
-
-                if (!_isInitialized)
-                {
-                    return;
-                }
-
-                notifyPresentation = true;
-            }
-
-            if (notifyPresentation)
-            {
-                OnPresentationChanged();
             }
         }
         finally
         {
             _publicationGate.Release();
+        }
+
+        if (notifyPresentation)
+        {
+            PublishRouterNotifications(publishState: false, publishPresentation: true);
         }
     }
 
@@ -816,6 +812,12 @@ public sealed class HudRouter
             && ReferenceEquals(pendingSubscription, _modulePresentationSubscription);
     }
 
+    private bool TakePublishablePendingPresentationInvalidation() =>
+        _isInitialized
+        && !_isShuttingDown
+        && !_isTransitioning
+        && TakePendingPresentationInvalidation();
+
     private bool TryEnterPublication() =>
         _publicationGate.WaitAsync(TimeSpan.Zero).GetAwaiter().GetResult();
 
@@ -832,27 +834,24 @@ public sealed class HudRouter
 
     private async Task DrainPendingPresentationInvalidationAsync()
     {
+        bool notifyPresentation;
         await _publicationGate.WaitAsync(CancellationToken.None);
         try
         {
-            bool notifyPresentation;
             lock (_stateLock)
             {
                 _isPresentationInvalidationDrainScheduled = false;
-                notifyPresentation = _isInitialized
-                    && !_isShuttingDown
-                    && !_isTransitioning
-                    && TakePendingPresentationInvalidation();
-            }
-
-            if (notifyPresentation)
-            {
-                OnPresentationChanged();
+                notifyPresentation = TakePublishablePendingPresentationInvalidation();
             }
         }
         finally
         {
             _publicationGate.Release();
+        }
+
+        if (notifyPresentation)
+        {
+            PublishRouterNotifications(publishState: false, publishPresentation: true);
         }
     }
 
@@ -876,40 +875,59 @@ public sealed class HudRouter
         Action stateMutation,
         bool publishPendingPresentation = true)
     {
+        bool notifyPresentation;
         await _publicationGate.WaitAsync(CancellationToken.None);
         try
         {
             lock (_stateLock)
             {
                 stateMutation();
-            }
-
-            OnStateChanged();
-            if (publishPendingPresentation)
-            {
-                PublishPendingPresentationInvalidation();
+                notifyPresentation = publishPendingPresentation
+                    && TakePublishablePendingPresentationInvalidation();
             }
         }
         finally
         {
             _publicationGate.Release();
         }
+
+        PublishRouterNotifications(publishState: true, notifyPresentation);
     }
 
-    private void PublishPendingPresentationInvalidation()
+    private void PublishRouterNotifications(bool publishState, bool publishPresentation)
     {
-        bool notifyPresentation;
-        lock (_stateLock)
+        List<Exception>? exceptions = null;
+        if (publishState)
         {
-            notifyPresentation = _isInitialized
-                && !_isShuttingDown
-                && !_isTransitioning
-                && TakePendingPresentationInvalidation();
+            InvokeSubscribers(StateChanged, ref exceptions);
         }
 
-        if (notifyPresentation)
+        if (publishPresentation)
         {
-            OnPresentationChanged();
+            InvokeSubscribers(PresentationChanged, ref exceptions);
+        }
+
+        ThrowPublicationFailures(exceptions);
+    }
+
+    private void InvokeSubscribers(EventHandler? subscribers, ref List<Exception>? exceptions)
+    {
+        if (subscribers is null)
+        {
+            return;
+        }
+
+        foreach (EventHandler subscriber in subscribers.GetInvocationList().Cast<EventHandler>())
+        {
+            try
+            {
+                subscriber(this, EventArgs.Empty);
+            }
+            catch (Exception exception)
+            {
+                exceptions ??= [];
+                exceptions.Add(exception);
+            }
         }
     }
 
@@ -952,9 +970,20 @@ public sealed class HudRouter
         }
     }
 
-    private void OnStateChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
+    private static void ThrowPublicationFailures(IReadOnlyList<Exception>? exceptions)
+    {
+        if (exceptions is null || exceptions.Count == 0)
+        {
+            return;
+        }
 
-    private void OnPresentationChanged() => PresentationChanged?.Invoke(this, EventArgs.Empty);
+        if (exceptions.Count == 1)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exceptions[0]).Throw();
+        }
+
+        throw new AggregateException("One or more HUD router subscribers failed.", exceptions);
+    }
 
     private sealed class ModulePresentationSubscription
     {
