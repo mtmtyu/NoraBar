@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Threading;
 using System.Windows;
 using NoraBar.Hud;
@@ -34,7 +35,7 @@ public partial class App : Application
             _hudRegistry = new HudRegistry();
             _hudRegistry.Register(_musicHudModule);
 
-            UserSettings settings = _viewModel.SettingsSnapshot;
+            UserSettings settings = _viewModel.CurrentSettings;
             _hudRouter = new HudRouter(
                 _hudRegistry,
                 settings.DefaultHudId,
@@ -86,7 +87,32 @@ public partial class App : Application
     private async Task ShutdownCoreAsync()
     {
         var exceptions = new List<Exception>();
+        await CleanupApplicationResourcesAsync(exceptions);
 
+        AggregateException? shutdownException = exceptions.Count > 0
+            ? new AggregateException("NoraBarの終了処理中にエラーが発生しました。", exceptions)
+            : null;
+        if (shutdownException is not null)
+        {
+            Trace.TraceError(shutdownException.ToString());
+        }
+
+        Shutdown();
+
+        if (shutdownException is not null)
+        {
+            throw shutdownException;
+        }
+    }
+
+    private async Task CleanupStartupFailureAsync()
+    {
+        var ignored = new List<Exception>();
+        await CleanupApplicationResourcesAsync(ignored);
+    }
+
+    private async Task CleanupApplicationResourcesAsync(ICollection<Exception> exceptions)
+    {
         if (_mainWindow is not null)
         {
             Capture(_mainWindow.DetachHudRouter, exceptions);
@@ -111,44 +137,6 @@ public partial class App : Application
             Capture(_mainWindow.ReleaseShellResources, exceptions);
             Capture(_mainWindow.AllowClose, exceptions);
             Capture(_mainWindow.Close, exceptions);
-        }
-
-        Shutdown();
-
-        if (exceptions.Count > 0)
-        {
-            throw new AggregateException("NoraBarの終了処理中にエラーが発生しました。", exceptions);
-        }
-    }
-
-    private async Task CleanupStartupFailureAsync()
-    {
-        var ignored = new List<Exception>();
-
-        if (_mainWindow is not null)
-        {
-            Capture(_mainWindow.DetachHudRouter, ignored);
-        }
-
-        if (_hudRouter is not null)
-        {
-            await CaptureAsync(
-                () => _hudRouter.ShutdownAsync(CancellationToken.None),
-                ignored);
-        }
-
-        if (_hudRegistry is not null)
-        {
-            await CaptureAsync(
-                async () => await _hudRegistry.DisposeAsync(),
-                ignored);
-        }
-
-        if (_mainWindow is not null)
-        {
-            Capture(_mainWindow.ReleaseShellResources, ignored);
-            Capture(_mainWindow.AllowClose, ignored);
-            Capture(_mainWindow.Close, ignored);
         }
     }
 
