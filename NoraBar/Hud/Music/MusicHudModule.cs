@@ -4,9 +4,6 @@ using System.Windows;
 using System.Windows.Threading;
 using NoraBar.Models;
 using NoraBar.ViewModels;
-using NoraBar.Views.Island.DesignA_Minimal;
-using NoraBar.Views.Island.DesignB_Productivity;
-using NoraBar.Views.Island.DesignC_LyricsFocus;
 
 namespace NoraBar.Hud.Music;
 
@@ -15,7 +12,7 @@ internal sealed class MusicHudModule : IHudModule
     private readonly object _syncRoot = new();
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
     private readonly IMusicHudPresentationSource _source;
-    private readonly IReadOnlyDictionary<DesignVariant, Func<FrameworkElement>> _viewFactories;
+    private readonly Func<DesignVariant, FrameworkElement> _createView;
     private readonly Dictionary<DesignVariant, FrameworkElement> _views = [];
     private Dispatcher? _viewDispatcher;
     private TaskCompletionSource<bool> _notificationsDrained = CreateCompletedSignal();
@@ -31,23 +28,18 @@ internal sealed class MusicHudModule : IHudModule
     internal MusicHudModule(MainViewModel viewModel)
         : this(
             new MainViewModelMusicHudPresentationSource(viewModel),
-            new Dictionary<DesignVariant, Func<FrameworkElement>>
-            {
-                [DesignVariant.MinimalFloatingPill] = static () => new DesignAMusicView(),
-                [DesignVariant.ProductivityCommandIsland] = static () => new DesignBMusicView(),
-                [DesignVariant.LyricsFocusedSidebar] = static () => new DesignCMusicView()
-            })
+            MusicHudViewFactory.Create)
     {
     }
 
     internal MusicHudModule(
         IMusicHudPresentationSource source,
-        IReadOnlyDictionary<DesignVariant, Func<FrameworkElement>> viewFactories)
+        Func<DesignVariant, FrameworkElement> createView)
     {
         ArgumentNullException.ThrowIfNull(source);
-        ArgumentNullException.ThrowIfNull(viewFactories);
+        ArgumentNullException.ThrowIfNull(createView);
         _source = source;
-        _viewFactories = viewFactories;
+        _createView = createView;
     }
 
     public string Id => BuiltInHudIds.Music;
@@ -197,15 +189,7 @@ internal sealed class MusicHudModule : IHudModule
 
         if (view is null)
         {
-            if (!_viewFactories.TryGetValue(variant, out Func<FrameworkElement>? factory))
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(variant),
-                    variant,
-                    "未対応の音楽HUDデザインです。");
-            }
-
-            FrameworkElement createdView = factory();
+            FrameworkElement createdView = _createView(variant);
             if (createdView.Dispatcher != dispatcher)
             {
                 throw new InvalidOperationException("音楽HUDのViewは現在のDispatcherで生成する必要があります。");

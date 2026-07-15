@@ -466,10 +466,7 @@ public sealed class MusicHudModuleTests
         Func<DesignVariant, FrameworkElement>? createView = null)
     {
         createView ??= _ => new Border();
-        var factories = Enum.GetValues<DesignVariant>().ToDictionary(
-            variant => variant,
-            variant => new Func<FrameworkElement>(() => createView(variant)));
-        return new MusicHudModule(source, factories);
+        return new MusicHudModule(source, createView);
     }
 
     private static void RunInSta(Action action)
