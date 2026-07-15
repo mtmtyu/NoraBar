@@ -7,6 +7,27 @@ namespace NoraBar.Tests.Architecture;
 
 public sealed class MainWindowDependencyTests
 {
+    [Theory]
+    [InlineData(nameof(MainViewModel.DisableExpandOnFullscreen), true)]
+    [InlineData(nameof(MainViewModel.SelectedLanguage), false)]
+    [InlineData(nameof(MainViewModel.HasCustomPosition), false)]
+    [InlineData(nameof(MainViewModel.IsPositionEditMode), false)]
+    [InlineData(null, false)]
+    public void TryScheduleHudPresentationRefresh_OnlyMatchesFullscreenExpansionSetting(
+        string? propertyName,
+        bool expected)
+    {
+        int schedulingCount = 0;
+
+        bool scheduled = HudPresentationRefreshScheduler.TrySchedule(
+            propertyName,
+            _ => schedulingCount++,
+            () => { });
+
+        Assert.Equal(expected, scheduled);
+        Assert.Equal(expected ? 1 : 0, schedulingCount);
+    }
+
     [Fact]
     public void MainWindow_DependsOnRouterButDoesNotStoreHudModule()
     {

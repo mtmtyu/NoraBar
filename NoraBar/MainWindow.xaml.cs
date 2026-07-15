@@ -218,6 +218,16 @@ public partial class MainWindow : Window
         {
             Dispatcher.Invoke(UpdateEditModeVisuals);
         }
+        else
+        {
+            _ = HudPresentationRefreshScheduler.TrySchedule(
+                e.PropertyName,
+                callback =>
+                {
+                    Dispatcher.BeginInvoke(callback);
+                },
+                RefreshHudPresentation);
+        }
     }
 
     private void ApplyWindowPosition()

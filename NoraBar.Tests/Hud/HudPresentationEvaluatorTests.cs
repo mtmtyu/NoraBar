@@ -66,6 +66,45 @@ public sealed class HudPresentationEvaluatorTests
         });
     }
 
+    [Fact]
+    public void TryEvaluate_WhenFullscreenSuppressionIsDisabled_ReevaluatesWithoutLifecycleTransition()
+    {
+        RunInSta(() =>
+        {
+            var module = new CountingHudModule();
+            var snapshot = CreateSnapshot(module, HudPresentationState.Expanded);
+            Action? scheduledRefresh = null;
+            bool reevaluated = false;
+
+            bool suppressed = HudPresentationEvaluator.TryEvaluate(
+                snapshot,
+                suppressExpansion: true,
+                out _);
+            bool refreshScheduled = HudPresentationRefreshScheduler.TrySchedule(
+                nameof(NoraBar.ViewModels.MainViewModel.DisableExpandOnFullscreen),
+                callback => scheduledRefresh = callback,
+                () =>
+                {
+                    reevaluated = HudPresentationEvaluator.TryEvaluate(
+                        snapshot,
+                        suppressExpansion: false,
+                        out _);
+                });
+
+            Assert.False(suppressed);
+            Assert.True(refreshScheduled);
+            Assert.NotNull(scheduledRefresh);
+            Assert.Equal(0, module.GetViewCount);
+            Assert.Equal(0, module.GetPreferredSizeCount);
+            scheduledRefresh();
+            Assert.True(reevaluated);
+            Assert.Equal(1, module.GetViewCount);
+            Assert.Equal(1, module.GetPreferredSizeCount);
+            Assert.Equal(0, module.ActivateCount);
+            Assert.Equal(0, module.DeactivateCount);
+        });
+    }
+
     private static HudRouterSnapshot CreateSnapshot(
         IHudModule module,
         HudPresentationState presentationState)
@@ -118,6 +157,10 @@ public sealed class HudPresentationEvaluatorTests
 
         public int GetPreferredSizeCount { get; private set; }
 
+        public int ActivateCount { get; private set; }
+
+        public int DeactivateCount { get; private set; }
+
         public event EventHandler? PresentationInvalidated
         {
             add { }
@@ -126,9 +169,17 @@ public sealed class HudPresentationEvaluatorTests
 
         public ValueTask InitializeAsync(CancellationToken cancellationToken) => ValueTask.CompletedTask;
 
-        public ValueTask ActivateAsync(CancellationToken cancellationToken) => ValueTask.CompletedTask;
+        public ValueTask ActivateAsync(CancellationToken cancellationToken)
+        {
+            ActivateCount++;
+            return ValueTask.CompletedTask;
+        }
 
-        public ValueTask DeactivateAsync(CancellationToken cancellationToken) => ValueTask.CompletedTask;
+        public ValueTask DeactivateAsync(CancellationToken cancellationToken)
+        {
+            DeactivateCount++;
+            return ValueTask.CompletedTask;
+        }
 
         public FrameworkElement GetView(HudViewContext context)
         {
