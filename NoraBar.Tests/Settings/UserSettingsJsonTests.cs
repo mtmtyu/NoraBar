@@ -56,6 +56,8 @@ public class UserSettingsJsonTests
         UserSettings loaded = UserSettingsJson.DeserializeOrDefault(json);
         UserSettings result = UserSettingsJson.DeserializeOrDefault(UserSettingsJson.Serialize(loaded));
 
+        AssertKnownSerializedPropertiesEqual(input.RootElement, result);
+
         Assert.Equal(7, result.SchemaVersion);
         Assert.Equal("com.example.weather", result.DefaultHudId);
         Assert.Equal(["com.example.weather", "music"], result.EnabledHudModuleIds);
@@ -176,5 +178,29 @@ public class UserSettingsJsonTests
 
         Assert.Equal(futureVariantValue, (int)loaded.Variant);
         Assert.Equal(futureVariantValue, (int)result.Variant);
+    }
+
+    private static void AssertKnownSerializedPropertiesEqual(JsonElement expectedJson, UserSettings actual)
+    {
+        JsonElement actualJson = JsonSerializer.SerializeToElement(actual);
+        PropertyInfo[] knownSerializedProperties = typeof(UserSettings)
+            .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            .Where(property =>
+                property.GetCustomAttribute<JsonExtensionDataAttribute>() is null
+                && property.GetCustomAttribute<JsonIgnoreAttribute>() is null)
+            .ToArray();
+
+        foreach (PropertyInfo property in knownSerializedProperties)
+        {
+            string serializedName = property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name
+                ?? property.Name;
+            JsonElement expectedValue = expectedJson.GetProperty(serializedName);
+            JsonElement actualValue = actualJson.GetProperty(serializedName);
+
+            Assert.True(
+                JsonElement.DeepEquals(expectedValue, actualValue),
+                $"Known setting '{serializedName}' changed during serialization. " +
+                $"Expected: {expectedValue.GetRawText()}; Actual: {actualValue.GetRawText()}.");
+        }
     }
 }
