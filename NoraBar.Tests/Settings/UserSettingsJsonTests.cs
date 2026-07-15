@@ -89,4 +89,22 @@ public class UserSettingsJsonTests
         Assert.Equal("com.example.weather", settings.DefaultHudId);
         Assert.Empty(settings.EnabledHudModuleIds);
     }
+
+    [Fact]
+    public void Serialize_PreservesUnknownFutureDesignVariantValue()
+    {
+        const int futureVariantValue = 99;
+        const string json = """
+            {
+              "Variant": 99,
+              "ShowProgressBar": true
+            }
+            """;
+
+        UserSettings loaded = UserSettingsJson.DeserializeOrDefault(json);
+        UserSettings result = UserSettingsJson.DeserializeOrDefault(UserSettingsJson.Serialize(loaded));
+
+        Assert.Equal(futureVariantValue, (int)loaded.Variant);
+        Assert.Equal(futureVariantValue, (int)result.Variant);
+    }
 }

@@ -186,7 +186,7 @@ internal sealed class MusicHudModule : IHudModule
 
         }
 
-        DesignVariant variant = _source.CurrentVariant;
+        DesignVariant variant = MusicHudDesignVariantResolver.Resolve(_source.CurrentVariant);
         object dataContext = _source.ViewDataContext;
         FrameworkElement? view;
         lock (_syncRoot)
@@ -244,7 +244,7 @@ internal sealed class MusicHudModule : IHudModule
         }
 
         return MusicHudLayout.Calculate(
-            _source.CurrentVariant,
+            MusicHudDesignVariantResolver.Resolve(_source.CurrentVariant),
             _source.ShowProgressBar,
             _source.ShowLyrics,
             _source.HasMultipleSessions);

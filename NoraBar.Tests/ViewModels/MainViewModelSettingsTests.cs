@@ -58,4 +58,30 @@ public class MainViewModelSettingsTests
         Assert.Same(additionalProperties, settings.AdditionalProperties);
         Assert.True(settings.AdditionalProperties["FutureSetting"].GetProperty("enabled").GetBoolean());
     }
+
+    [Fact]
+    public void UpdateKnownSettings_PreservesUnknownFutureDesignVariantValue()
+    {
+        DesignVariant futureVariant = (DesignVariant)99;
+        var settings = new UserSettings
+        {
+            Variant = futureVariant
+        };
+
+        MainViewModel.UpdateKnownSettings(
+            settings,
+            settings.Variant,
+            showProgressBar: false,
+            showLyrics: true,
+            TextScrollMode.HoverOnly,
+            AppLanguage.English,
+            hasCustomPosition: true,
+            windowLeft: 120.5,
+            windowTop: 240.5,
+            checkUpdateOnStartup: false,
+            disableExpandOnFullscreen: false);
+
+        Assert.Equal(futureVariant, settings.Variant);
+        Assert.False(settings.ShowProgressBar);
+    }
 }
