@@ -923,6 +923,7 @@ public sealed class HudRouter
 
     private async Task ObservePresentationInvalidationDrainAsync()
     {
+        await Task.Yield();
         try
         {
             await DrainPendingPresentationInvalidationAsync();

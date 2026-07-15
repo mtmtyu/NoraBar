@@ -190,6 +190,34 @@ public sealed class HudRouterPublicationTests
         Assert.Equal(2, notificationCount);
     }
 
+    [Fact]
+    public async Task PresentationChanged_DefersRepeatedInvalidationUntilOriginatingRaiseReturns()
+    {
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        HudRouter router = await CreateInitializedRouterAsync(music);
+        var notificationsDrained = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        int notificationCount = 0;
+        router.PresentationChanged += (_, _) =>
+        {
+            int currentCount = Interlocked.Increment(ref notificationCount);
+            if (currentCount < 3)
+            {
+                music.RaisePresentationInvalidated();
+            }
+            else
+            {
+                notificationsDrained.TrySetResult();
+            }
+        };
+
+        music.RaisePresentationInvalidated();
+
+        Assert.Equal(1, notificationCount);
+        await notificationsDrained.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(3, notificationCount);
+    }
+
     private static async Task<HudRouter> CreateInitializedRouterAsync(
         FakeHudModule music,
         params FakeHudModule[] additionalModules)
