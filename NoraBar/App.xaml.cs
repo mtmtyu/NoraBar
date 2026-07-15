@@ -61,14 +61,22 @@ public partial class App : Application
         }
         catch (Exception exception)
         {
-            MessageBox.Show(
-                $"NoraBarの起動に失敗しました。{Environment.NewLine}{exception.Message}",
-                "NoraBar",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+            StartupFailureReport failureReport =
+                await CleanupStartupFailureAsync(exception);
+            failureReport.WriteTrace(message => Trace.TraceError(message));
 
-            await CleanupStartupFailureAsync();
-            Shutdown(-1);
+            try
+            {
+                MessageBox.Show(
+                    failureReport.UserMessage,
+                    "NoraBar",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                Shutdown(-1);
+            }
         }
     }
 
@@ -105,10 +113,12 @@ public partial class App : Application
         }
     }
 
-    private async Task CleanupStartupFailureAsync()
+    private async Task<StartupFailureReport> CleanupStartupFailureAsync(
+        Exception startupException)
     {
-        var ignored = new List<Exception>();
-        await CleanupApplicationResourcesAsync(ignored);
+        var cleanupExceptions = new List<Exception>();
+        await CleanupApplicationResourcesAsync(cleanupExceptions);
+        return StartupFailureReport.Create(startupException, cleanupExceptions);
     }
 
     private async Task CleanupApplicationResourcesAsync(ICollection<Exception> exceptions)
