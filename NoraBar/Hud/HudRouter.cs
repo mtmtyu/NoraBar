@@ -8,6 +8,7 @@ public sealed class HudRouter
     private readonly HudRegistry _registry;
     private readonly string _configuredDefaultHudId;
     private readonly string[] _configuredEnabledHudModuleIds;
+    private readonly Action<Exception> _reportDeferredPublicationFailure;
     private readonly object _stateLock = new();
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
     private readonly SemaphoreSlim _publicationGate = new(1, 1);
@@ -33,14 +34,29 @@ public sealed class HudRouter
         HudRegistry registry,
         string configuredDefaultHudId,
         IEnumerable<string> configuredEnabledHudModuleIds)
+        : this(
+            registry,
+            configuredDefaultHudId,
+            configuredEnabledHudModuleIds,
+            static exception => System.Diagnostics.Trace.TraceError(exception.ToString()))
+    {
+    }
+
+    internal HudRouter(
+        HudRegistry registry,
+        string configuredDefaultHudId,
+        IEnumerable<string> configuredEnabledHudModuleIds,
+        Action<Exception> reportDeferredPublicationFailure)
     {
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(configuredDefaultHudId);
         ArgumentNullException.ThrowIfNull(configuredEnabledHudModuleIds);
+        ArgumentNullException.ThrowIfNull(reportDeferredPublicationFailure);
 
         _registry = registry;
         _configuredDefaultHudId = configuredDefaultHudId;
         _configuredEnabledHudModuleIds = configuredEnabledHudModuleIds.ToArray();
+        _reportDeferredPublicationFailure = reportDeferredPublicationFailure;
         (_enabledHudModuleIds, _effectiveDefaultHudId) = ResolveRuntimeConfiguration(
             _configuredEnabledHudModuleIds);
     }
@@ -197,28 +213,27 @@ public sealed class HudRouter
         await _lifecycleGate.WaitAsync(cancellationToken);
         try
         {
-            IHudModule targetModule;
+            EnsureCanNavigate();
+            List<string> enabledIds;
+            string effectiveDefaultHudId;
+            IHudModule? currentModule;
+            lock (_stateLock)
+            {
+                enabledIds = [.. _enabledHudModuleIds];
+                effectiveDefaultHudId = _effectiveDefaultHudId;
+                currentModule = _currentModule;
+            }
+
+            string targetHudId = ResolveNavigationTarget(hudId, enabledIds, effectiveDefaultHudId);
+            IHudModule targetModule = GetRegisteredModule(targetHudId);
+            if (ReferenceEquals(targetModule, currentModule))
+            {
+                return;
+            }
+
             await EnterLifecycleMutationAsync(cancellationToken);
             try
             {
-                EnsureCanNavigate();
-                List<string> enabledIds;
-                string effectiveDefaultHudId;
-                IHudModule? currentModule;
-                lock (_stateLock)
-                {
-                    enabledIds = [.. _enabledHudModuleIds];
-                    effectiveDefaultHudId = _effectiveDefaultHudId;
-                    currentModule = _currentModule;
-                }
-
-                string targetHudId = ResolveNavigationTarget(hudId, enabledIds, effectiveDefaultHudId);
-                targetModule = GetRegisteredModule(targetHudId);
-                if (ReferenceEquals(targetModule, currentModule))
-                {
-                    return;
-                }
-
                 lock (_stateLock)
                 {
                     _isTransitioning = true;
@@ -903,13 +918,30 @@ public sealed class HudRouter
 
     private void SchedulePresentationInvalidationDrain()
     {
-        Task drainTask = DrainPendingPresentationInvalidationAsync();
-        // Deferred event handlers have no originating caller to receive failures.
-        _ = drainTask.ContinueWith(
-            static completedTask => _ = completedTask.Exception,
-            CancellationToken.None,
-            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
-            TaskScheduler.Default);
+        _ = ObservePresentationInvalidationDrainAsync();
+    }
+
+    private async Task ObservePresentationInvalidationDrainAsync()
+    {
+        try
+        {
+            await DrainPendingPresentationInvalidationAsync();
+        }
+        catch (Exception exception)
+        {
+            try
+            {
+                _reportDeferredPublicationFailure(exception);
+            }
+            catch (Exception reportingException)
+            {
+                var aggregateException = new AggregateException(
+                    "Reporting a deferred HUD publication failure also failed.",
+                    exception,
+                    reportingException);
+                System.Diagnostics.Trace.TraceError(aggregateException.ToString());
+            }
+        }
     }
 
     private async Task DrainPendingPresentationInvalidationAsync()
@@ -991,8 +1023,11 @@ public sealed class HudRouter
 
             if (publishPresentation)
             {
-                ChangePublicationKind(activeKind, PublicationKind.Presentation);
-                activeKind = PublicationKind.Presentation;
+                PublicationKind presentationKind = activeKind == PublicationKind.LifecycleState
+                    ? PublicationKind.LifecyclePresentation
+                    : PublicationKind.Presentation;
+                ChangePublicationKind(activeKind, presentationKind);
+                activeKind = presentationKind;
                 InvokeSubscribers(PresentationChanged, ref exceptions);
             }
 
@@ -1089,6 +1124,7 @@ public sealed class HudRouter
         switch (publicationKind)
         {
             case PublicationKind.LifecycleState:
+            case PublicationKind.LifecyclePresentation:
                 _activeLifecycleStatePublicationCount += delta;
                 break;
             case PublicationKind.Presentation:
@@ -1178,6 +1214,7 @@ public sealed class HudRouter
     {
         PresentationState,
         LifecycleState,
+        LifecyclePresentation,
         Presentation
     }
 
