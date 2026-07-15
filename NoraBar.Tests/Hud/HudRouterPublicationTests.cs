@@ -197,10 +197,20 @@ public sealed class HudRouterPublicationTests
         HudRouter router = await CreateInitializedRouterAsync(music);
         var notificationsDrained = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
+        int originatingThreadId = Environment.CurrentManagedThreadId;
+        bool originatingRaiseActive = true;
+        bool recursedOnOriginatingStack = false;
         int notificationCount = 0;
         router.PresentationChanged += (_, _) =>
         {
             int currentCount = Interlocked.Increment(ref notificationCount);
+            if (currentCount > 1
+                && originatingRaiseActive
+                && Environment.CurrentManagedThreadId == originatingThreadId)
+            {
+                recursedOnOriginatingStack = true;
+            }
+
             if (currentCount < 3)
             {
                 music.RaisePresentationInvalidated();
@@ -212,10 +222,35 @@ public sealed class HudRouterPublicationTests
         };
 
         music.RaisePresentationInvalidated();
+        originatingRaiseActive = false;
 
-        Assert.Equal(1, notificationCount);
         await notificationsDrained.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.False(recursedOnOriginatingStack);
         Assert.Equal(3, notificationCount);
+    }
+
+    [Fact]
+    public async Task PresentationChanged_WhenDrainSchedulingFails_ReportsFailure()
+    {
+        var reportedFailure = new TaskCompletionSource<Exception>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var registry = new HudRegistry();
+        registry.Register(music);
+        var expectedFailure = new InvalidOperationException("scheduling failed");
+        var router = new HudRouter(
+            registry,
+            BuiltInHudIds.Music,
+            [BuiltInHudIds.Music],
+            exception => reportedFailure.TrySetResult(exception),
+            _ => throw expectedFailure);
+        await router.InitializeAsync(CancellationToken.None);
+        router.PresentationChanged += (_, _) => music.RaisePresentationInvalidated();
+
+        music.RaisePresentationInvalidated();
+
+        Exception actualFailure = await reportedFailure.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Same(expectedFailure, actualFailure);
     }
 
     private static async Task<HudRouter> CreateInitializedRouterAsync(

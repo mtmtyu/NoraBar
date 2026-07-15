@@ -9,6 +9,7 @@ public sealed class HudRouter
     private readonly string _configuredDefaultHudId;
     private readonly string[] _configuredEnabledHudModuleIds;
     private readonly Action<Exception> _reportDeferredPublicationFailure;
+    private readonly Action<Func<Task>> _scheduleDeferredPublication;
     private readonly object _stateLock = new();
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
     private readonly SemaphoreSlim _publicationGate = new(1, 1);
@@ -38,7 +39,8 @@ public sealed class HudRouter
             registry,
             configuredDefaultHudId,
             configuredEnabledHudModuleIds,
-            static exception => System.Diagnostics.Trace.TraceError(exception.ToString()))
+            static exception => System.Diagnostics.Trace.TraceError(exception.ToString()),
+            static operation => _ = Task.Run(operation))
     {
     }
 
@@ -47,16 +49,33 @@ public sealed class HudRouter
         string configuredDefaultHudId,
         IEnumerable<string> configuredEnabledHudModuleIds,
         Action<Exception> reportDeferredPublicationFailure)
+        : this(
+            registry,
+            configuredDefaultHudId,
+            configuredEnabledHudModuleIds,
+            reportDeferredPublicationFailure,
+            static operation => _ = Task.Run(operation))
+    {
+    }
+
+    internal HudRouter(
+        HudRegistry registry,
+        string configuredDefaultHudId,
+        IEnumerable<string> configuredEnabledHudModuleIds,
+        Action<Exception> reportDeferredPublicationFailure,
+        Action<Func<Task>> scheduleDeferredPublication)
     {
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(configuredDefaultHudId);
         ArgumentNullException.ThrowIfNull(configuredEnabledHudModuleIds);
         ArgumentNullException.ThrowIfNull(reportDeferredPublicationFailure);
+        ArgumentNullException.ThrowIfNull(scheduleDeferredPublication);
 
         _registry = registry;
         _configuredDefaultHudId = configuredDefaultHudId;
         _configuredEnabledHudModuleIds = configuredEnabledHudModuleIds.ToArray();
         _reportDeferredPublicationFailure = reportDeferredPublicationFailure;
+        _scheduleDeferredPublication = scheduleDeferredPublication;
         (_enabledHudModuleIds, _effectiveDefaultHudId) = ResolveRuntimeConfiguration(
             _configuredEnabledHudModuleIds);
     }
@@ -918,29 +937,47 @@ public sealed class HudRouter
 
     private void SchedulePresentationInvalidationDrain()
     {
-        _ = ObservePresentationInvalidationDrainAsync();
+        try
+        {
+            _scheduleDeferredPublication(ObservePresentationInvalidationDrainAsync);
+        }
+        catch (Exception exception)
+        {
+            ReportDeferredPublicationFailure(exception);
+        }
     }
 
     private async Task ObservePresentationInvalidationDrainAsync()
     {
-        await Task.Yield();
         try
         {
             await DrainPendingPresentationInvalidationAsync();
         }
         catch (Exception exception)
         {
+            ReportDeferredPublicationFailure(exception);
+        }
+    }
+
+    private void ReportDeferredPublicationFailure(Exception exception)
+    {
+        try
+        {
+            _reportDeferredPublicationFailure(exception);
+        }
+        catch (Exception reportingException)
+        {
+            var aggregateException = new AggregateException(
+                "Reporting a deferred HUD publication failure also failed.",
+                exception,
+                reportingException);
             try
             {
-                _reportDeferredPublicationFailure(exception);
-            }
-            catch (Exception reportingException)
-            {
-                var aggregateException = new AggregateException(
-                    "Reporting a deferred HUD publication failure also failed.",
-                    exception,
-                    reportingException);
                 System.Diagnostics.Trace.TraceError(aggregateException.ToString());
+            }
+            catch (Exception)
+            {
+                // The observer must not fault after both configured error sinks have failed.
             }
         }
     }
