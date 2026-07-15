@@ -33,14 +33,29 @@ internal sealed class StartupFailureReport
             Array.AsReadOnly(capturedCleanupExceptions));
     }
 
-    internal void WriteTrace(Action<string> writeError)
+    internal IReadOnlyList<Exception> WriteTrace(Action<string> writeError)
     {
         ArgumentNullException.ThrowIfNull(writeError);
 
-        writeError($"{StartupTracePrefix}{Environment.NewLine}{StartupException}");
+        var traceFailures = new List<Exception>();
+        WriteEntry($"{StartupTracePrefix}{Environment.NewLine}{StartupException}");
         foreach (Exception cleanupException in CleanupExceptions)
         {
-            writeError($"{CleanupTracePrefix}{Environment.NewLine}{cleanupException}");
+            WriteEntry($"{CleanupTracePrefix}{Environment.NewLine}{cleanupException}");
+        }
+
+        return traceFailures.AsReadOnly();
+
+        void WriteEntry(string message)
+        {
+            try
+            {
+                writeError(message);
+            }
+            catch (Exception exception)
+            {
+                traceFailures.Add(exception);
+            }
         }
     }
 }

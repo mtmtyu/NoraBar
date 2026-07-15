@@ -61,14 +61,18 @@ public partial class App : Application
         }
         catch (Exception exception)
         {
-            StartupFailureReport failureReport =
-                await CleanupStartupFailureAsync(exception);
-            failureReport.WriteTrace(message => Trace.TraceError(message));
-
             try
             {
+                StartupFailureReport failureReport =
+                    await CleanupStartupFailureAsync(exception);
+                IReadOnlyList<Exception> traceFailures = failureReport.WriteTrace(
+                    message => Trace.TraceError(message));
+                string userMessage = traceFailures.Count == 0
+                    ? failureReport.UserMessage
+                    : $"{failureReport.UserMessage}{Environment.NewLine}詳細ログの記録にも失敗しました。";
+
                 MessageBox.Show(
-                    failureReport.UserMessage,
+                    userMessage,
                     "NoraBar",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
