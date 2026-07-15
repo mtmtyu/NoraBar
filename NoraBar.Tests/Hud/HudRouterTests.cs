@@ -627,6 +627,38 @@ public sealed class HudRouterTests
     }
 
     [Fact]
+    public async Task ShutdownAsync_WhenCleanupAndStateSubscriberFail_AggregatesAllFailures()
+    {
+        var unsubscribeException = new InvalidOperationException("music unsubscribe failed");
+        var deactivateException = new InvalidOperationException("music deactivate failed");
+        var subscriberException = new InvalidOperationException("state subscriber failed");
+        var music = new FakeHudModule(BuiltInHudIds.Music)
+        {
+            UnsubscribeException = unsubscribeException,
+            DeactivateException = deactivateException
+        };
+        HudRouter router = await CreateInitializedRouterAsync(music);
+        int remainingSubscriberCalls = 0;
+        router.StateChanged += (_, _) => throw subscriberException;
+        router.StateChanged += (_, _) => remainingSubscriberCalls++;
+
+        AggregateException exception = await Assert.ThrowsAsync<AggregateException>(
+            () => router.ShutdownAsync(CancellationToken.None));
+        await router.ShutdownAsync(CancellationToken.None);
+
+        Assert.Equal(
+            new Exception[] { unsubscribeException, deactivateException, subscriberException },
+            exception.InnerExceptions);
+        Assert.Equal(1, remainingSubscriberCalls);
+        Assert.Equal(1, music.DeactivateCount);
+        HudRouterSnapshot snapshot = router.GetSnapshot();
+        Assert.Null(snapshot.CurrentHudId);
+        Assert.Null(snapshot.CurrentModule);
+        Assert.False(snapshot.IsInitialized);
+        Assert.True(snapshot.IsShuttingDown);
+    }
+
+    [Fact]
     public async Task InitializeAsync_WhenSubscribeAddsThenThrows_RemovesHandlerDuringCleanup()
     {
         var subscribeException = new InvalidOperationException("music subscribe failed after add");

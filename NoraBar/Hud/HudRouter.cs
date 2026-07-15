@@ -464,7 +464,7 @@ public sealed class HudRouter
                 _currentModule = null;
                 _isInitialized = false;
                 _isTransitioning = false;
-            }, publishPendingPresentation: false);
+            }, publishPendingPresentation: false, publicationExceptions: shutdownExceptions);
             ThrowShutdownFailures(shutdownExceptions);
         }
         finally
