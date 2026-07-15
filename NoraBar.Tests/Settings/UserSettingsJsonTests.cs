@@ -182,7 +182,8 @@ public class UserSettingsJsonTests
 
     private static void AssertKnownSerializedPropertiesEqual(JsonElement expectedJson, UserSettings actual)
     {
-        JsonElement actualJson = JsonSerializer.SerializeToElement(actual);
+        using JsonDocument actualDocument = JsonDocument.Parse(UserSettingsJson.Serialize(actual));
+        JsonElement actualJson = actualDocument.RootElement;
         PropertyInfo[] knownSerializedProperties = typeof(UserSettings)
             .GetProperties(BindingFlags.Instance | BindingFlags.Public)
             .Where(property =>
