@@ -45,9 +45,7 @@ public class UserSettingsJsonTests
             .ToHashSet(StringComparer.Ordinal);
         string[] knownSerializedProperties = typeof(UserSettings)
             .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-            .Where(property =>
-                property.GetCustomAttribute<JsonExtensionDataAttribute>() is null
-                && property.GetCustomAttribute<JsonIgnoreAttribute>() is null)
+            .Where(IsKnownSerializedProperty)
             .Select(GetSerializedPropertyName)
             .ToArray();
 
@@ -180,15 +178,29 @@ public class UserSettingsJsonTests
         Assert.Equal(futureVariantValue, (int)result.Variant);
     }
 
+    [Fact]
+    public void KnownSerializedPropertyFilter_IncludesConditionallyIgnoredProperties()
+    {
+        HashSet<string> knownProperties = typeof(SerializationPropertyFixture)
+            .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            .Where(IsKnownSerializedProperty)
+            .Select(property => property.Name)
+            .ToHashSet(StringComparer.Ordinal);
+
+        Assert.Contains(nameof(SerializationPropertyFixture.Included), knownProperties);
+        Assert.Contains(nameof(SerializationPropertyFixture.WhenWritingDefault), knownProperties);
+        Assert.Contains(nameof(SerializationPropertyFixture.WhenWritingNull), knownProperties);
+        Assert.DoesNotContain(nameof(SerializationPropertyFixture.AlwaysIgnored), knownProperties);
+        Assert.DoesNotContain(nameof(SerializationPropertyFixture.ExtensionData), knownProperties);
+    }
+
     private static void AssertKnownSerializedPropertiesEqual(JsonElement expectedJson, UserSettings actual)
     {
         using JsonDocument actualDocument = JsonDocument.Parse(UserSettingsJson.Serialize(actual));
         JsonElement actualJson = actualDocument.RootElement;
         PropertyInfo[] knownSerializedProperties = typeof(UserSettings)
             .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-            .Where(property =>
-                property.GetCustomAttribute<JsonExtensionDataAttribute>() is null
-                && property.GetCustomAttribute<JsonIgnoreAttribute>() is null)
+            .Where(IsKnownSerializedProperty)
             .ToArray();
 
         foreach (PropertyInfo property in knownSerializedProperties)
@@ -204,9 +216,37 @@ public class UserSettingsJsonTests
         }
     }
 
+    private static bool IsKnownSerializedProperty(PropertyInfo property)
+    {
+        if (property.GetCustomAttribute<JsonExtensionDataAttribute>() is not null)
+        {
+            return false;
+        }
+
+        JsonIgnoreAttribute? ignoreAttribute = property.GetCustomAttribute<JsonIgnoreAttribute>();
+        return ignoreAttribute is null || ignoreAttribute.Condition != JsonIgnoreCondition.Always;
+    }
+
     private static string GetSerializedPropertyName(PropertyInfo property)
     {
         return property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name
             ?? property.Name;
+    }
+
+    private sealed class SerializationPropertyFixture
+    {
+        public int Included { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int WhenWritingDefault { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? WhenWritingNull { get; set; }
+
+        [JsonIgnore]
+        public int AlwaysIgnored { get; set; }
+
+        [JsonExtensionData]
+        public Dictionary<string, JsonElement> ExtensionData { get; set; } = [];
     }
 }
