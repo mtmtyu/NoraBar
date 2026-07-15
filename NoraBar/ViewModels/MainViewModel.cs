@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Net.Http.Json;
 using System.Windows.Input;
+using NoraBar.Hud;
 using NoraBar.Models;
 using NoraBar.Services;
 
@@ -476,7 +477,9 @@ namespace NoraBar.ViewModels
             WindowLeft = 0;
             WindowTop = 0;
             IsPositionEditMode = false;
-            
+
+            ResetKnownSettings(_settings);
+
             // Save current settings correctly
             SaveSettings();
         }
@@ -524,6 +527,28 @@ namespace NoraBar.ViewModels
             settings.WindowTop = windowTop;
             settings.CheckUpdateOnStartup = checkUpdateOnStartup;
             settings.DisableExpandOnFullscreen = disableExpandOnFullscreen;
+        }
+
+        internal static void ResetKnownSettings(UserSettings settings)
+        {
+            ArgumentNullException.ThrowIfNull(settings);
+
+            var defaults = new UserSettings();
+            settings.SchemaVersion = UserSettings.CurrentSchemaVersion;
+            settings.DefaultHudId = BuiltInHudIds.Music;
+            settings.EnabledHudModuleIds = [BuiltInHudIds.Music];
+            UpdateKnownSettings(
+                settings,
+                defaults.Variant,
+                defaults.ShowProgressBar,
+                defaults.ShowLyrics,
+                defaults.TextScrollMode,
+                defaults.Language,
+                defaults.HasCustomPosition,
+                defaults.WindowLeft,
+                defaults.WindowTop,
+                defaults.CheckUpdateOnStartup,
+                defaults.DisableExpandOnFullscreen);
         }
 
         private void ExecuteSetVariant(object? parameter)
