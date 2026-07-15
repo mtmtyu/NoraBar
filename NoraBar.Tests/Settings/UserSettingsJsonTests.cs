@@ -48,7 +48,7 @@ public class UserSettingsJsonTests
             .Where(property =>
                 property.GetCustomAttribute<JsonExtensionDataAttribute>() is null
                 && property.GetCustomAttribute<JsonIgnoreAttribute>() is null)
-            .Select(property => property.Name)
+            .Select(GetSerializedPropertyName)
             .ToArray();
 
         Assert.All(knownSerializedProperties, property => Assert.Contains(property, inputProperties));
@@ -192,8 +192,7 @@ public class UserSettingsJsonTests
 
         foreach (PropertyInfo property in knownSerializedProperties)
         {
-            string serializedName = property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name
-                ?? property.Name;
+            string serializedName = GetSerializedPropertyName(property);
             JsonElement expectedValue = expectedJson.GetProperty(serializedName);
             JsonElement actualValue = actualJson.GetProperty(serializedName);
 
@@ -202,5 +201,11 @@ public class UserSettingsJsonTests
                 $"Known setting '{serializedName}' changed during serialization. " +
                 $"Expected: {expectedValue.GetRawText()}; Actual: {actualValue.GetRawText()}.");
         }
+    }
+
+    private static string GetSerializedPropertyName(PropertyInfo property)
+    {
+        return property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name
+            ?? property.Name;
     }
 }
