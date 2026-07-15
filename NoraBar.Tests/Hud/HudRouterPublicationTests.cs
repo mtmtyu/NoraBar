@@ -253,6 +253,97 @@ public sealed class HudRouterPublicationTests
         Assert.Same(expectedFailure, actualFailure);
     }
 
+    [Fact]
+    public async Task PresentationChanged_AfterDrainSchedulingFails_RetriesPendingInvalidation()
+    {
+        var reportedFailure = new TaskCompletionSource<Exception>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var notificationsDrained = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var registry = new HudRegistry();
+        registry.Register(music);
+        var expectedFailure = new InvalidOperationException("scheduling failed");
+        int schedulingAttempts = 0;
+        var router = new HudRouter(
+            registry,
+            BuiltInHudIds.Music,
+            [BuiltInHudIds.Music],
+            exception => reportedFailure.TrySetResult(exception),
+            operation =>
+            {
+                if (Interlocked.Increment(ref schedulingAttempts) == 1)
+                {
+                    throw expectedFailure;
+                }
+
+                _ = Task.Run(operation);
+            });
+        await router.InitializeAsync(CancellationToken.None);
+        int notificationCount = 0;
+        router.PresentationChanged += (_, _) =>
+        {
+            int currentCount = Interlocked.Increment(ref notificationCount);
+            if (currentCount == 1)
+            {
+                music.RaisePresentationInvalidated();
+            }
+            else if (currentCount == 3)
+            {
+                notificationsDrained.TrySetResult();
+            }
+        };
+
+        music.RaisePresentationInvalidated();
+        Exception actualFailure = await reportedFailure.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        music.RaisePresentationInvalidated();
+
+        await notificationsDrained.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Same(expectedFailure, actualFailure);
+        Assert.Equal(2, schedulingAttempts);
+        Assert.Equal(3, notificationCount);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_SchedulesPendingDrainAfterReleasingPublicationGate()
+    {
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var registry = new HudRegistry();
+        registry.Register(music);
+        bool drainCompletedDuringSchedulerCall = false;
+        int schedulingCount = 0;
+        var router = new HudRouter(
+            registry,
+            BuiltInHudIds.Music,
+            [BuiltInHudIds.Music],
+            _ => { },
+            operation =>
+            {
+                Interlocked.Increment(ref schedulingCount);
+                drainCompletedDuringSchedulerCall = operation().IsCompletedSuccessfully;
+            });
+        await router.InitializeAsync(CancellationToken.None);
+        using var subscriberEntered = new ManualResetEventSlim();
+        using var releaseSubscriber = new ManualResetEventSlim();
+        router.StateChanged += (_, _) =>
+        {
+            subscriberEntered.Set();
+            Assert.True(releaseSubscriber.Wait(TimeSpan.FromSeconds(5)));
+        };
+
+        Task<bool> stateChange = Task.Run(() =>
+            router.SetPresentationState(HudPresentationState.Expanded));
+        Assert.True(subscriberEntered.Wait(TimeSpan.FromSeconds(5)));
+        Task repeatedInitialization = router.InitializeAsync(CancellationToken.None);
+        music.RaisePresentationInvalidated();
+        releaseSubscriber.Set();
+
+        Assert.True(await stateChange.WaitAsync(TimeSpan.FromSeconds(5)));
+        await repeatedInitialization.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(1, schedulingCount);
+        Assert.True(drainCompletedDuringSchedulerCall);
+    }
+
     private static async Task<HudRouter> CreateInitializedRouterAsync(
         FakeHudModule music,
         params FakeHudModule[] additionalModules)

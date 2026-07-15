@@ -173,8 +173,8 @@ public sealed class HudRouter
             }
             finally
             {
-                ExitLifecycleMutation();
                 _publicationGate.Release();
+                ExitLifecycleMutation();
             }
 
             IHudModule module = GetRegisteredModule(_effectiveDefaultHudId);
@@ -261,8 +261,8 @@ public sealed class HudRouter
             }
             finally
             {
-                ExitLifecycleMutation();
                 _publicationGate.Release();
+                ExitLifecycleMutation();
             }
 
             await TransitionToAsync(targetModule, cancellationToken);
@@ -331,8 +331,8 @@ public sealed class HudRouter
             }
             finally
             {
-                ExitLifecycleMutation();
                 _publicationGate.Release();
+                ExitLifecycleMutation();
             }
 
             if (fallback is not null)
@@ -445,8 +445,8 @@ public sealed class HudRouter
             }
             finally
             {
-                ExitLifecycleMutation();
                 _publicationGate.Release();
+                ExitLifecycleMutation();
             }
 
             var shutdownExceptions = new List<Exception>();
@@ -943,6 +943,11 @@ public sealed class HudRouter
         }
         catch (Exception exception)
         {
+            lock (_stateLock)
+            {
+                _isPresentationInvalidationDrainScheduled = false;
+            }
+
             ReportDeferredPublicationFailure(exception);
         }
     }
