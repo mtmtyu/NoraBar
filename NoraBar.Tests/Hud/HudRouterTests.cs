@@ -285,6 +285,28 @@ public sealed class HudRouterTests
     }
 
     [Fact]
+    public async Task NavigateToAsync_WhenRecoveryPresentationSubscriberThrows_PreservesNavigationFailure()
+    {
+        var activationException = new InvalidOperationException("launcher activation failed");
+        var subscriberException = new InvalidOperationException("presentation subscriber failed");
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var launcher = new FakeHudModule("launcher") { ActivateException = activationException };
+        HudRouter router = await CreateInitializedRouterAsync(music, launcher);
+        music.InvalidateDuringActivate = true;
+        int remainingSubscriberCalls = 0;
+        router.PresentationChanged += (_, _) => throw subscriberException;
+        router.PresentationChanged += (_, _) => remainingSubscriberCalls++;
+
+        HudNavigationException exception = await Assert.ThrowsAsync<HudNavigationException>(
+            () => router.NavigateToAsync(launcher.Id, CancellationToken.None));
+
+        Assert.Same(activationException, exception.InnerException);
+        Assert.Contains(subscriberException, exception.RecoveryExceptions);
+        Assert.Same(music, router.CurrentModule);
+        Assert.Equal(1, remainingSubscriberCalls);
+    }
+
+    [Fact]
     public async Task NavigateToAsync_WhenOldRecoveryFails_RestoresEffectiveDefault()
     {
         var music = new FakeHudModule(BuiltInHudIds.Music);

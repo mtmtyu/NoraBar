@@ -569,11 +569,11 @@ public sealed class HudRouter
                 _currentModule = null;
                 _presentationState = HudPresentationState.Collapsed;
                 _isInitialized = false;
+                _pendingPresentationInvalidationSubscription = null;
             }
 
             _isTransitioning = false;
-            _pendingPresentationInvalidationSubscription = null;
-        }, publishPendingPresentation: false, publicationExceptions: recoveryExceptions);
+        }, publicationExceptions: recoveryExceptions);
         throw new HudNavigationException(targetModule.Id, navigationException, recoveryExceptions);
     }
 
