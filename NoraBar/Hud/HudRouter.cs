@@ -573,7 +573,7 @@ public sealed class HudRouter
 
             _isTransitioning = false;
             _pendingPresentationInvalidationSubscription = null;
-        }, publishPendingPresentation: false);
+        }, publishPendingPresentation: false, publicationExceptions: recoveryExceptions);
         throw new HudNavigationException(targetModule.Id, navigationException, recoveryExceptions);
     }
 
@@ -1032,7 +1032,8 @@ public sealed class HudRouter
 
     private async Task PublishStateChangedAsync(
         Action stateMutation,
-        bool publishPendingPresentation = true)
+        bool publishPendingPresentation = true,
+        ICollection<Exception>? publicationExceptions = null)
     {
         bool notifyPresentation;
         await _publicationGate.WaitAsync(CancellationToken.None);
@@ -1051,12 +1052,16 @@ public sealed class HudRouter
             _publicationGate.Release();
         }
 
-        PublishStateNotification(PublicationKind.LifecycleState, notifyPresentation);
+        PublishStateNotification(
+            PublicationKind.LifecycleState,
+            notifyPresentation,
+            publicationExceptions);
     }
 
     private void PublishStateNotification(
         PublicationKind publicationKind,
-        bool publishPresentation)
+        bool publishPresentation,
+        ICollection<Exception>? publicationExceptions = null)
     {
         List<Exception>? exceptions = null;
         PublicationKind activeKind = publicationKind;
@@ -1074,7 +1079,17 @@ public sealed class HudRouter
                 InvokeSubscribers(PresentationChanged, ref exceptions);
             }
 
-            ThrowPublicationFailures(exceptions);
+            if (publicationExceptions is null)
+            {
+                ThrowPublicationFailures(exceptions);
+            }
+            else if (exceptions is not null)
+            {
+                foreach (Exception exception in exceptions)
+                {
+                    publicationExceptions.Add(exception);
+                }
+            }
         }
         finally
         {
