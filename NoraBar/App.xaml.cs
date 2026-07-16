@@ -15,7 +15,7 @@ public partial class App : Application
 {
     private const string AppMutexName = "NoraBar.AppMutex";
 
-    private readonly ShutdownTaskCoordinator _shutdownCoordinator = new();
+    private readonly ApplicationExitCoordinator _exitCoordinator;
     private Mutex? _appMutex;
     private MainViewModel? _viewModel;
     private MusicHudModule? _musicHudModule;
@@ -23,33 +23,44 @@ public partial class App : Application
     private HudRouter? _hudRouter;
     private MainWindow? _mainWindow;
 
+    public App()
+    {
+        _exitCoordinator = new ApplicationExitCoordinator(
+            CleanupApplicationResourcesAsync,
+            HandleApplicationExitAsync,
+            exitCode => Shutdown(exitCode));
+    }
+
     protected override async void OnStartup(StartupEventArgs e)
     {
         _appMutex = new Mutex(false, AppMutexName);
         base.OnStartup(e);
 
-        try
+        Task<ApplicationExitResult>? startupFailureTask = null;
+        using (IDisposable startupCompletion =
+               _exitCoordinator.TryBeginStartupCompletion()
+               ?? throw new InvalidOperationException(
+                   "起動完了処理を開始できませんでした。"))
         {
-            _viewModel = new MainViewModel();
-            _musicHudModule = new MusicHudModule(_viewModel);
-            _hudRegistry = new HudRegistry();
-            _hudRegistry.Register(_musicHudModule);
-
-            UserSettings settings = _viewModel.SettingsSnapshot;
-            _hudRouter = new HudRouter(
-                _hudRegistry,
-                settings.DefaultHudId,
-                settings.EnabledHudModuleIds);
-
-            _mainWindow = new MainWindow(_viewModel, _hudRouter, RequestShutdownAsync);
-            MainWindow = _mainWindow;
-
-            await _hudRouter.InitializeAsync(CancellationToken.None);
-            using (IDisposable? startupCompletion =
-                   _shutdownCoordinator.TryBeginStartupCompletion())
+            try
             {
+                _viewModel = new MainViewModel();
+                _musicHudModule = new MusicHudModule(_viewModel);
+                _hudRegistry = new HudRegistry();
+                _hudRegistry.Register(_musicHudModule);
+
+                UserSettings settings = _viewModel.SettingsSnapshot;
+                _hudRouter = new HudRouter(
+                    _hudRegistry,
+                    settings.DefaultHudId,
+                    settings.EnabledHudModuleIds);
+
+                _mainWindow = new MainWindow(_viewModel, _hudRouter, RequestShutdownAsync);
+                MainWindow = _mainWindow;
+
+                await _hudRouter.InitializeAsync(CancellationToken.None);
                 if (!ShouldShowMainWindow(
-                        startupCompletion is not null,
+                        startupCompletionAcquired: true,
                         _mainWindow.IsShutdownRequested))
                 {
                     return;
@@ -58,29 +69,16 @@ public partial class App : Application
                 _mainWindow.RefreshHudPresentation();
                 _mainWindow.Show();
             }
+            catch (Exception exception)
+            {
+                startupFailureTask =
+                    _exitCoordinator.RequestStartupFailureAsync(exception);
+            }
         }
-        catch (Exception exception)
-        {
-            try
-            {
-                StartupFailureReport failureReport =
-                    await CleanupStartupFailureAsync(exception);
-                IReadOnlyList<Exception> traceFailures = failureReport.WriteTrace(
-                    message => Trace.TraceError(message));
-                string userMessage = traceFailures.Count == 0
-                    ? failureReport.UserMessage
-                    : $"{failureReport.UserMessage}{Environment.NewLine}詳細ログの記録にも失敗しました。";
 
-                MessageBox.Show(
-                    userMessage,
-                    "NoraBar",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
-            finally
-            {
-                Shutdown(-1);
-            }
+        if (startupFailureTask is not null)
+        {
+            await startupFailureTask;
         }
     }
 
@@ -91,42 +89,54 @@ public partial class App : Application
         return startupCompletionAcquired && !shutdownRequested;
     }
 
-    internal Task RequestShutdownAsync()
+    internal async Task RequestShutdownAsync()
     {
-        return _shutdownCoordinator.RunOnce(ShutdownCoreAsync);
+        ApplicationExitResult result =
+            await _exitCoordinator.RequestShutdownAsync();
+        if (result.Reason == ApplicationExitReason.NormalShutdown &&
+            result.CleanupExceptions.Count > 0)
+        {
+            throw new AggregateException(
+                "NoraBarの終了処理中にエラーが発生しました。",
+                result.CleanupExceptions);
+        }
     }
 
-    private async Task ShutdownCoreAsync()
+    private Task HandleApplicationExitAsync(ApplicationExitResult result)
     {
-        var exceptions = new List<Exception>();
-        await CleanupApplicationResourcesAsync(exceptions);
-
-        AggregateException? shutdownException = exceptions.Count > 0
-            ? new AggregateException("NoraBarの終了処理中にエラーが発生しました。", exceptions)
-            : null;
-        if (shutdownException is not null)
+        if (result.Reason == ApplicationExitReason.StartupFailure)
         {
+            StartupFailureReport failureReport =
+                result.CreateStartupFailureReport();
+            IReadOnlyList<Exception> traceFailures = failureReport.WriteTrace(
+                message => Trace.TraceError(message));
+            string userMessage = traceFailures.Count == 0
+                ? failureReport.UserMessage
+                : $"{failureReport.UserMessage}{Environment.NewLine}詳細ログの記録にも失敗しました。";
+
+            MessageBox.Show(
+                userMessage,
+                "NoraBar",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            return Task.CompletedTask;
+        }
+
+        if (result.CleanupExceptions.Count > 0)
+        {
+            var shutdownException = new AggregateException(
+                "NoraBarの終了処理中にエラーが発生しました。",
+                result.CleanupExceptions);
             Trace.TraceError(shutdownException.ToString());
         }
 
-        Shutdown();
-
-        if (shutdownException is not null)
-        {
-            throw shutdownException;
-        }
+        return Task.CompletedTask;
     }
 
-    private async Task<StartupFailureReport> CleanupStartupFailureAsync(
-        Exception startupException)
+    private async Task<IReadOnlyList<Exception>> CleanupApplicationResourcesAsync()
     {
-        var cleanupExceptions = new List<Exception>();
-        await CleanupApplicationResourcesAsync(cleanupExceptions);
-        return StartupFailureReport.Create(startupException, cleanupExceptions);
-    }
+        var exceptions = new List<Exception>();
 
-    private async Task CleanupApplicationResourcesAsync(ICollection<Exception> exceptions)
-    {
         if (_mainWindow is not null)
         {
             Capture(_mainWindow.DetachHudRouter, exceptions);
@@ -152,6 +162,8 @@ public partial class App : Application
             Capture(_mainWindow.AllowClose, exceptions);
             Capture(_mainWindow.Close, exceptions);
         }
+
+        return exceptions.AsReadOnly();
     }
 
     protected override void OnExit(ExitEventArgs e)
