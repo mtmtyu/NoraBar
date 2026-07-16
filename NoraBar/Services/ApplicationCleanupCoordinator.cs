@@ -38,16 +38,19 @@ internal sealed class ApplicationCleanupCoordinator
                 ?? throw new InvalidOperationException(
                     "Cleanup must return a Task.");
             IReadOnlyList<Exception> cleanupExceptions = await cleanupTask;
+            if (cleanupExceptions is null)
+            {
+                throw new InvalidOperationException(
+                    "Cleanup must return a non-null exception result.");
+            }
+
             Exception[] capturedExceptions = cleanupExceptions.ToArray();
             completion.TrySetResult(Array.AsReadOnly(capturedExceptions));
         }
-        catch (OperationCanceledException exception)
-        {
-            completion.TrySetCanceled(exception.CancellationToken);
-        }
         catch (Exception exception)
         {
-            completion.TrySetException(exception);
+            completion.TrySetResult(
+                Array.AsReadOnly(new Exception[] { exception }));
         }
     }
 }

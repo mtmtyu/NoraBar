@@ -186,13 +186,158 @@ public sealed class ApplicationExitCoordinatorTests
             shutdownCodes);
     }
 
+    [Fact]
+    public async Task CleanupThrowsSynchronously_StillInvokesShutdownAndReturnsFailure()
+    {
+        var cleanupFailure = new InvalidOperationException("cleanup failed");
+        var shutdownCodes = new List<int>();
+        int beforeShutdownCalls = 0;
+        var coordinator = CreateCoordinator(
+            () => throw cleanupFailure,
+            shutdownCodes.Add,
+            _ => beforeShutdownCalls++);
+
+        Task<ApplicationExitResult> exit = coordinator.RequestShutdownAsync();
+        ApplicationExitResult result = await exit;
+
+        Assert.False(exit.IsCanceled);
+        Assert.Equal(new Exception[] { cleanupFailure }, result.CleanupExceptions);
+        Assert.Equal(ApplicationExitReason.NormalShutdown, result.Reason);
+        Assert.Equal(ApplicationExitCoordinator.NormalExitCode, result.ExitCode);
+        Assert.Equal(1, beforeShutdownCalls);
+        Assert.Equal(
+            new[] { ApplicationExitCoordinator.NormalExitCode },
+            shutdownCodes);
+    }
+
+    [Fact]
+    public async Task CleanupReturnsFaultedTask_StillInvokesShutdownAndReturnsFailure()
+    {
+        var cleanupFailure = new InvalidOperationException("cleanup failed");
+        var shutdownCodes = new List<int>();
+        int beforeShutdownCalls = 0;
+        var coordinator = CreateCoordinator(
+            () => Task.FromException<IReadOnlyList<Exception>>(cleanupFailure),
+            shutdownCodes.Add,
+            _ => beforeShutdownCalls++);
+
+        Task<ApplicationExitResult> exit = coordinator.RequestShutdownAsync();
+        ApplicationExitResult result = await exit;
+
+        Assert.False(exit.IsCanceled);
+        Assert.Equal(new Exception[] { cleanupFailure }, result.CleanupExceptions);
+        Assert.Equal(ApplicationExitReason.NormalShutdown, result.Reason);
+        Assert.Equal(ApplicationExitCoordinator.NormalExitCode, result.ExitCode);
+        Assert.Equal(1, beforeShutdownCalls);
+        Assert.Equal(
+            new[] { ApplicationExitCoordinator.NormalExitCode },
+            shutdownCodes);
+    }
+
+    [Fact]
+    public async Task CleanupIsCanceled_StillInvokesShutdownAndReturnsCancellationFailure()
+    {
+        using var cancellationSource = new CancellationTokenSource();
+        cancellationSource.Cancel();
+        var shutdownCodes = new List<int>();
+        int beforeShutdownCalls = 0;
+        var coordinator = CreateCoordinator(
+            () => Task.FromCanceled<IReadOnlyList<Exception>>(
+                cancellationSource.Token),
+            shutdownCodes.Add,
+            _ => beforeShutdownCalls++);
+
+        Task<ApplicationExitResult> exit = coordinator.RequestShutdownAsync();
+        ApplicationExitResult result = await exit;
+
+        Assert.False(exit.IsCanceled);
+        OperationCanceledException cancellationFailure =
+            Assert.IsAssignableFrom<OperationCanceledException>(
+                Assert.Single(result.CleanupExceptions));
+        Assert.Equal(cancellationSource.Token, cancellationFailure.CancellationToken);
+        Assert.Equal(ApplicationExitReason.NormalShutdown, result.Reason);
+        Assert.Equal(ApplicationExitCoordinator.NormalExitCode, result.ExitCode);
+        Assert.Equal(1, beforeShutdownCalls);
+        Assert.Equal(
+            new[] { ApplicationExitCoordinator.NormalExitCode },
+            shutdownCodes);
+    }
+
+    [Fact]
+    public async Task StartupFailureAndCleanupFault_PreserveBothAndUseFailureExitCode()
+    {
+        var startupFailure = new InvalidOperationException("startup failed");
+        var cleanupFailure = new InvalidOperationException("cleanup failed");
+        var shutdownCodes = new List<int>();
+        StartupFailureReport? failureReport = null;
+        var coordinator = CreateCoordinator(
+            () => Task.FromException<IReadOnlyList<Exception>>(cleanupFailure),
+            shutdownCodes.Add,
+            result => failureReport = result.CreateStartupFailureReport());
+        IDisposable startupCompletion = Assert.IsAssignableFrom<IDisposable>(
+            coordinator.TryBeginStartupCompletion());
+
+        Task<ApplicationExitResult> exit =
+            coordinator.RequestStartupFailureAsync(startupFailure);
+        startupCompletion.Dispose();
+        ApplicationExitResult result = await exit;
+
+        Assert.False(exit.IsCanceled);
+        Assert.Same(startupFailure, result.StartupException);
+        Assert.Equal(new Exception[] { cleanupFailure }, result.CleanupExceptions);
+        Assert.NotNull(failureReport);
+        Assert.Same(startupFailure, failureReport.StartupException);
+        Assert.Equal(
+            new Exception[] { cleanupFailure },
+            failureReport.CleanupExceptions);
+        Assert.Equal(ApplicationExitReason.StartupFailure, result.Reason);
+        Assert.Equal(ApplicationExitCoordinator.StartupFailureExitCode, result.ExitCode);
+        Assert.Equal(
+            new[] { ApplicationExitCoordinator.StartupFailureExitCode },
+            shutdownCodes);
+    }
+
+    [Fact]
+    public async Task CleanupReturnsNullResult_StillShutsDownWithDiagnosticFailure()
+    {
+        var shutdownCodes = new List<int>();
+        int beforeShutdownCalls = 0;
+        var coordinator = CreateCoordinator(
+            () => Task.FromResult<IReadOnlyList<Exception>>(null!),
+            shutdownCodes.Add,
+            _ => beforeShutdownCalls++);
+
+        Task<ApplicationExitResult> exit = coordinator.RequestShutdownAsync();
+        ApplicationExitResult result = await exit;
+
+        Assert.False(exit.IsCanceled);
+        InvalidOperationException diagnosticFailure =
+            Assert.IsType<InvalidOperationException>(
+                Assert.Single(result.CleanupExceptions));
+        Assert.Contains(
+            "result",
+            diagnosticFailure.Message,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(ApplicationExitReason.NormalShutdown, result.Reason);
+        Assert.Equal(ApplicationExitCoordinator.NormalExitCode, result.ExitCode);
+        Assert.Equal(1, beforeShutdownCalls);
+        Assert.Equal(
+            new[] { ApplicationExitCoordinator.NormalExitCode },
+            shutdownCodes);
+    }
+
     private static ApplicationExitCoordinator CreateCoordinator(
         Func<Task<IReadOnlyList<Exception>>> cleanup,
-        Action<int> shutdown)
+        Action<int> shutdown,
+        Action<ApplicationExitResult>? beforeShutdown = null)
     {
         return new ApplicationExitCoordinator(
             cleanup,
-            _ => Task.CompletedTask,
+            result =>
+            {
+                beforeShutdown?.Invoke(result);
+                return Task.CompletedTask;
+            },
             shutdown);
     }
 }

@@ -91,15 +91,7 @@ public partial class App : Application
 
     internal async Task RequestShutdownAsync()
     {
-        ApplicationExitResult result =
-            await _exitCoordinator.RequestShutdownAsync();
-        if (result.Reason == ApplicationExitReason.NormalShutdown &&
-            result.CleanupExceptions.Count > 0)
-        {
-            throw new AggregateException(
-                "NoraBarの終了処理中にエラーが発生しました。",
-                result.CleanupExceptions);
-        }
+        await _exitCoordinator.RequestShutdownAsync();
     }
 
     private Task HandleApplicationExitAsync(ApplicationExitResult result)
