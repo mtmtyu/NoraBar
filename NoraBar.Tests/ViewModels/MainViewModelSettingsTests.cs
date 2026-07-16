@@ -1,4 +1,5 @@
 using System.Text.Json;
+using NoraBar.Hud;
 using NoraBar.Models;
 using NoraBar.Services;
 using NoraBar.ViewModels;
@@ -54,6 +55,98 @@ public class MainViewModelSettingsTests
         Assert.Equal("com.example.weather", settings.DefaultHudId);
         Assert.Same(enabledHudModuleIds, settings.EnabledHudModuleIds);
         Assert.Same(modules, settings.Modules);
+        Assert.Equal("Tokyo", settings.Modules["com.example.weather"].GetProperty("city").GetString());
+        Assert.Same(additionalProperties, settings.AdditionalProperties);
+        Assert.True(settings.AdditionalProperties["FutureSetting"].GetProperty("enabled").GetBoolean());
+    }
+
+    [Fact]
+    public void UpdateKnownSettings_PreservesUnknownFutureDesignVariantValue()
+    {
+        DesignVariant futureVariant = (DesignVariant)99;
+        var settings = new UserSettings
+        {
+            Variant = futureVariant
+        };
+
+        MainViewModel.UpdateKnownSettings(
+            settings,
+            settings.Variant,
+            showProgressBar: false,
+            showLyrics: true,
+            TextScrollMode.HoverOnly,
+            AppLanguage.English,
+            hasCustomPosition: true,
+            windowLeft: 120.5,
+            windowTop: 240.5,
+            checkUpdateOnStartup: false,
+            disableExpandOnFullscreen: false);
+
+        Assert.Equal(futureVariant, settings.Variant);
+        Assert.False(settings.ShowProgressBar);
+    }
+
+    [Fact]
+    public void ResetKnownSettings_ResetsCurrentHudSettingsAndPreservesUnknownJson()
+    {
+        JsonElement futureMusicSettings = JsonSerializer.SerializeToElement(new
+        {
+            visualization = "spectrum"
+        });
+        JsonElement futureModuleSettings = JsonSerializer.SerializeToElement(new
+        {
+            city = "Tokyo"
+        });
+        JsonElement futureTopLevelSetting = JsonSerializer.SerializeToElement(new
+        {
+            enabled = true
+        });
+        var modules = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+        {
+            [BuiltInHudIds.Music] = futureMusicSettings,
+            ["com.example.weather"] = futureModuleSettings
+        };
+        var additionalProperties = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+        {
+            ["FutureSetting"] = futureTopLevelSetting
+        };
+        var settings = new UserSettings
+        {
+            SchemaVersion = 99,
+            DefaultHudId = "com.example.weather",
+            EnabledHudModuleIds = ["com.example.weather", BuiltInHudIds.Music],
+            Modules = modules,
+            AdditionalProperties = additionalProperties,
+            Variant = DesignVariant.LyricsFocusedSidebar,
+            ShowProgressBar = false,
+            ShowLyrics = true,
+            TextScrollMode = TextScrollMode.HoverOnly,
+            Language = AppLanguage.English,
+            HasCustomPosition = true,
+            WindowLeft = 120.5,
+            WindowTop = 240.5,
+            CheckUpdateOnStartup = false,
+            DisableExpandOnFullscreen = false
+        };
+        var defaults = new UserSettings();
+
+        MainViewModel.ResetKnownSettings(settings);
+
+        Assert.Equal(UserSettings.CurrentSchemaVersion, settings.SchemaVersion);
+        Assert.Equal(BuiltInHudIds.Music, settings.DefaultHudId);
+        Assert.Equal([BuiltInHudIds.Music], settings.EnabledHudModuleIds);
+        Assert.Equal(defaults.Variant, settings.Variant);
+        Assert.Equal(defaults.ShowProgressBar, settings.ShowProgressBar);
+        Assert.Equal(defaults.ShowLyrics, settings.ShowLyrics);
+        Assert.Equal(defaults.TextScrollMode, settings.TextScrollMode);
+        Assert.Equal(defaults.Language, settings.Language);
+        Assert.Equal(defaults.HasCustomPosition, settings.HasCustomPosition);
+        Assert.Equal(defaults.WindowLeft, settings.WindowLeft);
+        Assert.Equal(defaults.WindowTop, settings.WindowTop);
+        Assert.Equal(defaults.CheckUpdateOnStartup, settings.CheckUpdateOnStartup);
+        Assert.Equal(defaults.DisableExpandOnFullscreen, settings.DisableExpandOnFullscreen);
+        Assert.Same(modules, settings.Modules);
+        Assert.Equal("spectrum", settings.Modules[BuiltInHudIds.Music].GetProperty("visualization").GetString());
         Assert.Equal("Tokyo", settings.Modules["com.example.weather"].GetProperty("city").GetString());
         Assert.Same(additionalProperties, settings.AdditionalProperties);
         Assert.True(settings.AdditionalProperties["FutureSetting"].GetProperty("enabled").GetBoolean());

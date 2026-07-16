@@ -263,6 +263,50 @@ public sealed class HudRouterTests
     }
 
     [Fact]
+    public async Task NavigateToAsync_WhenRecoveryStateSubscriberThrows_PreservesNavigationFailure()
+    {
+        var activationException = new InvalidOperationException("launcher activation failed");
+        var subscriberException = new InvalidOperationException("state subscriber failed");
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var launcher = new FakeHudModule("launcher") { ActivateException = activationException };
+        HudRouter router = await CreateInitializedRouterAsync(music, launcher);
+        int remainingSubscriberCalls = 0;
+        router.StateChanged += (_, _) => throw subscriberException;
+        router.StateChanged += (_, _) => remainingSubscriberCalls++;
+
+        HudNavigationException exception = await Assert.ThrowsAsync<HudNavigationException>(
+            () => router.NavigateToAsync(launcher.Id, CancellationToken.None));
+
+        Assert.Equal(launcher.Id, exception.TargetHudId);
+        Assert.Same(activationException, exception.InnerException);
+        Assert.Contains(subscriberException, exception.RecoveryExceptions);
+        Assert.Same(music, router.CurrentModule);
+        Assert.Equal(1, remainingSubscriberCalls);
+    }
+
+    [Fact]
+    public async Task NavigateToAsync_WhenRecoveryPresentationSubscriberThrows_PreservesNavigationFailure()
+    {
+        var activationException = new InvalidOperationException("launcher activation failed");
+        var subscriberException = new InvalidOperationException("presentation subscriber failed");
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var launcher = new FakeHudModule("launcher") { ActivateException = activationException };
+        HudRouter router = await CreateInitializedRouterAsync(music, launcher);
+        music.InvalidateDuringActivate = true;
+        int remainingSubscriberCalls = 0;
+        router.PresentationChanged += (_, _) => throw subscriberException;
+        router.PresentationChanged += (_, _) => remainingSubscriberCalls++;
+
+        HudNavigationException exception = await Assert.ThrowsAsync<HudNavigationException>(
+            () => router.NavigateToAsync(launcher.Id, CancellationToken.None));
+
+        Assert.Same(activationException, exception.InnerException);
+        Assert.Contains(subscriberException, exception.RecoveryExceptions);
+        Assert.Same(music, router.CurrentModule);
+        Assert.Equal(1, remainingSubscriberCalls);
+    }
+
+    [Fact]
     public async Task NavigateToAsync_WhenOldRecoveryFails_RestoresEffectiveDefault()
     {
         var music = new FakeHudModule(BuiltInHudIds.Music);
@@ -575,6 +619,38 @@ public sealed class HudRouterTests
         Assert.Equal(new Exception[] { unsubscribeException, deactivateException }, exception.InnerExceptions);
         Assert.Equal(1, music.DeactivateCount);
         Assert.Equal(0, presentationCount);
+        HudRouterSnapshot snapshot = router.GetSnapshot();
+        Assert.Null(snapshot.CurrentHudId);
+        Assert.Null(snapshot.CurrentModule);
+        Assert.False(snapshot.IsInitialized);
+        Assert.True(snapshot.IsShuttingDown);
+    }
+
+    [Fact]
+    public async Task ShutdownAsync_WhenCleanupAndStateSubscriberFail_AggregatesAllFailures()
+    {
+        var unsubscribeException = new InvalidOperationException("music unsubscribe failed");
+        var deactivateException = new InvalidOperationException("music deactivate failed");
+        var subscriberException = new InvalidOperationException("state subscriber failed");
+        var music = new FakeHudModule(BuiltInHudIds.Music)
+        {
+            UnsubscribeException = unsubscribeException,
+            DeactivateException = deactivateException
+        };
+        HudRouter router = await CreateInitializedRouterAsync(music);
+        int remainingSubscriberCalls = 0;
+        router.StateChanged += (_, _) => throw subscriberException;
+        router.StateChanged += (_, _) => remainingSubscriberCalls++;
+
+        AggregateException exception = await Assert.ThrowsAsync<AggregateException>(
+            () => router.ShutdownAsync(CancellationToken.None));
+        await router.ShutdownAsync(CancellationToken.None);
+
+        Assert.Equal(
+            new Exception[] { unsubscribeException, deactivateException, subscriberException },
+            exception.InnerExceptions);
+        Assert.Equal(1, remainingSubscriberCalls);
+        Assert.Equal(1, music.DeactivateCount);
         HudRouterSnapshot snapshot = router.GetSnapshot();
         Assert.Null(snapshot.CurrentHudId);
         Assert.Null(snapshot.CurrentModule);

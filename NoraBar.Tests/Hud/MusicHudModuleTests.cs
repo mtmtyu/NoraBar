@@ -218,6 +218,79 @@ public sealed class MusicHudModuleTests
     }
 
     [Fact]
+    public void GetView_UnknownFutureVariantUsesMinimalView()
+    {
+        RunInSta(() =>
+        {
+            var source = new FakeMusicHudPresentationSource
+            {
+                CurrentVariant = (DesignVariant)99
+            };
+            var createdVariants = new List<DesignVariant>();
+            MusicHudModule module = CreateModule(source, variant =>
+            {
+                createdVariants.Add(variant);
+                return new Border();
+            });
+
+            FrameworkElement first = module.GetView(new HudViewContext(HudPresentationState.Expanded));
+            FrameworkElement second = module.GetView(new HudViewContext(HudPresentationState.Expanded));
+
+            Assert.Same(first, second);
+            Assert.Equal([DesignVariant.MinimalFloatingPill], createdVariants);
+        });
+    }
+
+    [Fact]
+    public void GetPreferredSize_UnknownFutureVariantUsesMinimalLayout()
+    {
+        var source = new FakeMusicHudPresentationSource
+        {
+            CurrentVariant = (DesignVariant)99,
+            ShowProgressBar = true,
+            ShowLyrics = true,
+            HasMultipleSessions = true
+        };
+        MusicHudModule module = CreateModule(source);
+
+        HudSize result = module.GetPreferredSize(new HudViewContext(HudPresentationState.Expanded));
+
+        Assert.Equal(new HudSize(450, 142), result);
+    }
+
+    [Fact]
+    public void CollapsedPresentation_WithUnknownFutureVariantDoesNotCreateView()
+    {
+        RunInSta(() =>
+        {
+            var source = new FakeMusicHudPresentationSource
+            {
+                CurrentVariant = (DesignVariant)99
+            };
+            int viewCreationCount = 0;
+            MusicHudModule module = CreateModule(source, _ =>
+            {
+                viewCreationCount++;
+                return new Border();
+            });
+            var snapshot = new HudRouterSnapshot(
+                module.Id,
+                module,
+                HudPresentationState.Collapsed,
+                IsInitialized: true,
+                IsShuttingDown: false);
+
+            bool evaluated = HudPresentationEvaluator.TryEvaluate(
+                snapshot,
+                suppressExpansion: false,
+                out _);
+
+            Assert.False(evaluated);
+            Assert.Equal(0, viewCreationCount);
+        });
+    }
+
+    [Fact]
     public async Task PresentationStateChanges_DoNotResubscribeOrCleanupPresentationSource()
     {
         var source = new FakeMusicHudPresentationSource();
@@ -393,10 +466,7 @@ public sealed class MusicHudModuleTests
         Func<DesignVariant, FrameworkElement>? createView = null)
     {
         createView ??= _ => new Border();
-        var factories = Enum.GetValues<DesignVariant>().ToDictionary(
-            variant => variant,
-            variant => new Func<FrameworkElement>(() => createView(variant)));
-        return new MusicHudModule(source, factories);
+        return new MusicHudModule(source, createView);
     }
 
     private static void RunInSta(Action action)

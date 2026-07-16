@@ -103,26 +103,29 @@ public partial class MainWindow : Window
             return;
         }
 
-        var context = new HudViewContext(snapshot.PresentationState);
-        FrameworkElement view = snapshot.CurrentModule.GetView(context);
-        HudSize preferredSize = snapshot.CurrentModule.GetPreferredSize(context);
-
         if (snapshot.PresentationState == HudPresentationState.Collapsed)
         {
             AnimateSize(CollapsedWidth, CollapsedHeight, collapseContent: true);
             return;
         }
 
-        if (_viewModel.DisableExpandOnFullscreen
-            && FullscreenDetector.IsFullscreenAppActive(this))
+        bool suppressExpansion = _viewModel.DisableExpandOnFullscreen
+            && FullscreenDetector.IsFullscreenAppActive(this);
+        if (!HudPresentationEvaluator.TryEvaluate(
+                snapshot,
+                suppressExpansion,
+                out HudPresentationEvaluation evaluation))
         {
             IslandHost.Content = null;
             AnimateSize(CollapsedWidth, CollapsedHeight, collapseContent: true);
             return;
         }
 
-        IslandHost.Content = view;
-        AnimateSize(preferredSize.Width, preferredSize.Height, collapseContent: false);
+        IslandHost.Content = evaluation.View;
+        AnimateSize(
+            evaluation.PreferredSize.Width,
+            evaluation.PreferredSize.Height,
+            collapseContent: false);
     }
 
     internal void DetachHudRouter()
@@ -214,6 +217,16 @@ public partial class MainWindow : Window
         else if (e.PropertyName == nameof(MainViewModel.IsPositionEditMode))
         {
             Dispatcher.Invoke(UpdateEditModeVisuals);
+        }
+        else
+        {
+            _ = HudPresentationRefreshScheduler.TrySchedule(
+                e.PropertyName,
+                callback =>
+                {
+                    Dispatcher.BeginInvoke(callback);
+                },
+                RefreshHudPresentation);
         }
     }
 

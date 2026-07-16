@@ -1,11 +1,8 @@
 using System.ComponentModel;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
+using NoraBar.Hud.Music;
 using NoraBar.ViewModels;
-using NoraBar.Views.Island.DesignA_Minimal;
-using NoraBar.Views.Island.DesignB_Productivity;
-using NoraBar.Views.Island.DesignC_LyricsFocus;
 
 namespace NoraBar.Views
 {
@@ -51,6 +48,7 @@ namespace NoraBar.Views
                 if (_viewModel != null)
                 {
                     _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+                    _viewModel.Music.PropertyChanged -= MusicViewModel_PropertyChanged;
                 }
             };
         }
@@ -124,11 +122,13 @@ namespace NoraBar.Views
             if (e.OldValue is MainViewModel oldVm)
             {
                 oldVm.PropertyChanged -= ViewModel_PropertyChanged;
+                oldVm.Music.PropertyChanged -= MusicViewModel_PropertyChanged;
             }
             if (e.NewValue is MainViewModel newVm)
             {
                 _viewModel = newVm;
                 _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+                _viewModel.Music.PropertyChanged += MusicViewModel_PropertyChanged;
                 UpdatePreview();
                 UpdateOverlayVisibilities();
             }
@@ -147,6 +147,14 @@ namespace NoraBar.Views
                      e.PropertyName == nameof(MainViewModel.IsResetDialogOpen))
             {
                 Dispatcher.Invoke(UpdateOverlayVisibilities);
+            }
+        }
+
+        private void MusicViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(MusicViewModel.HasMultipleSessions))
+            {
+                Dispatcher.Invoke(UpdatePreview);
             }
         }
 
@@ -223,39 +231,16 @@ namespace NoraBar.Views
         {
             if (_viewModel == null) return;
 
-            double targetWidth = 200;
-            double targetHeight = 2;
+            MusicHudPreview preview = MusicHudPreviewFactory.Create(
+                _viewModel.CurrentVariant,
+                _viewModel.ShowProgressBar,
+                _viewModel.ShowLyrics,
+                _viewModel.Music.HasMultipleSessions,
+                _viewModel);
 
-            UserControl? previewView = null;
-            if (_viewModel.CurrentVariant == Models.DesignVariant.MinimalFloatingPill)
-            {
-                previewView = new DesignAMusicView();
-                targetWidth = 450;
-                targetHeight = _viewModel.ShowProgressBar ? 106 : 80;
-                if (_viewModel.ShowLyrics) targetHeight += 24;
-            }
-            else if (_viewModel.CurrentVariant == Models.DesignVariant.ProductivityCommandIsland)
-            {
-                previewView = new DesignBMusicView();
-                targetWidth = 560;
-                targetHeight = _viewModel.ShowProgressBar ? 120 : 90;
-                if (_viewModel.ShowLyrics) targetHeight += 24;
-            }
-            else if (_viewModel.CurrentVariant == Models.DesignVariant.LyricsFocusedSidebar)
-            {
-                previewView = new DesignCMusicView();
-                targetWidth = 650;
-                targetHeight = 180;
-            }
-
-            if (previewView != null)
-            {
-                // Bind current VM as DataContext for preview so that metadata and progress display correctly
-                previewView.DataContext = _viewModel;
-                PreviewHost.Content = previewView;
-                PreviewHost.Width = targetWidth;
-                PreviewHost.Height = targetHeight;
-            }
+            PreviewHost.Content = preview.View;
+            PreviewHost.Width = preview.PreferredSize.Width;
+            PreviewHost.Height = preview.PreferredSize.Height;
         }
     }
 }

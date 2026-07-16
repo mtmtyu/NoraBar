@@ -8,6 +8,8 @@ public sealed class HudRouter
     private readonly HudRegistry _registry;
     private readonly string _configuredDefaultHudId;
     private readonly string[] _configuredEnabledHudModuleIds;
+    private readonly Action<Exception> _reportDeferredPublicationFailure;
+    private readonly Action<Func<Task>> _scheduleDeferredPublication;
     private readonly object _stateLock = new();
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
     private readonly SemaphoreSlim _publicationGate = new(1, 1);
@@ -24,19 +26,56 @@ public sealed class HudRouter
     private ModulePresentationSubscription? _pendingPresentationInvalidationSubscription;
     private bool _isPresentationInvalidationDrainScheduled;
     private ModulePresentationSubscription? _modulePresentationSubscription;
+    private int _activePublicationCount;
+    private int _activeLifecycleStatePublicationCount;
+    private int _lifecycleMutationWaiterCount;
+    private TaskCompletionSource? _publicationIdleSource;
 
     public HudRouter(
         HudRegistry registry,
         string configuredDefaultHudId,
         IEnumerable<string> configuredEnabledHudModuleIds)
+        : this(
+            registry,
+            configuredDefaultHudId,
+            configuredEnabledHudModuleIds,
+            static exception => System.Diagnostics.Trace.TraceError(exception.ToString()),
+            static operation => _ = Task.Run(operation))
+    {
+    }
+
+    internal HudRouter(
+        HudRegistry registry,
+        string configuredDefaultHudId,
+        IEnumerable<string> configuredEnabledHudModuleIds,
+        Action<Exception> reportDeferredPublicationFailure)
+        : this(
+            registry,
+            configuredDefaultHudId,
+            configuredEnabledHudModuleIds,
+            reportDeferredPublicationFailure,
+            static operation => _ = Task.Run(operation))
+    {
+    }
+
+    internal HudRouter(
+        HudRegistry registry,
+        string configuredDefaultHudId,
+        IEnumerable<string> configuredEnabledHudModuleIds,
+        Action<Exception> reportDeferredPublicationFailure,
+        Action<Func<Task>> scheduleDeferredPublication)
     {
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(configuredDefaultHudId);
         ArgumentNullException.ThrowIfNull(configuredEnabledHudModuleIds);
+        ArgumentNullException.ThrowIfNull(reportDeferredPublicationFailure);
+        ArgumentNullException.ThrowIfNull(scheduleDeferredPublication);
 
         _registry = registry;
         _configuredDefaultHudId = configuredDefaultHudId;
         _configuredEnabledHudModuleIds = configuredEnabledHudModuleIds.ToArray();
+        _reportDeferredPublicationFailure = reportDeferredPublicationFailure;
+        _scheduleDeferredPublication = scheduleDeferredPublication;
         (_enabledHudModuleIds, _effectiveDefaultHudId) = ResolveRuntimeConfiguration(
             _configuredEnabledHudModuleIds);
     }
@@ -118,7 +157,7 @@ public sealed class HudRouter
         await _lifecycleGate.WaitAsync(cancellationToken);
         try
         {
-            await _publicationGate.WaitAsync(cancellationToken);
+            await EnterLifecycleMutationAsync(cancellationToken);
             try
             {
                 lock (_stateLock)
@@ -135,6 +174,7 @@ public sealed class HudRouter
             finally
             {
                 _publicationGate.Release();
+                ExitLifecycleMutation();
             }
 
             IHudModule module = GetRegisteredModule(_effectiveDefaultHudId);
@@ -192,28 +232,27 @@ public sealed class HudRouter
         await _lifecycleGate.WaitAsync(cancellationToken);
         try
         {
-            IHudModule targetModule;
-            await _publicationGate.WaitAsync(cancellationToken);
+            EnsureCanNavigate();
+            List<string> enabledIds;
+            string effectiveDefaultHudId;
+            IHudModule? currentModule;
+            lock (_stateLock)
+            {
+                enabledIds = [.. _enabledHudModuleIds];
+                effectiveDefaultHudId = _effectiveDefaultHudId;
+                currentModule = _currentModule;
+            }
+
+            string targetHudId = ResolveNavigationTarget(hudId, enabledIds, effectiveDefaultHudId);
+            IHudModule targetModule = GetRegisteredModule(targetHudId);
+            if (ReferenceEquals(targetModule, currentModule))
+            {
+                return;
+            }
+
+            await EnterLifecycleMutationAsync(cancellationToken);
             try
             {
-                EnsureCanNavigate();
-                List<string> enabledIds;
-                string effectiveDefaultHudId;
-                IHudModule? currentModule;
-                lock (_stateLock)
-                {
-                    enabledIds = [.. _enabledHudModuleIds];
-                    effectiveDefaultHudId = _effectiveDefaultHudId;
-                    currentModule = _currentModule;
-                }
-
-                string targetHudId = ResolveNavigationTarget(hudId, enabledIds, effectiveDefaultHudId);
-                targetModule = GetRegisteredModule(targetHudId);
-                if (ReferenceEquals(targetModule, currentModule))
-                {
-                    return;
-                }
-
                 lock (_stateLock)
                 {
                     _isTransitioning = true;
@@ -223,6 +262,7 @@ public sealed class HudRouter
             finally
             {
                 _publicationGate.Release();
+                ExitLifecycleMutation();
             }
 
             await TransitionToAsync(targetModule, cancellationToken);
@@ -242,7 +282,7 @@ public sealed class HudRouter
             List<string> updatedIds;
             string updatedDefault;
             IHudModule? fallback = null;
-            await _publicationGate.WaitAsync(cancellationToken);
+            await EnterLifecycleMutationAsync(cancellationToken);
             try
             {
                 EnsureCanNavigate();
@@ -292,6 +332,7 @@ public sealed class HudRouter
             finally
             {
                 _publicationGate.Release();
+                ExitLifecycleMutation();
             }
 
             if (fallback is not null)
@@ -325,6 +366,8 @@ public sealed class HudRouter
             lock (_stateLock)
             {
                 if (!_isInitialized || _isShuttingDown || _isTransitioning
+                    || _activeLifecycleStatePublicationCount > 0
+                    || _lifecycleMutationWaiterCount > 0
                     || _presentationState == presentationState)
                 {
                     return false;
@@ -332,6 +375,7 @@ public sealed class HudRouter
 
                 _presentationState = presentationState;
                 notifyPresentation = TakePublishablePendingPresentationInvalidation();
+                BeginPublicationLocked(PublicationKind.PresentationState);
             }
         }
         finally
@@ -339,7 +383,7 @@ public sealed class HudRouter
             _publicationGate.Release();
         }
 
-        PublishRouterNotifications(publishState: true, notifyPresentation);
+        PublishStateNotification(PublicationKind.PresentationState, notifyPresentation);
         return true;
     }
 
@@ -356,6 +400,8 @@ public sealed class HudRouter
             lock (_stateLock)
             {
                 if (!_isInitialized || _isShuttingDown || _isTransitioning
+                    || _activeLifecycleStatePublicationCount > 0
+                    || _lifecycleMutationWaiterCount > 0
                     || _presentationState is HudPresentationState.Collapsed or HudPresentationState.Pinned)
                 {
                     return false;
@@ -363,6 +409,7 @@ public sealed class HudRouter
 
                 _presentationState = HudPresentationState.Collapsed;
                 notifyPresentation = TakePublishablePendingPresentationInvalidation();
+                BeginPublicationLocked(PublicationKind.PresentationState);
             }
         }
         finally
@@ -370,7 +417,7 @@ public sealed class HudRouter
             _publicationGate.Release();
         }
 
-        PublishRouterNotifications(publishState: true, notifyPresentation);
+        PublishStateNotification(PublicationKind.PresentationState, notifyPresentation);
         return true;
     }
 
@@ -380,7 +427,7 @@ public sealed class HudRouter
         try
         {
             IHudModule? currentModule;
-            await _publicationGate.WaitAsync(cancellationToken);
+            await EnterLifecycleMutationAsync(cancellationToken);
             try
             {
                 lock (_stateLock)
@@ -399,6 +446,7 @@ public sealed class HudRouter
             finally
             {
                 _publicationGate.Release();
+                ExitLifecycleMutation();
             }
 
             var shutdownExceptions = new List<Exception>();
@@ -416,7 +464,7 @@ public sealed class HudRouter
                 _currentModule = null;
                 _isInitialized = false;
                 _isTransitioning = false;
-            }, publishPendingPresentation: false);
+            }, publishPendingPresentation: false, publicationExceptions: shutdownExceptions);
             ThrowShutdownFailures(shutdownExceptions);
         }
         finally
@@ -521,11 +569,11 @@ public sealed class HudRouter
                 _currentModule = null;
                 _presentationState = HudPresentationState.Collapsed;
                 _isInitialized = false;
+                _pendingPresentationInvalidationSubscription = null;
             }
 
             _isTransitioning = false;
-            _pendingPresentationInvalidationSubscription = null;
-        }, publishPendingPresentation: false);
+        }, publicationExceptions: recoveryExceptions);
         throw new HudNavigationException(targetModule.Id, navigationException, recoveryExceptions);
     }
 
@@ -594,11 +642,7 @@ public sealed class HudRouter
                     && (_isInitialized || _isTransitioning))
                 {
                     _pendingPresentationInvalidationSubscription = subscription;
-                    if (!_isPresentationInvalidationDrainScheduled)
-                    {
-                        _isPresentationInvalidationDrainScheduled = true;
-                        scheduleDrain = true;
-                    }
+                    scheduleDrain = TrySchedulePresentationInvalidationDrainLocked();
                 }
             }
 
@@ -618,13 +662,16 @@ public sealed class HudRouter
                 if (ReferenceEquals(_modulePresentationSubscription, subscription)
                     && !_isShuttingDown)
                 {
-                    if (_isTransitioning)
+                    if (_isTransitioning
+                        || _activePublicationCount > 0
+                        || _lifecycleMutationWaiterCount > 0)
                     {
                         _pendingPresentationInvalidationSubscription = subscription;
                     }
                     else if (_isInitialized)
                     {
                         notifyPresentation = true;
+                        BeginPublicationLocked(PublicationKind.Presentation);
                     }
                 }
             }
@@ -636,7 +683,7 @@ public sealed class HudRouter
 
         if (notifyPresentation)
         {
-            PublishRouterNotifications(publishState: false, publishPresentation: true);
+            PublishPresentationNotification();
         }
     }
 
@@ -816,20 +863,128 @@ public sealed class HudRouter
         _isInitialized
         && !_isShuttingDown
         && !_isTransitioning
+        && _activePublicationCount == 0
         && TakePendingPresentationInvalidation();
 
     private bool TryEnterPublication() =>
-        _publicationGate.WaitAsync(TimeSpan.Zero).GetAwaiter().GetResult();
+        _publicationGate.Wait(0);
+
+    private async Task EnterLifecycleMutationAsync(CancellationToken cancellationToken)
+    {
+        lock (_stateLock)
+        {
+            _lifecycleMutationWaiterCount++;
+        }
+
+        try
+        {
+            while (true)
+            {
+                await _publicationGate.WaitAsync(cancellationToken);
+                Task? publicationIdleTask;
+                lock (_stateLock)
+                {
+                    if (_activePublicationCount == 0)
+                    {
+                        return;
+                    }
+
+                    publicationIdleTask = _publicationIdleSource?.Task;
+                }
+
+                if (publicationIdleTask is null)
+                {
+                    _publicationGate.Release();
+                    throw new InvalidOperationException("The publication idle signal is missing.");
+                }
+
+                _publicationGate.Release();
+                await publicationIdleTask.WaitAsync(cancellationToken);
+            }
+        }
+        catch
+        {
+            bool scheduleDrain;
+            lock (_stateLock)
+            {
+                _lifecycleMutationWaiterCount--;
+                scheduleDrain = TrySchedulePresentationInvalidationDrainLocked();
+            }
+
+            if (scheduleDrain)
+            {
+                SchedulePresentationInvalidationDrain();
+            }
+
+            throw;
+        }
+    }
+
+    private void ExitLifecycleMutation()
+    {
+        bool scheduleDrain;
+        lock (_stateLock)
+        {
+            _lifecycleMutationWaiterCount--;
+            scheduleDrain = TrySchedulePresentationInvalidationDrainLocked();
+        }
+
+        if (scheduleDrain)
+        {
+            SchedulePresentationInvalidationDrain();
+        }
+    }
 
     private void SchedulePresentationInvalidationDrain()
     {
-        Task drainTask = DrainPendingPresentationInvalidationAsync();
-        // Deferred event handlers have no originating caller to receive failures.
-        _ = drainTask.ContinueWith(
-            static completedTask => _ = completedTask.Exception,
-            CancellationToken.None,
-            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
-            TaskScheduler.Default);
+        try
+        {
+            _scheduleDeferredPublication(ObservePresentationInvalidationDrainAsync);
+        }
+        catch (Exception exception)
+        {
+            lock (_stateLock)
+            {
+                _isPresentationInvalidationDrainScheduled = false;
+            }
+
+            ReportDeferredPublicationFailure(exception);
+        }
+    }
+
+    private async Task ObservePresentationInvalidationDrainAsync()
+    {
+        try
+        {
+            await DrainPendingPresentationInvalidationAsync();
+        }
+        catch (Exception exception)
+        {
+            ReportDeferredPublicationFailure(exception);
+        }
+    }
+
+    private void ReportDeferredPublicationFailure(Exception exception)
+    {
+        try
+        {
+            _reportDeferredPublicationFailure(exception);
+        }
+        catch (Exception reportingException)
+        {
+            var aggregateException = new AggregateException(
+                "Reporting a deferred HUD publication failure also failed.",
+                exception,
+                reportingException);
+            try
+            {
+                System.Diagnostics.Trace.TraceError(aggregateException.ToString());
+            }
+            catch (Exception)
+            {
+                // The observer must not fault after both configured error sinks have failed.
+            }
+        }
     }
 
     private async Task DrainPendingPresentationInvalidationAsync()
@@ -842,6 +997,10 @@ public sealed class HudRouter
             {
                 _isPresentationInvalidationDrainScheduled = false;
                 notifyPresentation = TakePublishablePendingPresentationInvalidation();
+                if (notifyPresentation)
+                {
+                    BeginPublicationLocked(PublicationKind.Presentation);
+                }
             }
         }
         finally
@@ -851,7 +1010,7 @@ public sealed class HudRouter
 
         if (notifyPresentation)
         {
-            PublishRouterNotifications(publishState: false, publishPresentation: true);
+            PublishPresentationNotification();
         }
     }
 
@@ -873,7 +1032,8 @@ public sealed class HudRouter
 
     private async Task PublishStateChangedAsync(
         Action stateMutation,
-        bool publishPendingPresentation = true)
+        bool publishPendingPresentation = true,
+        ICollection<Exception>? publicationExceptions = null)
     {
         bool notifyPresentation;
         await _publicationGate.WaitAsync(CancellationToken.None);
@@ -884,6 +1044,7 @@ public sealed class HudRouter
                 stateMutation();
                 notifyPresentation = publishPendingPresentation
                     && TakePublishablePendingPresentationInvalidation();
+                BeginPublicationLocked(PublicationKind.LifecycleState);
             }
         }
         finally
@@ -891,23 +1052,145 @@ public sealed class HudRouter
             _publicationGate.Release();
         }
 
-        PublishRouterNotifications(publishState: true, notifyPresentation);
+        PublishStateNotification(
+            PublicationKind.LifecycleState,
+            notifyPresentation,
+            publicationExceptions);
     }
 
-    private void PublishRouterNotifications(bool publishState, bool publishPresentation)
+    private void PublishStateNotification(
+        PublicationKind publicationKind,
+        bool publishPresentation,
+        ICollection<Exception>? publicationExceptions = null)
     {
         List<Exception>? exceptions = null;
-        if (publishState)
+        PublicationKind activeKind = publicationKind;
+        try
         {
             InvokeSubscribers(StateChanged, ref exceptions);
-        }
 
-        if (publishPresentation)
+            if (publishPresentation)
+            {
+                PublicationKind presentationKind = activeKind == PublicationKind.LifecycleState
+                    ? PublicationKind.LifecyclePresentation
+                    : PublicationKind.Presentation;
+                ChangePublicationKind(activeKind, presentationKind);
+                activeKind = presentationKind;
+                InvokeSubscribers(PresentationChanged, ref exceptions);
+            }
+
+            if (publicationExceptions is null)
+            {
+                ThrowPublicationFailures(exceptions);
+            }
+            else if (exceptions is not null)
+            {
+                foreach (Exception exception in exceptions)
+                {
+                    publicationExceptions.Add(exception);
+                }
+            }
+        }
+        finally
+        {
+            EndPublication(activeKind);
+        }
+    }
+
+    private void PublishPresentationNotification()
+    {
+        List<Exception>? exceptions = null;
+        try
         {
             InvokeSubscribers(PresentationChanged, ref exceptions);
+            ThrowPublicationFailures(exceptions);
+        }
+        finally
+        {
+            EndPublication(PublicationKind.Presentation);
+        }
+    }
+
+    private void BeginPublicationLocked(PublicationKind publicationKind)
+    {
+        if (_activePublicationCount == 0)
+        {
+            _publicationIdleSource = new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously);
         }
 
-        ThrowPublicationFailures(exceptions);
+        _activePublicationCount++;
+        AdjustPublicationKindLocked(publicationKind, 1);
+    }
+
+    private void ChangePublicationKind(PublicationKind currentKind, PublicationKind nextKind)
+    {
+        lock (_stateLock)
+        {
+            AdjustPublicationKindLocked(currentKind, -1);
+            AdjustPublicationKindLocked(nextKind, 1);
+        }
+    }
+
+    private void EndPublication(PublicationKind publicationKind)
+    {
+        TaskCompletionSource? publicationIdleSource = null;
+        bool scheduleDrain = false;
+        lock (_stateLock)
+        {
+            AdjustPublicationKindLocked(publicationKind, -1);
+            _activePublicationCount--;
+            if (_activePublicationCount < 0)
+            {
+                throw new InvalidOperationException("The active publication count is invalid.");
+            }
+
+            if (_activePublicationCount == 0)
+            {
+                publicationIdleSource = _publicationIdleSource;
+                _publicationIdleSource = null;
+                scheduleDrain = TrySchedulePresentationInvalidationDrainLocked();
+            }
+        }
+
+        publicationIdleSource?.TrySetResult();
+        if (scheduleDrain)
+        {
+            SchedulePresentationInvalidationDrain();
+        }
+    }
+
+    private bool TrySchedulePresentationInvalidationDrainLocked()
+    {
+        if (_activePublicationCount > 0
+            || _lifecycleMutationWaiterCount > 0
+            || _pendingPresentationInvalidationSubscription is null
+            || !_isInitialized
+            || _isShuttingDown
+            || _isTransitioning
+            || _isPresentationInvalidationDrainScheduled)
+        {
+            return false;
+        }
+
+        _isPresentationInvalidationDrainScheduled = true;
+        return true;
+    }
+
+    private void AdjustPublicationKindLocked(PublicationKind publicationKind, int delta)
+    {
+        switch (publicationKind)
+        {
+            case PublicationKind.LifecycleState:
+            case PublicationKind.LifecyclePresentation:
+                _activeLifecycleStatePublicationCount += delta;
+                break;
+            case PublicationKind.Presentation:
+            case PublicationKind.PresentationState:
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(publicationKind));
+        }
     }
 
     private void InvokeSubscribers(EventHandler? subscribers, ref List<Exception>? exceptions)
@@ -983,6 +1266,14 @@ public sealed class HudRouter
         }
 
         throw new AggregateException("One or more HUD router subscribers failed.", exceptions);
+    }
+
+    private enum PublicationKind
+    {
+        PresentationState,
+        LifecycleState,
+        LifecyclePresentation,
+        Presentation
     }
 
     private sealed class ModulePresentationSubscription
