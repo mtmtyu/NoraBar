@@ -134,7 +134,7 @@ public class MainViewModelSettingsTests
 
         Assert.Equal(UserSettings.CurrentSchemaVersion, settings.SchemaVersion);
         Assert.Equal(BuiltInHudIds.Music, settings.DefaultHudId);
-        Assert.Equal([BuiltInHudIds.Music], settings.EnabledHudModuleIds);
+        Assert.Equal([BuiltInHudIds.Music, BuiltInHudIds.Home], settings.EnabledHudModuleIds);
         Assert.Equal(defaults.Variant, settings.Variant);
         Assert.Equal(defaults.ShowProgressBar, settings.ShowProgressBar);
         Assert.Equal(defaults.ShowLyrics, settings.ShowLyrics);
