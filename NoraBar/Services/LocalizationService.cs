@@ -80,7 +80,27 @@ namespace NoraBar.Services
         HudSelectionDescription,
         SharedDisplaySettings,
         SelectedHudSettings,
-        MusicHudName
+        MusicHudName,
+        HomeHudName,
+        NavigationStyle,
+        NavigationStyleDescription,
+        NavigationRightRail,
+        NavigationTopTabs,
+        StartupHud,
+        StartupHudDescription,
+        HudModules,
+        HudModulesDescription,
+        HomeDesign,
+        HomeDesignDescription,
+        TimeFormat,
+        TimeFormatDescription,
+        TimeFormatSystem,
+        TimeFormatTwelveHour,
+        TimeFormatTwentyFourHour,
+        WorldClocks,
+        WorldClocksDescription,
+        ClockLabel,
+        TimeZone
     }
 
     public static class LocalizationService
@@ -165,7 +185,27 @@ namespace NoraBar.Services
                     [LocalizationKey.HudSelectionDescription] = "設定するHUDを選択します。",
                     [LocalizationKey.SharedDisplaySettings] = "共通表示設定",
                     [LocalizationKey.SelectedHudSettings] = "選択中のHUD設定",
-                    [LocalizationKey.MusicHudName] = "音楽HUD"
+                    [LocalizationKey.MusicHudName] = "音楽HUD",
+                    [LocalizationKey.HomeHudName] = "ホームHUD",
+                    [LocalizationKey.NavigationStyle] = "HUDナビゲーション",
+                    [LocalizationKey.NavigationStyleDescription] = "HUD切替を右側アイコンまたは上側タブで表示します。",
+                    [LocalizationKey.NavigationRightRail] = "右側アイコン",
+                    [LocalizationKey.NavigationTopTabs] = "上側タブ",
+                    [LocalizationKey.StartupHud] = "起動時HUD",
+                    [LocalizationKey.StartupHudDescription] = "アプリ起動時に最初に表示するHUDを選択します。",
+                    [LocalizationKey.HudModules] = "HUDモジュール",
+                    [LocalizationKey.HudModulesDescription] = "有効化と表示順を変更します。最低1つは有効にする必要があります。",
+                    [LocalizationKey.HomeDesign] = "ホームデザイン",
+                    [LocalizationKey.HomeDesignDescription] = "ホームHUDのレイアウトを切り替えます。",
+                    [LocalizationKey.TimeFormat] = "時刻形式",
+                    [LocalizationKey.TimeFormatDescription] = "ローカル時刻と世界時計の表示形式を選択します。",
+                    [LocalizationKey.TimeFormatSystem] = "Windows設定に従う",
+                    [LocalizationKey.TimeFormatTwelveHour] = "12時間制",
+                    [LocalizationKey.TimeFormatTwentyFourHour] = "24時間制",
+                    [LocalizationKey.WorldClocks] = "世界時計",
+                    [LocalizationKey.WorldClocksDescription] = "2つの表示名とWindowsタイムゾーンを設定します。",
+                    [LocalizationKey.ClockLabel] = "表示名",
+                    [LocalizationKey.TimeZone] = "タイムゾーン"
                 },
                 [AppLanguage.English] = new Dictionary<LocalizationKey, string>
                 {
@@ -244,7 +284,27 @@ namespace NoraBar.Services
                     [LocalizationKey.HudSelectionDescription] = "Select the desktop HUD to configure.",
                     [LocalizationKey.SharedDisplaySettings] = "Shared Display Settings",
                     [LocalizationKey.SelectedHudSettings] = "Selected HUD Settings",
-                    [LocalizationKey.MusicHudName] = "Music HUD"
+                    [LocalizationKey.MusicHudName] = "Music HUD",
+                    [LocalizationKey.HomeHudName] = "Home HUD",
+                    [LocalizationKey.NavigationStyle] = "HUD Navigation",
+                    [LocalizationKey.NavigationStyleDescription] = "Shows HUD navigation as right-side icons or top tabs.",
+                    [LocalizationKey.NavigationRightRail] = "Right-side icons",
+                    [LocalizationKey.NavigationTopTabs] = "Top tabs",
+                    [LocalizationKey.StartupHud] = "Startup HUD",
+                    [LocalizationKey.StartupHudDescription] = "Selects the HUD shown first when the app starts.",
+                    [LocalizationKey.HudModules] = "HUD Modules",
+                    [LocalizationKey.HudModulesDescription] = "Enable and reorder HUDs. At least one HUD must remain enabled.",
+                    [LocalizationKey.HomeDesign] = "Home Design",
+                    [LocalizationKey.HomeDesignDescription] = "Changes the Home HUD layout.",
+                    [LocalizationKey.TimeFormat] = "Time Format",
+                    [LocalizationKey.TimeFormatDescription] = "Selects the format used by local and world clocks.",
+                    [LocalizationKey.TimeFormatSystem] = "Use Windows settings",
+                    [LocalizationKey.TimeFormatTwelveHour] = "12-hour",
+                    [LocalizationKey.TimeFormatTwentyFourHour] = "24-hour",
+                    [LocalizationKey.WorldClocks] = "World Clocks",
+                    [LocalizationKey.WorldClocksDescription] = "Configure two labels and Windows time zones.",
+                    [LocalizationKey.ClockLabel] = "Label",
+                    [LocalizationKey.TimeZone] = "Time zone"
                 }
             };
 

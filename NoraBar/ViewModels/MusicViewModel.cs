@@ -99,6 +99,13 @@ namespace NoraBar.ViewModels
             set => SetProperty(ref _hasMultipleSessions, value);
         }
 
+        private bool _hasActiveSession;
+        public bool HasActiveSession
+        {
+            get => _hasActiveSession;
+            private set => SetProperty(ref _hasActiveSession, value);
+        }
+
         public ObservableCollection<DotItem> SessionDots { get; } = new ObservableCollection<DotItem>();
 
         public ObservableCollection<LyricLineViewModel> LyricsList { get; } = new ObservableCollection<LyricLineViewModel>();
@@ -274,6 +281,7 @@ namespace NoraBar.ViewModels
             {
                 System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                 {
+                    HasActiveSession = e.SessionCount > 0;
                     HasMultipleSessions = e.SessionCount > 1;
                     
                     if (SessionDots.Count != e.SessionCount)
