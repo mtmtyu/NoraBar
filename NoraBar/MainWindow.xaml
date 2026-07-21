@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:models="clr-namespace:NoraBar.Models"
         mc:Ignorable="d"
         Title="NoraBar" Height="250" Width="800"
         WindowStyle="None"
@@ -39,9 +40,129 @@
                 </ContextMenu>
             </Border.ContextMenu>
 
-            <ContentControl x:Name="IslandHost"
-                            HorizontalAlignment="Stretch"
-                            VerticalAlignment="Stretch"/>
+            <Grid x:Name="HudPresentationHost">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <ItemsControl Grid.Row="0" Grid.ColumnSpan="2"
+                              ItemsSource="{Binding HudNavigation.EnabledItems}"
+                              PreviewMouseWheel="HudNavigation_PreviewMouseWheel"
+                              Margin="8,6,8,4">
+                    <ItemsControl.Style>
+                        <Style TargetType="ItemsControl">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding HudNavigation.ShowNavigation}" Value="True"/>
+                                        <Condition Binding="{Binding HudNavigationPlacement}" Value="{x:Static models:HudNavigationPlacement.TopTabs}"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ItemsControl.Style>
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Command="{Binding NavigateCommand}" Margin="3,0" Padding="12,5"
+                                    Background="Transparent" BorderThickness="0" Foreground="#A8FFFFFF"
+                                    ToolTip="{Binding DisplayName}">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="TabBackground" Background="{TemplateBinding Background}"
+                                                CornerRadius="12" Padding="{TemplateBinding Padding}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding IconText}" FontFamily="Segoe Fluent Icons"
+                                                           Margin="0,0,7,0"/>
+                                                <TextBlock Text="{Binding DisplayName}"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                <Setter TargetName="TabBackground" Property="Background" Value="#26FFFFFF"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                            </DataTrigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="TabBackground" Property="Background" Value="#1AFFFFFF"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <ContentControl x:Name="IslandHost"
+                                Grid.Row="1"
+                                Grid.Column="0"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"/>
+
+                <ItemsControl Grid.Row="1" Grid.Column="1"
+                              ItemsSource="{Binding HudNavigation.EnabledItems}"
+                              PreviewMouseWheel="HudNavigation_PreviewMouseWheel"
+                              Margin="6,8,8,8"
+                              VerticalAlignment="Center">
+                    <ItemsControl.Style>
+                        <Style TargetType="ItemsControl">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding HudNavigation.ShowNavigation}" Value="True"/>
+                                        <Condition Binding="{Binding HudNavigationPlacement}" Value="{x:Static models:HudNavigationPlacement.RightRail}"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ItemsControl.Style>
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Vertical"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Command="{Binding NavigateCommand}" Width="32" Height="32" Margin="0,3"
+                                    Background="Transparent" BorderThickness="0" Foreground="#A8FFFFFF"
+                                    ToolTip="{Binding DisplayName}">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="IconBackground" Background="{TemplateBinding Background}"
+                                                CornerRadius="16">
+                                            <TextBlock Text="{Binding IconText}" FontFamily="Segoe Fluent Icons"
+                                                       FontSize="14" HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                <Setter TargetName="IconBackground" Property="Background" Value="#26FFFFFF"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                            </DataTrigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="IconBackground" Property="Background" Value="#1AFFFFFF"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Grid>
         </Border>
     </Grid>
 </Window>

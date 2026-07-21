@@ -750,6 +750,81 @@
                             <!-- Shared Display Settings Section -->
                             <TextBlock Text="{Binding SharedDisplaySettingsText}" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,20" FontFamily="Segoe UI Variable, Segoe UI"/>
 
+                            <Border Style="{StaticResource SettingCardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,16,0">
+                                        <TextBlock Text="{Binding NavigationStyleText}" Style="{StaticResource CardHeaderStyle}"/>
+                                        <TextBlock Text="{Binding NavigationStyleDescriptionText}" Style="{StaticResource CardSubHeaderStyle}"/>
+                                    </StackPanel>
+                                    <ComboBox Grid.Column="1"
+                                              ItemsSource="{Binding AvailableNavigationPlacements}"
+                                              DisplayMemberPath="DisplayName"
+                                              SelectedValuePath="Placement"
+                                              SelectedValue="{Binding HudNavigationPlacement}"
+                                              Width="170" Height="32"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource SettingCardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,16,0">
+                                        <TextBlock Text="{Binding StartupHudText}" Style="{StaticResource CardHeaderStyle}"/>
+                                        <TextBlock Text="{Binding StartupHudDescriptionText}" Style="{StaticResource CardSubHeaderStyle}"/>
+                                    </StackPanel>
+                                    <ComboBox Grid.Column="1"
+                                              ItemsSource="{Binding HudNavigation.EnabledItems}"
+                                              DisplayMemberPath="DisplayName"
+                                              SelectedValuePath="Id"
+                                              SelectedValue="{Binding HudNavigation.DefaultHudId}"
+                                              Width="170" Height="32"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource SettingCardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="260"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,16,0">
+                                        <TextBlock Text="{Binding HudModulesText}" Style="{StaticResource CardHeaderStyle}"/>
+                                        <TextBlock Text="{Binding HudModulesDescriptionText}" Style="{StaticResource CardSubHeaderStyle}"/>
+                                    </StackPanel>
+                                    <ItemsControl Grid.Column="1" ItemsSource="{Binding HudNavigation.Items}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,3">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <CheckBox IsChecked="{Binding IsEnabled}" Style="{StaticResource ToggleSwitchStyle}"
+                                                              Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding DisplayName}" Foreground="White"
+                                                               VerticalAlignment="Center"/>
+                                                    <Button Grid.Column="2" Content="↑" Command="{Binding MoveUpCommand}"
+                                                            Width="28" Height="26" Margin="4,0" Background="#1AFFFFFF"
+                                                            Foreground="White" BorderThickness="0"/>
+                                                    <Button Grid.Column="3" Content="↓" Command="{Binding MoveDownCommand}"
+                                                            Width="28" Height="26" Background="#1AFFFFFF"
+                                                            Foreground="White" BorderThickness="0"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Grid>
+                            </Border>
+
                             <!-- Card 5: Window Position -->
                             <Border Style="{StaticResource SettingCardStyle}">
                                 <Grid>
@@ -867,8 +942,10 @@
                                     </StackPanel>
 
                                     <ComboBox Grid.Column="1"
-                                              ItemsSource="{Binding AvailableHuds}"
-                                              SelectedValue="{Binding SelectedHud}"
+                                              ItemsSource="{Binding HudNavigation.Items}"
+                                              DisplayMemberPath="DisplayName"
+                                              SelectedValuePath="Id"
+                                              SelectedValue="{Binding HudNavigation.SelectedSettingsHudId}"
                                               Width="160"
                                               Height="32"
                                               VerticalAlignment="Center">
@@ -876,7 +953,17 @@
                                 </Grid>
                             </Border>
 
-
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HudNavigation.IsMusicSettingsSelected}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
                             <!-- Card 1: Design Style -->
                             <Border Style="{StaticResource SettingCardStyle}">
                                 <Grid>
@@ -1007,6 +1094,108 @@
                                     </Button>
                                 </Grid>
                             </Border>
+                            </StackPanel>
+
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HudNavigation.IsHomeSettingsSelected}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+
+                                <Border Style="{StaticResource SettingCardStyle}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,16,0">
+                                            <TextBlock Text="{Binding HomeDesignText}" Style="{StaticResource CardHeaderStyle}"/>
+                                            <TextBlock Text="{Binding HomeDesignDescriptionText}" Style="{StaticResource CardSubHeaderStyle}"/>
+                                        </StackPanel>
+                                        <ComboBox Grid.Column="1"
+                                                  SelectedValue="{Binding HomeHudDesignVariant}"
+                                                  SelectedValuePath="Tag"
+                                                  Width="190" Height="32">
+                                            <ComboBoxItem Content="Activity Modules (20)"
+                                                          Tag="{x:Static models:HomeHudDesignVariant.ActivityModules}"/>
+                                            <ComboBoxItem Content="Classic System (21)"
+                                                          Tag="{x:Static models:HomeHudDesignVariant.ClassicSystemOverlay}"/>
+                                            <ComboBoxItem Content="Fusion Balanced (22B)"
+                                                          Tag="{x:Static models:HomeHudDesignVariant.FusionBalanced}"/>
+                                            <ComboBoxItem Content="Fusion Expressive (22C)"
+                                                          Tag="{x:Static models:HomeHudDesignVariant.FusionExpressive}"/>
+                                        </ComboBox>
+                                    </Grid>
+                                </Border>
+
+                                <Border Style="{StaticResource SettingCardStyle}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,16,0">
+                                            <TextBlock Text="{Binding TimeFormatText}" Style="{StaticResource CardHeaderStyle}"/>
+                                            <TextBlock Text="{Binding TimeFormatDescriptionText}" Style="{StaticResource CardSubHeaderStyle}"/>
+                                        </StackPanel>
+                                        <ComboBox Grid.Column="1"
+                                                  ItemsSource="{Binding AvailableHomeTimeFormats}"
+                                                  DisplayMemberPath="DisplayName"
+                                                  SelectedValuePath="Format"
+                                                  SelectedValue="{Binding HomeHudTimeFormat}"
+                                                  Width="190" Height="32"/>
+                                    </Grid>
+                                </Border>
+
+                                <Border Style="{StaticResource SettingCardStyle}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="110"/>
+                                            <ColumnDefinition Width="230"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <StackPanel Grid.ColumnSpan="3" Margin="0,0,0,12">
+                                            <TextBlock Text="{Binding WorldClocksText}" Style="{StaticResource CardHeaderStyle}"/>
+                                            <TextBlock Text="{Binding WorldClocksDescriptionText}" Style="{StaticResource CardSubHeaderStyle}"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ClockLabelText}"
+                                                   Foreground="#8AFFFFFF" FontSize="11" Margin="0,0,8,4"/>
+                                        <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding TimeZoneText}"
+                                                   Foreground="#8AFFFFFF" FontSize="11" Margin="0,0,0,4"/>
+                                        <TextBlock Grid.Row="2" Text="1" Foreground="White" VerticalAlignment="Center"/>
+                                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding FirstWorldClockLabel, UpdateSourceTrigger=PropertyChanged}"
+                                                 Height="32" Margin="0,0,8,0" MaxLength="12"/>
+                                        <ComboBox Grid.Row="2" Grid.Column="2"
+                                                  ItemsSource="{Binding AvailableTimeZones}"
+                                                  DisplayMemberPath="DisplayName"
+                                                  SelectedValuePath="Id"
+                                                  SelectedValue="{Binding FirstWorldClockTimeZoneId}"
+                                                  Height="32"/>
+                                        <TextBlock Grid.Row="3" Text="2" Foreground="White" VerticalAlignment="Center"
+                                                   Margin="0,8,0,0"/>
+                                        <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding SecondWorldClockLabel, UpdateSourceTrigger=PropertyChanged}"
+                                                 Height="32" Margin="0,8,8,0" MaxLength="12"/>
+                                        <ComboBox Grid.Row="3" Grid.Column="2"
+                                                  ItemsSource="{Binding AvailableTimeZones}"
+                                                  DisplayMemberPath="DisplayName"
+                                                  SelectedValuePath="Id"
+                                                  SelectedValue="{Binding SecondWorldClockTimeZoneId}"
+                                                  Height="32" Margin="0,8,0,0"/>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
 
                         </StackPanel>
                     </ScrollViewer>

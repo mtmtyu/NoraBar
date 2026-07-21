@@ -10,6 +10,7 @@ using System.Windows.Media.Animation;
 using NoraBar.Hud;
 using NoraBar.Services;
 using NoraBar.ViewModels;
+using NoraBar.Models;
 
 using ContextMenuStrip = System.Windows.Forms.ContextMenuStrip;
 using NotifyIcon = System.Windows.Forms.NotifyIcon;
@@ -123,8 +124,8 @@ public partial class MainWindow : Window
 
         IslandHost.Content = evaluation.View;
         AnimateSize(
-            evaluation.PreferredSize.Width,
-            evaluation.PreferredSize.Height,
+            GetPresentationWidth(evaluation.PreferredSize.Width),
+            GetPresentationHeight(evaluation.PreferredSize.Height),
             collapseContent: false);
     }
 
@@ -217,6 +218,10 @@ public partial class MainWindow : Window
         else if (e.PropertyName == nameof(MainViewModel.IsPositionEditMode))
         {
             Dispatcher.Invoke(UpdateEditModeVisuals);
+        }
+        else if (e.PropertyName == nameof(MainViewModel.HudNavigationPlacement))
+        {
+            Dispatcher.Invoke(RefreshHudPresentation);
         }
         else
         {
@@ -427,12 +432,12 @@ public partial class MainWindow : Window
         }
         else
         {
-            IslandHost.Opacity = 0.0;
+            HudPresentationHost.Opacity = 0.0;
         }
 
         HudBorder.BeginAnimation(WidthProperty, widthAnimation);
         HudBorder.BeginAnimation(HeightProperty, heightAnimation);
-        IslandHost.BeginAnimation(OpacityProperty, opacityAnimation);
+        HudPresentationHost.BeginAnimation(OpacityProperty, opacityAnimation);
     }
 
     private void HudBorder_MouseEnter(object sender, MouseEventArgs e)
@@ -498,6 +503,36 @@ public partial class MainWindow : Window
         _viewModel.WindowLeft = Left;
         _viewModel.WindowTop = Top;
         _viewModel.HasCustomPosition = true;
+    }
+
+    private async void HudNavigation_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        HudNavigationViewModel? navigation = _viewModel.HudNavigation;
+        if (navigation is null || e.Delta == 0)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        await navigation.NavigateRelativeAsync(e.Delta < 0 ? 1 : -1);
+    }
+
+    private double GetPresentationWidth(double moduleWidth)
+    {
+        HudNavigationViewModel? navigation = _viewModel.HudNavigation;
+        return navigation is { ShowNavigation: true }
+            && _viewModel.HudNavigationPlacement == HudNavigationPlacement.RightRail
+                ? moduleWidth + 48
+                : moduleWidth;
+    }
+
+    private double GetPresentationHeight(double moduleHeight)
+    {
+        HudNavigationViewModel? navigation = _viewModel.HudNavigation;
+        return navigation is { ShowNavigation: true }
+            && _viewModel.HudNavigationPlacement == HudNavigationPlacement.TopTabs
+                ? moduleHeight + 40
+                : moduleHeight;
     }
 
     private void OpenSettings_Click(object sender, RoutedEventArgs e)

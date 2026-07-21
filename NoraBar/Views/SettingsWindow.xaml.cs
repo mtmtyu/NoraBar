@@ -2,6 +2,8 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
 using NoraBar.Hud.Music;
+using NoraBar.Hud;
+using NoraBar.Hud.Home;
 using NoraBar.ViewModels;
 
 namespace NoraBar.Views
@@ -9,6 +11,7 @@ namespace NoraBar.Views
     public partial class SettingsWindow : Window
     {
         private MainViewModel? _viewModel;
+        private HomeHudPreview? _homePreview;
         private bool _isCloseAnimationCompleted = false;
         private bool _isClosingApp = false;
 
@@ -49,7 +52,13 @@ namespace NoraBar.Views
                 {
                     _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
                     _viewModel.Music.PropertyChanged -= MusicViewModel_PropertyChanged;
+                    if (_viewModel.HudNavigation is not null)
+                    {
+                        _viewModel.HudNavigation.PropertyChanged -= HudNavigation_PropertyChanged;
+                    }
                 }
+                _homePreview?.Dispose();
+                _homePreview = null;
             };
         }
 
@@ -123,12 +132,20 @@ namespace NoraBar.Views
             {
                 oldVm.PropertyChanged -= ViewModel_PropertyChanged;
                 oldVm.Music.PropertyChanged -= MusicViewModel_PropertyChanged;
+                if (oldVm.HudNavigation is not null)
+                {
+                    oldVm.HudNavigation.PropertyChanged -= HudNavigation_PropertyChanged;
+                }
             }
             if (e.NewValue is MainViewModel newVm)
             {
                 _viewModel = newVm;
                 _viewModel.PropertyChanged += ViewModel_PropertyChanged;
                 _viewModel.Music.PropertyChanged += MusicViewModel_PropertyChanged;
+                if (_viewModel.HudNavigation is not null)
+                {
+                    _viewModel.HudNavigation.PropertyChanged += HudNavigation_PropertyChanged;
+                }
                 UpdatePreview();
                 UpdateOverlayVisibilities();
             }
@@ -142,11 +159,29 @@ namespace NoraBar.Views
             {
                 Dispatcher.Invoke(UpdatePreview);
             }
+            else if (e.PropertyName is nameof(MainViewModel.HomeHudDesignVariant)
+                or nameof(MainViewModel.HomeHudTimeFormat)
+                or nameof(MainViewModel.FirstWorldClockLabel)
+                or nameof(MainViewModel.FirstWorldClockTimeZoneId)
+                or nameof(MainViewModel.SecondWorldClockLabel)
+                or nameof(MainViewModel.SecondWorldClockTimeZoneId)
+                or nameof(MainViewModel.SelectedLanguage))
+            {
+                Dispatcher.Invoke(UpdatePreview);
+            }
             else if (e.PropertyName == nameof(MainViewModel.IsLicenseDialogOpen) || 
                      e.PropertyName == nameof(MainViewModel.IsUpdateDialogOpen) ||
                      e.PropertyName == nameof(MainViewModel.IsResetDialogOpen))
             {
                 Dispatcher.Invoke(UpdateOverlayVisibilities);
+            }
+        }
+
+        private void HudNavigation_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(HudNavigationViewModel.SelectedSettingsHudId))
+            {
+                Dispatcher.Invoke(UpdatePreview);
             }
         }
 
@@ -230,6 +265,21 @@ namespace NoraBar.Views
         private void UpdatePreview()
         {
             if (_viewModel == null) return;
+
+            _homePreview?.Dispose();
+            _homePreview = null;
+
+            if (string.Equals(
+                    _viewModel.HudNavigation?.SelectedSettingsHudId,
+                    BuiltInHudIds.Home,
+                    StringComparison.Ordinal))
+            {
+                _homePreview = HomeHudPreviewFactory.Create(_viewModel);
+                PreviewHost.Content = _homePreview.View;
+                PreviewHost.Width = _homePreview.PreferredSize.Width;
+                PreviewHost.Height = _homePreview.PreferredSize.Height;
+                return;
+            }
 
             MusicHudPreview preview = MusicHudPreviewFactory.Create(
                 _viewModel.CurrentVariant,
