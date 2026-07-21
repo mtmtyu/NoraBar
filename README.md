@@ -8,9 +8,9 @@ I am very happy to be able to release this software!
 
 In this initial release, I have focused primarily on music control features. While the functionality is still limited, I plan to add a variety of features in the future to make this software even more useful and enjoyable.
 
-A small music HUD that quietly appears at the very top of your screen.
+A small, switchable HUD that quietly appears at the very top of your screen.
 
-NoraBar is a WPF application for Windows desktop. It usually waits as a thin 2px strip at the top edge of the screen, then opens into a music controller when you move the mouse near it. It keeps the current track title, artist, album art, playback position, and waveform visualizer in a place that stays close without getting in your way.
+NoraBar is a WPF application for Windows desktop. It usually waits as a thin 2px strip at the top edge of the screen, then opens when you move the mouse near it. Switch between the focused Music HUD and an at-a-glance Home HUD without leaving the top edge of your workspace.
 
 ## Features
 
@@ -38,12 +38,22 @@ NoraBar is a WPF application for Windows desktop. It usually waits as a thin 2px
 - **Fullscreen detection**
   - Automatically prevents the HUD from expanding while fullscreen applications (like games or videos) are running.
 
-- **Two design styles**
+- **Music HUD designs**
   - `Minimal Floating Pill`: a compact, lightweight style for everyday use.
   - `Productivity Command Island`: a wider style that gives album art and progress more room.
 
+- **Home HUD**
+  - Combines local time, date, two configurable world clocks, current media, and playback controls.
+  - Includes Activity Modules, Classic System Overlay, Fusion Balanced, and Fusion Expressive designs.
+  - Supports system, 12-hour, and 24-hour clock formats.
+
+- **Switchable HUD navigation**
+  - Choose a right-side icon rail or top icon-and-name tabs.
+  - Switch by click or by scrolling over the navigation area.
+  - Enable, disable, reorder, and choose the startup HUD from settings.
+
 - **Settings window**
-  - Switch the design style, progress bar visibility, synced lyrics, automatic text scrolling, startup behavior, display language, and HUD position.
+  - Configure each HUD with a live preview, along with progress visibility, synced lyrics, automatic text scrolling, startup behavior, display language, and HUD position.
   - Includes startup update checks, manual update checks, an audio visualizer restart button, and third-party license information.
 
 ## Screenshots

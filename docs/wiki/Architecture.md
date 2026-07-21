@@ -8,19 +8,21 @@ NoraBar is based on WPF MVVM. Phase 0 modularizes HUD selection and presentation
 App (composition root)
   ├─ MainViewModel → MusicViewModel → MediaControl / AudioVisualizer / Lyrics
   ├─ MusicHudModule : IHudModule
+  ├─ HomeHudModule : IHudModule
   ├─ HudRegistry
   ├─ HudRouter
+  ├─ HudNavigationViewModel
   └─ MainWindow
        ├─ HudRouter.StateChanged / PresentationChanged
        ├─ hosts the current module's view
-       └─ position, DPI, input, animation, settings, tray, shutdown
+       └─ navigation, position, DPI, input, animation, settings, tray, shutdown
 ```
 
 `App.xaml` has no `StartupUri` and specifies `ShutdownMode="OnExplicitShutdown"`. `App.OnStartup` explicitly constructs dependencies and connects them with constructor injection. No DI container is used.
 
 ## HUD IDs and PresentationState
 
-HUDs use stable string IDs. Built-in IDs are centralized in `BuiltInHudIds`; the music HUD is `BuiltInHudIds.Music`, whose value is `music`. `HudRegistry` and Router use case-sensitive ordinal ID comparison.
+HUDs use stable string IDs. Built-in IDs are centralized in `BuiltInHudIds`; Music is `music` and Home is `home`. `HudRegistry` and Router use case-sensitive ordinal ID comparison.
 
 `HudPresentationState` is independent from HUD selection and contains `Collapsed`, `Peek`, `Expanded`, and `Pinned`. `SetPresentationState` and `CollapseFromPointerLeave` change presentation only; they do not call `ActivateAsync` or `DeactivateAsync`. Requests are rejected without notification when the state is unchanged, before initialization, during a transition, or after shutdown starts. `Pinned` does not collapse on pointer leave.
 
@@ -69,7 +71,7 @@ The ID and module are `null` before initialization and after shutdown. For each 
 
 ### Synchronization and Notifications
 
-`InitializeAsync`, `NavigateToAsync`, `DisableAsync`, and `ShutdownAsync` are serialized by a `SemaphoreSlim`. State reads and writes use a short `lock`; `StateChanged` and `PresentationChanged` are raised outside that lock. The synchronous presentation APIs use the same lock to prevent competition with transitions and shutdown.
+`InitializeAsync`, `NavigateToAsync`, `ApplyConfigurationAsync`, `DisableAsync`, and `ShutdownAsync` are serialized by a `SemaphoreSlim`. State reads and writes use a short `lock`; `StateChanged` and `PresentationChanged` are raised outside that lock. The synchronous presentation APIs use the same lock to prevent competition with transitions and shutdown. `ApplyConfigurationAsync` applies enabled order and startup HUD immediately and moves to a valid fallback before disabling the current module.
 
 Invalidations raised during `ActivateAsync` are deferred. After the current HUD is committed and `StateChanged` is raised, any number of deferred invalidations are coalesced into one `PresentationChanged`. Unregistered settings IDs are excluded from the runtime enabled list. If it becomes empty, Router adds `music`, or the first registered module if music is unavailable. This runtime correction does not rewrite persisted settings.
 
@@ -79,11 +81,17 @@ Invalidations raised during `ActivateAsync` are deferred. After the current HUD 
 
 It reevaluates cached views and preferred size instead of rebuilding views for every settings change. `InitializeAsync` establishes subscriptions once. `DisposeAsync` removes them, waits for in-flight notifications, and runs Cleanup exactly once. `MusicHudModule.DisposeAsync` is the only direct owner of `MusicViewModel.Cleanup`.
 
+## HomeHudModule
+
+`HomeHudModule` is the built-in overview HUD. It owns four cached views—Activity Modules, Classic System Overlay, Fusion Balanced, and Fusion Expressive—and their preferred sizes. `HomeHudViewModel` adapts the existing music state and adds a local clock plus two configurable world clocks. Its one-second clock timer runs only while Home is active, and presentation invalidation is forwarded through Router.
+
+Home settings live in the `home` module payload: design, system/12-hour/24-hour time format, and the label and Windows time-zone ID for each world clock. With no media session, the music region keeps its layout, shows the localized no-media state, and disables transport controls. The settings window creates a separate disposable presentation source for live preview, so preview lifetime does not alter the active module.
+
 ## MainWindow
 
-For HUD view selection and preferred size, `MainWindow` is a generic host that observes only `StateChanged` and `PresentationChanged`. It does not subscribe directly to modules and reevaluates view and size from one Router snapshot. It continues to observe shell-specific `MainViewModel` state such as language and position editing.
+For HUD view selection and preferred size, `MainWindow` is a generic host that observes only `StateChanged` and `PresentationChanged`. It does not subscribe directly to modules and reevaluates view and size from one Router snapshot. It continues to observe shell-specific `MainViewModel` state such as language, navigation placement, and position editing.
 
-It owns top-edge and multi-monitor positioning, DPI, input, the common collapsed `200x2` size, animation, fullscreen suppression, position editing, language, settings, tray, and shutdown requests. It has no music view types, `DesignVariant`, `ShowLyrics`, `ShowProgressBar`, `HasMultipleSessions`, or HUD-ID branches.
+It owns top-edge and multi-monitor positioning, DPI, input, the common collapsed `200x2` size, animation, fullscreen suppression, position editing, language, settings, tray, and shutdown requests. While expanded or pinned, it adds generic navigation chrome as either a right icon rail or top icon-and-name tabs. Click and wheel navigation are handled only inside this chrome, preserving module-owned scrolling such as music-session selection. It has no module-specific view types or sizing branches.
 
 Alt+F4, the system menu, and OS Close also reach `OnClosing`. Unless App has authorized the final close, MainWindow cancels it and forwards it through the guarded exit animation and common shutdown flow.
 
@@ -91,7 +99,8 @@ Alt+F4, the system menu, and OS Close also reach `OnClosing`. Unless App has aut
 
 ```text
 App.OnStartup
-  → MainViewModel → MusicHudModule → register with HudRegistry → HudRouter
+  → MainViewModel → MusicHudModule + HomeHudModule → register with HudRegistry → HudRouter
+  → HudNavigationViewModel → attach to MainViewModel
   → construct MainWindow and subscribe to StateChanged / PresentationChanged
   → HudRouter.InitializeAsync
        → resolve effective default
@@ -120,6 +129,8 @@ NavigateToAsync(newHudId)
 
 The new subscription is installed before Activate; the old subscription is removed before Deactivate. On failure, Router cleans up the new module and tries the old module, then the effective default. If recovery fails, it sets the current HUD to `null`, presentation to `Collapsed`, initialization to false, and throws `HudNavigationException`. When `DisableAsync` disables the current HUD, Router resolves a fallback from the updated list before switching.
 
+`HudNavigationViewModel` exposes the registered modules to both navigation chrome and settings. It persists enablement and ordering immediately, prevents disabling the final HUD, cycles through enabled modules, and keeps the configured startup HUD valid. A module switch preserves the current expanded or pinned presentation; MainWindow animates the content and resized shell.
+
 ## Shutdown Lifecycle
 
 ```text
@@ -127,6 +138,7 @@ shutdown request from window / menu / tray
   → MainWindow exit animation
   → App.RequestShutdownAsync (join concurrent requests to one Task)
   → MainWindow.DetachHudRouter
+  → HudNavigationViewModel.Dispose
   → HudRouter.ShutdownAsync
        → unsubscribe current module → DeactivateAsync → clear CurrentHud
   → HudRegistry.DisposeAsync
@@ -139,7 +151,7 @@ shutdown request from window / menu / tray
 
 ## Settings SchemaVersion and Migration
 
-`UserSettings` adds `SchemaVersion` (currently 1), `DefaultHudId` (`music`), `EnabledHudModuleIds` (`["music"]`), `Modules`, and `AdditionalProperties` for unknown top-level JSON while retaining existing settings.
+`UserSettings` includes `SchemaVersion` (currently 1), `DefaultHudId` (default `music`), `EnabledHudModuleIds` (default `["music", "home"]`), `HudNavigationPlacement` (default `RightRail`), `Modules`, and `AdditionalProperties` for unknown top-level JSON while retaining existing settings. Existing settings without the Home introduction marker receive Home once after Music; subsequent manual disablement is preserved.
 
 `UserSettingsJson` performs pure structural normalization. Only missing, zero, or negative schema versions are upgraded; future versions greater than the current value are preserved. Unregistered IDs, unknown module JSON, and unknown top-level JSON are round-tripped. Normalization and serialization create a new settings object, collections, and cloned `JsonElement` values without mutating the caller. Malformed JSON falls back to defaults. `SettingsService` retains `%AppData%\NoraBar\settings.json` and migration from the legacy location.
 
@@ -185,11 +197,11 @@ external plug-in loading (future)
   → IHudModule → HudRegistry → HudRouter → MainWindow
 ```
 
-The implemented boundary stops at `IHudModule`, Registry, Router, and the generic host. An external DLL loader, assembly scanning, directory watching, isolated loading, signing and trust management, and a plug-in store are not implemented. Phase 0 does not provide a separate SDK or external binary compatibility guarantee. Top tabs, new practical HUDs, live activities, and automatic switching are also out of scope.
+The implemented boundary stops at `IHudModule`, Registry, Router, and the generic host. An external DLL loader, assembly scanning, directory watching, isolated loading, signing and trust management, and a plug-in store are not implemented. Phase 0 does not provide a separate SDK or external binary compatibility guarantee. Live activities and automatic context-based switching remain out of scope.
 
 ## Existing ViewModels and Services
 
-`MainViewModel` holds settings and shell state and remains the music view compatibility DataContext. `MusicViewModel` provides track, playback, lyrics, waveform, and controls. `MediaControlService` handles Windows media sessions, `AudioVisualizerService` performs audio analysis, `LyricsService` supplies lyrics, `SettingsService` persists settings, `StartupService` handles auto-start, and `LocalizationService` manages language strings.
+`MainViewModel` holds settings and shell state and remains the music view compatibility DataContext. `HudNavigationViewModel` coordinates enabled order, startup selection, settings selection, and navigation commands. `HomeHudViewModel` adapts music state and clock data for Home views. `MusicViewModel` provides track, playback, lyrics, waveform, and controls. `MediaControlService` handles Windows media sessions, `AudioVisualizerService` performs audio analysis, `LyricsService` supplies lyrics, `SettingsService` persists settings, `StartupService` handles auto-start, and `LocalizationService` manages language strings.
 
 ## Japanese Version
 
