@@ -6,8 +6,8 @@ namespace NoraBar.Hud;
 public sealed class HudRouter
 {
     private readonly HudRegistry _registry;
-    private readonly string _configuredDefaultHudId;
-    private readonly string[] _configuredEnabledHudModuleIds;
+    private string _configuredDefaultHudId;
+    private string[] _configuredEnabledHudModuleIds;
     private readonly Action<Exception> _reportDeferredPublicationFailure;
     private readonly Action<Func<Task>> _scheduleDeferredPublication;
     private readonly object _stateLock = new();
@@ -342,6 +342,79 @@ public sealed class HudRouter
 
             await PublishStateChangedAsync(() =>
             {
+                _enabledHudModuleIds = updatedIds;
+                _effectiveDefaultHudId = updatedDefault;
+                _isTransitioning = false;
+            });
+        }
+        finally
+        {
+            _lifecycleGate.Release();
+        }
+    }
+
+    public async Task ApplyConfigurationAsync(
+        string configuredDefaultHudId,
+        IEnumerable<string> configuredEnabledHudModuleIds,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(configuredDefaultHudId);
+        ArgumentNullException.ThrowIfNull(configuredEnabledHudModuleIds);
+        string[] configuredIds = configuredEnabledHudModuleIds.ToArray();
+
+        await _lifecycleGate.WaitAsync(cancellationToken);
+        try
+        {
+            List<string> updatedIds;
+            string updatedDefault;
+            IHudModule? targetModule = null;
+            await EnterLifecycleMutationAsync(cancellationToken);
+            try
+            {
+                EnsureCanNavigate();
+                (updatedIds, updatedDefault) = ResolveRuntimeConfiguration(
+                    configuredIds,
+                    configuredDefaultHudId);
+
+                string? currentHudId;
+                IHudModule? currentModule;
+                lock (_stateLock)
+                {
+                    currentHudId = _currentHudId;
+                    currentModule = _currentModule;
+                }
+
+                if (currentHudId is null
+                    || !updatedIds.Contains(currentHudId, StringComparer.Ordinal))
+                {
+                    targetModule = GetRegisteredModule(updatedDefault);
+                    if (ReferenceEquals(targetModule, currentModule))
+                    {
+                        targetModule = null;
+                    }
+                }
+
+                lock (_stateLock)
+                {
+                    _isTransitioning = true;
+                    _pendingPresentationInvalidationSubscription = null;
+                }
+            }
+            finally
+            {
+                _publicationGate.Release();
+                ExitLifecycleMutation();
+            }
+
+            if (targetModule is not null)
+            {
+                await TransitionToAsync(targetModule, cancellationToken, publishState: false);
+            }
+
+            await PublishStateChangedAsync(() =>
+            {
+                _configuredDefaultHudId = configuredDefaultHudId;
+                _configuredEnabledHudModuleIds = configuredIds;
                 _enabledHudModuleIds = updatedIds;
                 _effectiveDefaultHudId = updatedDefault;
                 _isTransitioning = false;
@@ -787,6 +860,13 @@ public sealed class HudRouter
     private (List<string> EnabledIds, string EffectiveDefaultId) ResolveRuntimeConfiguration(
         IEnumerable<string> configuredIds)
     {
+        return ResolveRuntimeConfiguration(configuredIds, _configuredDefaultHudId);
+    }
+
+    private (List<string> EnabledIds, string EffectiveDefaultId) ResolveRuntimeConfiguration(
+        IEnumerable<string> configuredIds,
+        string configuredDefaultHudId)
+    {
         var enabledIds = new List<string>();
         foreach (string? id in configuredIds)
         {
@@ -799,7 +879,7 @@ public sealed class HudRouter
         }
 
         EnsureRuntimeModuleAvailable(enabledIds);
-        return (enabledIds, ResolveEffectiveDefault(enabledIds));
+        return (enabledIds, ResolveEffectiveDefault(enabledIds, configuredDefaultHudId));
     }
 
     private void EnsureRuntimeModuleAvailable(List<string> enabledIds)
@@ -822,9 +902,16 @@ public sealed class HudRouter
 
     private string ResolveEffectiveDefault(IReadOnlyList<string> enabledIds)
     {
-        if (enabledIds.Contains(_configuredDefaultHudId, StringComparer.Ordinal))
+        return ResolveEffectiveDefault(enabledIds, _configuredDefaultHudId);
+    }
+
+    private string ResolveEffectiveDefault(
+        IReadOnlyList<string> enabledIds,
+        string configuredDefaultHudId)
+    {
+        if (enabledIds.Contains(configuredDefaultHudId, StringComparer.Ordinal))
         {
-            return _configuredDefaultHudId;
+            return configuredDefaultHudId;
         }
 
         if (enabledIds.Contains(BuiltInHudIds.Music, StringComparer.Ordinal))
