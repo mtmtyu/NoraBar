@@ -170,12 +170,16 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
         }
     }
 
+    public IReadOnlyList<NoraBar.Hud.Home.Widgets.HomeWidgetConfig> ActiveWidgets => _viewModel.ActiveHomeWidgets;
+
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         switch (e.PropertyName)
         {
             case nameof(MainViewModel.HomeHudDesignVariant):
+            case nameof(MainViewModel.ActiveHomeWidgets):
                 PresentationInvalidated?.Invoke(this, EventArgs.Empty);
+                OnPropertyChanged(nameof(ActiveWidgets));
                 break;
             case nameof(MainViewModel.HomeHudTimeFormat):
             case nameof(MainViewModel.FirstWorldClockTimeZoneId):

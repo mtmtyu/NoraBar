@@ -1,0 +1,34 @@
+<UserControl x:Class="NoraBar.Views.Home.Widgets.WorldClockWidgetView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <!-- Compact Single Style -->
+        <DataTemplate x:Key="WorldClockCompactTemplate">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0">
+                <StackPanel Margin="0,0,8,0">
+                    <TextBlock Text="{Binding FirstWorldClockLabel}" Foreground="#A8FFFFFF" FontSize="10"/>
+                    <TextBlock Text="{Binding FirstWorldClockTimeText}" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
+                </StackPanel>
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- Dual Card Style -->
+        <DataTemplate x:Key="WorldClockDualCardTemplate">
+            <Border Background="#20FFFFFF" CornerRadius="8" Padding="10,6" Margin="4,0">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <StackPanel Margin="0,0,10,0">
+                        <TextBlock Text="{Binding FirstWorldClockLabel}" Foreground="#FF81D4FA" FontSize="10" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding FirstWorldClockTimeText}" Foreground="White" FontSize="12"/>
+                    </StackPanel>
+                    <Border BorderBrush="#20FFFFFF" BorderThickness="1,0,0,0" Margin="0,2,10,2"/>
+                    <StackPanel>
+                        <TextBlock Text="{Binding SecondWorldClockLabel}" Foreground="#FFCE93D8" FontSize="10" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding SecondWorldClockTimeText}" Foreground="White" FontSize="12"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <ContentControl x:Name="WorldClockContentControl" Content="{Binding}"/>
+</UserControl>

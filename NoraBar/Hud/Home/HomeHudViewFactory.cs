@@ -1,5 +1,6 @@
 using System.Windows;
 using NoraBar.Models;
+using NoraBar.Views.Home;
 using NoraBar.Views.Home.Design20;
 using NoraBar.Views.Home.Design21;
 using NoraBar.Views.Home.Design22B;
@@ -9,12 +10,8 @@ namespace NoraBar.Hud.Home;
 
 internal static class HomeHudViewFactory
 {
-    internal static FrameworkElement Create(HomeHudDesignVariant variant) => variant switch
+    internal static FrameworkElement Create(HomeHudDesignVariant variant)
     {
-        HomeHudDesignVariant.ActivityModules => new ActivityModulesView(),
-        HomeHudDesignVariant.ClassicSystemOverlay => new ClassicSystemOverlayView(),
-        HomeHudDesignVariant.FusionBalanced => new FusionBalancedView(),
-        HomeHudDesignVariant.FusionExpressive => new FusionExpressiveView(),
-        _ => new FusionBalancedView()
-    };
+        return new DynamicWidgetHomeView();
+    }
 }

@@ -568,6 +568,7 @@ namespace NoraBar.ViewModels
             _firstWorldClockTimeZoneId = homeSettings.FirstClock.TimeZoneId;
             _secondWorldClockLabel = homeSettings.SecondClock.Label;
             _secondWorldClockTimeZoneId = homeSettings.SecondClock.TimeZoneId;
+            _activeHomeWidgets = homeSettings.EffectiveWidgets;
             _hudNavigationPlacement = _settings.HudNavigationPlacement;
 
             AvailableScrollModes = new[]
@@ -707,6 +708,19 @@ namespace NoraBar.ViewModels
             SettingsService.Save(_settings);
         }
 
+        private IReadOnlyList<NoraBar.Hud.Home.Widgets.HomeWidgetConfig> _activeHomeWidgets = NoraBar.Hud.Home.HomeHudSettings.Default.EffectiveWidgets;
+        public IReadOnlyList<NoraBar.Hud.Home.Widgets.HomeWidgetConfig> ActiveHomeWidgets
+        {
+            get => _activeHomeWidgets;
+            set
+            {
+                if (SetProperty(ref _activeHomeWidgets, value))
+                {
+                    SaveSettings();
+                }
+            }
+        }
+
         internal HomeHudSettings GetHomeHudSettings() => new(
             HomeHudDesignVariant,
             HomeHudTimeFormat,
@@ -715,7 +729,8 @@ namespace NoraBar.ViewModels
                 FirstWorldClockTimeZoneId),
             new HomeWorldClockSettings(
                 SecondWorldClockLabel.Trim(),
-                SecondWorldClockTimeZoneId));
+                SecondWorldClockTimeZoneId),
+            ActiveHomeWidgets);
 
         internal static void UpdateKnownSettings(
             UserSettings settings,

@@ -1,6 +1,6 @@
 namespace NoraBar.Hud.Home.Widgets;
 
-internal enum HomeWidgetType
+public enum HomeWidgetType
 {
     DigitalClock,
     WorldClock,

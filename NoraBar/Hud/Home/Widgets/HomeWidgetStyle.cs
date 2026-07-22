@@ -1,6 +1,6 @@
 namespace NoraBar.Hud.Home.Widgets;
 
-internal enum HomeWidgetStyle
+public enum HomeWidgetStyle
 {
     // Digital Clock Styles
     ClockMinimal,
