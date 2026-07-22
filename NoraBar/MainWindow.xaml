@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:models="clr-namespace:NoraBar.Models"
+        xmlns:system="clr-namespace:System;assembly=System.Runtime"
         mc:Ignorable="d"
         Title="NoraBar" Height="250" Width="800"
         WindowStyle="None"
@@ -13,6 +14,57 @@
         ShowInTaskbar="False"
         WindowStartupLocation="Manual"
         Icon="Assets/AppIcon.ico">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="HudNavigationToolTipBackgroundBrush" Color="#F0202020"/>
+        <SolidColorBrush x:Key="HudNavigationToolTipBorderBrush" Color="#66FFFFFF"/>
+        <SolidColorBrush x:Key="RightRailNavigationBackgroundBrush" Color="#14FFFFFF"/>
+        <SolidColorBrush x:Key="RightRailNavigationBorderBrush" Color="#30FFFFFF"/>
+        <SolidColorBrush x:Key="RightRailNavigationForegroundBrush" Color="#E6FFFFFF"/>
+        <SolidColorBrush x:Key="RightRailNavigationHoverBackgroundBrush" Color="#30FFFFFF"/>
+        <SolidColorBrush x:Key="RightRailNavigationHoverBorderBrush" Color="#70FFFFFF"/>
+        <SolidColorBrush x:Key="RightRailNavigationCurrentBackgroundBrush" Color="#40FFFFFF"/>
+        <SolidColorBrush x:Key="RightRailNavigationCurrentBorderBrush" Color="#80FFFFFF"/>
+        <system:Int32 x:Key="HudNavigationToolTipInitialShowDelay">250</system:Int32>
+        <system:Int32 x:Key="HudNavigationToolTipBetweenShowDelay">100</system:Int32>
+        <system:Int32 x:Key="HudNavigationToolTipShowDuration">5000</system:Int32>
+
+        <Style x:Key="HudNavigationToolTipStyle" TargetType="{x:Type ToolTip}">
+            <Setter Property="Placement" Value="Left"/>
+            <Setter Property="HorizontalOffset" Value="-8"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ToolTip}">
+                        <Border Background="{StaticResource HudNavigationToolTipBackgroundBrush}"
+                                BorderBrush="{StaticResource HudNavigationToolTipBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="10,6">
+                            <ContentPresenter Content="{TemplateBinding Content}"
+                                              TextElement.Foreground="White"
+                                              TextElement.FontSize="12"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="RightRailNavigationButtonStyle" TargetType="{x:Type Button}">
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Margin" Value="0,4"/>
+            <Setter Property="Background" Value="{StaticResource RightRailNavigationBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource RightRailNavigationBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="{StaticResource RightRailNavigationForegroundBrush}"/>
+            <Setter Property="ToolTipService.InitialShowDelay"
+                    Value="{StaticResource HudNavigationToolTipInitialShowDelay}"/>
+            <Setter Property="ToolTipService.BetweenShowDelay"
+                    Value="{StaticResource HudNavigationToolTipBetweenShowDelay}"/>
+            <Setter Property="ToolTipService.ShowDuration"
+                    Value="{StaticResource HudNavigationToolTipShowDuration}"/>
+        </Style>
+    </Window.Resources>
 
     <Grid>
         <!-- HudBorder is the main interactive container for the island. In idle, it's 200x2 and invisible. -->
@@ -136,24 +188,41 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Button Command="{Binding NavigateCommand}" Width="32" Height="32" Margin="0,3"
-                                    Background="Transparent" BorderThickness="0" Foreground="#A8FFFFFF"
-                                    ToolTip="{Binding DisplayName}">
+                            <Button Command="{Binding NavigateCommand}"
+                                    Style="{StaticResource RightRailNavigationButtonStyle}"
+                                    AutomationProperties.Name="{Binding DisplayName}">
+                                <Button.ToolTip>
+                                    <ToolTip Content="{Binding PlacementTarget.DataContext.DisplayName,
+                                                              RelativeSource={RelativeSource Self}}"
+                                             Style="{StaticResource HudNavigationToolTipStyle}"/>
+                                </Button.ToolTip>
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="IconBackground" Background="{TemplateBinding Background}"
-                                                CornerRadius="16">
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="17">
                                             <TextBlock Text="{Binding IconText}" FontFamily="Segoe Fluent Icons"
-                                                       FontSize="14" HorizontalAlignment="Center"
+                                                       FontSize="16" HorizontalAlignment="Center"
                                                        VerticalAlignment="Center"/>
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <DataTrigger Binding="{Binding IsCurrent}" Value="True">
-                                                <Setter TargetName="IconBackground" Property="Background" Value="#26FFFFFF"/>
+                                                <Setter TargetName="IconBackground" Property="Background"
+                                                        Value="{StaticResource RightRailNavigationCurrentBackgroundBrush}"/>
+                                                <Setter TargetName="IconBackground" Property="BorderBrush"
+                                                        Value="{StaticResource RightRailNavigationCurrentBorderBrush}"/>
                                                 <Setter Property="Foreground" Value="White"/>
                                             </DataTrigger>
                                             <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="IconBackground" Property="Background" Value="#1AFFFFFF"/>
+                                                <Setter TargetName="IconBackground" Property="Background"
+                                                        Value="{StaticResource RightRailNavigationHoverBackgroundBrush}"/>
+                                                <Setter TargetName="IconBackground" Property="BorderBrush"
+                                                        Value="{StaticResource RightRailNavigationHoverBorderBrush}"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                            </Trigger>
+                                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                                <Setter TargetName="IconBackground" Property="BorderBrush" Value="White"/>
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
