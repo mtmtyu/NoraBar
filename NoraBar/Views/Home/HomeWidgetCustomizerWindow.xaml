@@ -4,7 +4,8 @@
         Title="Home HUD Widget Customizer" Width="760" Height="680"
         WindowStartupLocation="CenterOwner" Background="Transparent" Foreground="White"
         WindowStyle="None" AllowsTransparency="True" ResizeMode="NoResize"
-        FontFamily="Segoe UI, Yu Gothic UI, Meiryo">
+        FontFamily="Segoe UI, Yu Gothic UI, Meiryo"
+        Loaded="Window_Loaded">
 
     <Window.Resources>
         <!-- Card Style -->
@@ -46,7 +47,7 @@
                     <Image Source="/Assets/AppIcon.ico" Width="28" Height="28" Margin="0,0,12,0" VerticalAlignment="Center"/>
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="Widget Layout Customizer" FontSize="18" FontWeight="Bold" Foreground="White" FontFamily="Segoe UI Variable Display, Segoe UI"/>
-                        <TextBlock Text="Drag and drop widgets, switch design styles, and view changes in real-time" FontSize="11" Foreground="#8A8A8A" Margin="0,2,0,0" FontFamily="Segoe UI Variable Text, Segoe UI"/>
+                        <TextBlock Text="Drag and drop widgets to reorder and preview your Home HUD in real-time" FontSize="11" Foreground="#8A8A8A" Margin="0,2,0,0" FontFamily="Segoe UI Variable Text, Segoe UI"/>
                     </StackPanel>
                 </StackPanel>
 
@@ -104,6 +105,7 @@
                     <Border Grid.Row="1" Background="#0D1117" CornerRadius="10" BorderBrush="#1AFFFFFF" BorderThickness="1" Padding="6">
                         <ListBox x:Name="ActiveWidgetsListBox" ItemsSource="{Binding ActiveWidgets}" Background="Transparent" BorderThickness="0"
                                  AllowDrop="True" PreviewMouseLeftButtonDown="ActiveWidgets_PreviewMouseLeftButtonDown"
+                                 PreviewMouseMove="ActiveWidgets_PreviewMouseMove"
                                  Drop="ActiveWidgets_Drop" DragOver="ActiveWidgets_DragOver">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
@@ -128,11 +130,10 @@
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
 
-                                            <!-- Drag Handle -->
-                                            <TextBlock Grid.Column="0" Text="&#xE700;" FontFamily="Segoe Fluent Icons" Foreground="#66FFFFFF" FontSize="14" VerticalAlignment="Center" Margin="0,0,10,0" Cursor="SizeAll"/>
+                                            <!-- Drag Handle Icon -->
+                                            <TextBlock Grid.Column="0" Text="&#xE700;" FontFamily="Segoe Fluent Icons" Foreground="#8AFFFFFF" FontSize="16" VerticalAlignment="Center" Margin="0,0,12,0" Cursor="SizeAll"/>
 
                                             <!-- Widget Title & Icon -->
                                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -140,12 +141,8 @@
                                                 <TextBlock Text="{Binding Title}" Foreground="White" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
                                             </StackPanel>
 
-                                            <!-- Style Selector -->
-                                            <ComboBox Grid.Column="2" ItemsSource="{Binding AvailableStyles}" SelectedItem="{Binding Style, Mode=TwoWay}"
-                                                      Width="150" Height="28" Margin="8,0" VerticalAlignment="Center" Background="#20FFFFFF" Foreground="Black" FontSize="11"/>
-
                                             <!-- Move / Delete Actions -->
-                                            <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                                                 <Button Content="&#xE74A;" FontFamily="Segoe Fluent Icons" Command="{Binding DataContext.MoveUpCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" Margin="2,0" Background="Transparent" Foreground="#A0FFFFFF" BorderThickness="0" Cursor="Hand" Width="24" Height="24"/>
                                                 <Button Content="&#xE74B;" FontFamily="Segoe Fluent Icons" Command="{Binding DataContext.MoveDownCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" Margin="2,0" Background="Transparent" Foreground="#A0FFFFFF" BorderThickness="0" Cursor="Hand" Width="24" Height="24"/>
                                                 <Button Content="&#xE74D;" FontFamily="Segoe Fluent Icons" Command="{Binding DataContext.RemoveWidgetCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" Margin="4,0,0,0" Background="Transparent" Foreground="#FFEF5350" BorderThickness="0" Cursor="Hand" Width="24" Height="24"/>

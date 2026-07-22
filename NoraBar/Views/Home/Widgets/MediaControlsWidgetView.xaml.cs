@@ -9,19 +9,11 @@ public partial class MediaControlsWidgetView : UserControl
     public MediaControlsWidgetView()
     {
         InitializeComponent();
+        MediaContentControl.ContentTemplate = Resources["MediaCompactTemplate"] as DataTemplate;
     }
 
     public void SetStyle(HomeWidgetStyle style)
     {
-        DataTemplate? template = style switch
-        {
-            HomeWidgetStyle.MediaExpanded => Resources["MediaExpandedTemplate"] as DataTemplate,
-            _ => Resources["MediaCompactTemplate"] as DataTemplate
-        };
-
-        if (template != null)
-        {
-            MediaContentControl.ContentTemplate = template;
-        }
+        MediaContentControl.ContentTemplate = Resources["MediaCompactTemplate"] as DataTemplate;
     }
 }

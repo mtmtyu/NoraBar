@@ -9,21 +9,11 @@ public partial class DigitalClockWidgetView : UserControl
     public DigitalClockWidgetView()
     {
         InitializeComponent();
+        ClockContentControl.ContentTemplate = Resources["ClockMinimalTemplate"] as DataTemplate;
     }
 
     public void SetStyle(HomeWidgetStyle style)
     {
-        DataTemplate? template = style switch
-        {
-            HomeWidgetStyle.ClockMinimal => Resources["ClockMinimalTemplate"] as DataTemplate,
-            HomeWidgetStyle.ClockExpressive => Resources["ClockExpressiveTemplate"] as DataTemplate,
-            HomeWidgetStyle.ClockBoldGradient => Resources["ClockBoldGradientTemplate"] as DataTemplate,
-            _ => Resources["ClockMinimalTemplate"] as DataTemplate
-        };
-
-        if (template != null)
-        {
-            ClockContentControl.ContentTemplate = template;
-        }
+        ClockContentControl.ContentTemplate = Resources["ClockMinimalTemplate"] as DataTemplate;
     }
 }

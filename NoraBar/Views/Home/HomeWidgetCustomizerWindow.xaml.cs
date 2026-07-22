@@ -25,6 +25,11 @@ public partial class HomeWidgetCustomizerWindow : Window
         };
     }
 
+    private void Window_Loaded(object sender, RoutedEventArgs e)
+    {
+        UpdateLivePreview();
+    }
+
     private void HomeWidgetCustomizerWindow_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         if (e.OldValue is HomeWidgetCustomizerViewModel oldVm)
@@ -97,6 +102,28 @@ public partial class HomeWidgetCustomizerWindow : Window
     private void ActiveWidgets_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         _dragStartPoint = e.GetPosition(null);
+    }
+
+    private void ActiveWidgets_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton == MouseButtonState.Pressed)
+        {
+            Point currentPosition = e.GetPosition(null);
+            Vector diff = _dragStartPoint - currentPosition;
+
+            if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
+            {
+                ListBox listBox = (ListBox)sender;
+                ListBoxItem? listBoxItem = FindParent<ListBoxItem>((DependencyObject)e.OriginalSource);
+
+                if (listBoxItem != null && listBoxItem.DataContext is HomeWidgetCustomizerItemViewModel itemData)
+                {
+                    DataObject dragData = new DataObject(typeof(HomeWidgetCustomizerItemViewModel), itemData);
+                    DragDrop.DoDragDrop(listBoxItem, dragData, DragDropEffects.Move);
+                }
+            }
+        }
     }
 
     private void ActiveWidgets_DragOver(object sender, DragEventArgs e)

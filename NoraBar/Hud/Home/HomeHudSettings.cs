@@ -14,9 +14,8 @@ internal sealed record HomeHudSettings(
 {
     private static readonly IReadOnlyList<HomeWidgetConfig> DefaultWidgetsList = new List<HomeWidgetConfig>
     {
-        new("widget_media", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact),
-        new("widget_clock", HomeWidgetType.DigitalClock, HomeWidgetStyle.ClockExpressive),
-        new("widget_worldclock", HomeWidgetType.WorldClock, HomeWidgetStyle.WorldClockCompact)
+        new("widget_clock", HomeWidgetType.DigitalClock, HomeWidgetStyle.ClockMinimal),
+        new("widget_media", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact)
     }.AsReadOnly();
 
     public IReadOnlyList<HomeWidgetConfig> EffectiveWidgets => Widgets is { Count: > 0 } ? Widgets : DefaultWidgetsList;

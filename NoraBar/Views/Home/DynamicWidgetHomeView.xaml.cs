@@ -61,20 +61,10 @@ public partial class DynamicWidgetHomeView : UserControl
                 clockView.SetStyle(widget.Style);
                 return clockView;
 
-            case HomeWidgetType.WorldClock:
-                WorldClockWidgetView worldClockView = new WorldClockWidgetView { DataContext = vm };
-                worldClockView.SetStyle(widget.Style);
-                return worldClockView;
-
             case HomeWidgetType.MediaControls:
                 MediaControlsWidgetView mediaView = new MediaControlsWidgetView { DataContext = vm };
                 mediaView.SetStyle(widget.Style);
                 return mediaView;
-
-            case HomeWidgetType.SystemStatus:
-                SystemStatusWidgetView systemView = new SystemStatusWidgetView { DataContext = vm };
-                systemView.SetStyle(widget.Style);
-                return systemView;
 
             default:
                 return null;

@@ -25,27 +25,21 @@ public sealed class HomeWidgetCustomizerItemViewModel : ViewModelBase
     public string Title => Type switch
     {
         HomeWidgetType.DigitalClock => "Digital Clock",
-        HomeWidgetType.WorldClock => "World Clock",
         HomeWidgetType.MediaControls => "Media Controls",
-        HomeWidgetType.SystemStatus => "System Status",
         _ => Type.ToString()
     };
 
     public string IconText => Type switch
     {
         HomeWidgetType.DigitalClock => "\uE814",
-        HomeWidgetType.WorldClock => "\uE912",
         HomeWidgetType.MediaControls => "\uE93C",
-        HomeWidgetType.SystemStatus => "\uE9D9",
         _ => "\uE700"
     };
 
     public IReadOnlyList<HomeWidgetStyle> AvailableStyles => Type switch
     {
-        HomeWidgetType.DigitalClock => [HomeWidgetStyle.ClockMinimal, HomeWidgetStyle.ClockExpressive, HomeWidgetStyle.ClockBoldGradient],
-        HomeWidgetType.WorldClock => [HomeWidgetStyle.WorldClockCompact, HomeWidgetStyle.WorldClockDualCard],
-        HomeWidgetType.MediaControls => [HomeWidgetStyle.MediaCompact, HomeWidgetStyle.MediaExpanded],
-        HomeWidgetType.SystemStatus => [HomeWidgetStyle.SystemMinimal, HomeWidgetStyle.SystemGauge],
+        HomeWidgetType.DigitalClock => [HomeWidgetStyle.ClockMinimal],
+        HomeWidgetType.MediaControls => [HomeWidgetStyle.MediaCompact],
         _ => [Style]
     };
 
@@ -85,9 +79,7 @@ public sealed class HomeWidgetCustomizerViewModel : ViewModelBase
         CatalogWidgets = new ObservableCollection<HomeWidgetCustomizerItemViewModel>
         {
             new("catalog_clock", HomeWidgetType.DigitalClock, HomeWidgetStyle.ClockMinimal),
-            new("catalog_worldclock", HomeWidgetType.WorldClock, HomeWidgetStyle.WorldClockCompact),
-            new("catalog_media", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact),
-            new("catalog_system", HomeWidgetType.SystemStatus, HomeWidgetStyle.SystemMinimal)
+            new("catalog_media", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact)
         };
 
         AddWidgetCommand = new RelayCommand(p =>

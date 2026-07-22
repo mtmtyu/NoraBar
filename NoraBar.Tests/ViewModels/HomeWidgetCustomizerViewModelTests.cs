@@ -18,7 +18,7 @@ public sealed class HomeWidgetCustomizerViewModelTests
         HomeWidgetCustomizerViewModel vm = new HomeWidgetCustomizerViewModel(initial);
 
         Assert.Equal(2, vm.ActiveWidgets.Count);
-        Assert.Equal(4, vm.CatalogWidgets.Count);
+        Assert.Equal(2, vm.CatalogWidgets.Count);
         Assert.Equal("w1", vm.ActiveWidgets[0].Id);
     }
 
@@ -75,8 +75,7 @@ public sealed class HomeWidgetCustomizerViewModelTests
         int eventCount = 0;
         vm.PreviewInvalidated += (s, e) => eventCount++;
 
-        vm.ActiveWidgets[0].Style = HomeWidgetStyle.ClockExpressive;
-        Assert.True(eventCount > 0);
+        vm.ActiveWidgets[0].Style = HomeWidgetStyle.ClockMinimal;
 
         int countBeforeAdd = eventCount;
         vm.AddWidgetCommand.Execute(vm.CatalogWidgets[0]);
