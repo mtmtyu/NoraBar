@@ -162,8 +162,8 @@
                 <ContentControl x:Name="IslandHost"
                                 Grid.Row="1"
                                 Grid.Column="0"
-                                HorizontalAlignment="Stretch"
-                                VerticalAlignment="Stretch"/>
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"/>
 
                 <ItemsControl Grid.Row="1" Grid.Column="1"
                               ItemsSource="{Binding HudNavigation.EnabledItems}"

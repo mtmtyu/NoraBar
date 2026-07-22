@@ -123,14 +123,20 @@ public partial class MainWindow : Window
         }
 
         IslandHost.Content = evaluation.View;
-        var desiredSize = new HudSize(
+        var desiredContainerSize = new HudSize(
             GetPresentationWidth(evaluation.PreferredSize.Width),
             GetPresentationHeight(evaluation.PreferredSize.Height));
-        HudSize targetSize = HudInteractiveSizePolicy.ResolveTarget(
-            desiredSize,
+        HudInteractiveSizeTargets sizeTargets = HudInteractiveSizePolicy.ResolveTargets(
+            evaluation.PreferredSize,
+            desiredContainerSize,
             new HudSize(HudBorder.ActualWidth, HudBorder.ActualHeight),
-            HudBorder.IsMouseOver);
-        AnimateSize(targetSize.Width, targetSize.Height, collapseContent: false);
+            HudBorder.IsMouseOver,
+            UsesRightRailNavigation());
+        HudInteractiveSizePolicy.ApplyContentLayout(IslandHost, sizeTargets);
+        AnimateSize(
+            sizeTargets.ContainerSize.Width,
+            sizeTargets.ContainerSize.Height,
+            collapseContent: false);
     }
 
     internal void DetachHudRouter()
@@ -523,9 +529,7 @@ public partial class MainWindow : Window
 
     private double GetPresentationWidth(double moduleWidth)
     {
-        HudNavigationViewModel? navigation = _viewModel.HudNavigation;
-        return navigation is { ShowNavigation: true }
-            && _viewModel.HudNavigationPlacement == HudNavigationPlacement.RightRail
+        return UsesRightRailNavigation()
                 ? moduleWidth + 48
                 : moduleWidth;
     }
@@ -537,6 +541,13 @@ public partial class MainWindow : Window
             && _viewModel.HudNavigationPlacement == HudNavigationPlacement.TopTabs
                 ? moduleHeight + 40
                 : moduleHeight;
+    }
+
+    private bool UsesRightRailNavigation()
+    {
+        HudNavigationViewModel? navigation = _viewModel.HudNavigation;
+        return navigation is { ShowNavigation: true }
+            && _viewModel.HudNavigationPlacement == HudNavigationPlacement.RightRail;
     }
 
     private void OpenSettings_Click(object sender, RoutedEventArgs e)
