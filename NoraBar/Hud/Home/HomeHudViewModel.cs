@@ -170,7 +170,21 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
         }
     }
 
-    public IReadOnlyList<NoraBar.Hud.Home.Widgets.HomeWidgetConfig> ActiveWidgets => _viewModel.ActiveHomeWidgets;
+    private IReadOnlyList<NoraBar.Hud.Home.Widgets.HomeWidgetConfig>? _overrideWidgets;
+    public IReadOnlyList<NoraBar.Hud.Home.Widgets.HomeWidgetConfig>? OverrideWidgets
+    {
+        get => _overrideWidgets;
+        set
+        {
+            if (SetProperty(ref _overrideWidgets, value))
+            {
+                OnPropertyChanged(nameof(ActiveWidgets));
+                PresentationInvalidated?.Invoke(this, EventArgs.Empty);
+            }
+        }
+    }
+
+    public IReadOnlyList<NoraBar.Hud.Home.Widgets.HomeWidgetConfig> ActiveWidgets => OverrideWidgets ?? _viewModel.ActiveHomeWidgets;
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {

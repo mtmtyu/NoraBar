@@ -18,6 +18,11 @@ public partial class HomeWidgetCustomizerWindow : Window
     {
         InitializeComponent();
         DataContextChanged += HomeWidgetCustomizerWindow_DataContextChanged;
+        Closed += (s, e) =>
+        {
+            _previewHomeViewModel?.Dispose();
+            _previewHomeViewModel = null;
+        };
     }
 
     private void HomeWidgetCustomizerWindow_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -48,19 +53,24 @@ public partial class HomeWidgetCustomizerWindow : Window
 
         if (MainViewModel != null)
         {
-            _previewHomeViewModel ??= new HomeHudViewModel(MainViewModel);
-            _previewView ??= new DynamicWidgetHomeView();
+            if (_previewHomeViewModel is null)
+            {
+                _previewHomeViewModel = new HomeHudViewModel(MainViewModel);
+                _previewHomeViewModel.Initialize();
+                _previewHomeViewModel.Start();
+            }
 
-            // Create temporary MainViewModel or update active widgets for preview
-            var currentActive = MainViewModel.ActiveHomeWidgets;
-            MainViewModel.ActiveHomeWidgets = customizerVm.GetResultConfigs();
+            _previewHomeViewModel.OverrideWidgets = customizerVm.GetResultConfigs();
 
-            _previewHomeViewModel.Initialize();
-            _previewView.DataContext = _previewHomeViewModel;
-            _previewView.RebuildWidgets();
-
-            // Restore MainViewModel.ActiveHomeWidgets so uncommitted changes aren't persisted until user clicks Save
-            MainViewModel.ActiveHomeWidgets = currentActive;
+            if (_previewView is null)
+            {
+                _previewView = new DynamicWidgetHomeView();
+                _previewView.DataContext = _previewHomeViewModel;
+            }
+            else
+            {
+                _previewView.RebuildWidgets();
+            }
 
             LivePreviewHost.Content = _previewView;
         }
