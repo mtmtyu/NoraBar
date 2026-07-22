@@ -5,23 +5,27 @@
     <UserControl.Resources>
         <!-- Compact Style Template -->
         <DataTemplate x:Key="MediaCompactTemplate">
-            <Grid Margin="4,0">
+            <Grid Margin="4,2">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <Grid Width="34" Height="34" Margin="0,0,8,0">
-                    <Border Background="#2AFFFFFF" CornerRadius="6"/>
+                    <Border Background="#25FFFFFF" CornerRadius="8">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.3" Color="Black"/>
+                        </Border.Effect>
+                    </Border>
                     <TextBlock Text="&#xE93C;" FontFamily="Segoe Fluent Icons" Foreground="#88FFFFFF"
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     <Image Source="{Binding Music.AlbumArt}" Stretch="UniformToFill"/>
                 </Grid>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                     <TextBlock Text="{Binding MediaTitle}" Foreground="White" FontWeight="SemiBold"
-                               FontSize="13" MaxWidth="150" TextTrimming="CharacterEllipsis"/>
+                               FontSize="13" MaxWidth="150" TextTrimming="CharacterEllipsis" FontFamily="Segoe UI Variable Text, Segoe UI"/>
                     <TextBlock Text="{Binding MediaArtist}" Foreground="#A8FFFFFF" FontSize="11"
-                               MaxWidth="150" TextTrimming="CharacterEllipsis"/>
+                               MaxWidth="150" TextTrimming="CharacterEllipsis" FontFamily="Segoe UI Variable Text, Segoe UI"/>
                 </StackPanel>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0"
                             VerticalAlignment="Center" IsEnabled="{Binding HasMedia}">
@@ -34,31 +38,35 @@
 
         <!-- Expanded Style Template -->
         <DataTemplate x:Key="MediaExpandedTemplate">
-            <Border Background="#25FFFFFF" CornerRadius="10" Padding="10,6" Margin="4,0">
+            <Border Background="#1CFFFFFF" BorderBrush="#2AFFFFFF" BorderThickness="1" CornerRadius="12" Padding="12,6" Margin="4,2">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Grid Width="40" Height="40" Margin="0,0,10,0">
-                        <Border Background="#3AFFFFFF" CornerRadius="8"/>
+                    <Grid Width="42" Height="42" Margin="0,0,10,0">
+                        <Border Background="#35FFFFFF" CornerRadius="10">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.4" Color="Black"/>
+                            </Border.Effect>
+                        </Border>
                         <TextBlock Text="&#xE93C;" FontFamily="Segoe Fluent Icons" Foreground="#AAFFFFFF"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         <Image Source="{Binding Music.AlbumArt}" Stretch="UniformToFill"/>
                     </Grid>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Text="{Binding MediaTitle}" Foreground="White" FontWeight="Bold"
-                                   FontSize="13" MaxWidth="180" TextTrimming="CharacterEllipsis"/>
+                                   FontSize="13" MaxWidth="180" TextTrimming="CharacterEllipsis" FontFamily="Segoe UI Variable Display, Segoe UI"/>
                         <TextBlock Text="{Binding MediaArtist}" Foreground="#C0FFFFFF" FontSize="11"
-                                   MaxWidth="180" TextTrimming="CharacterEllipsis"/>
+                                   MaxWidth="180" TextTrimming="CharacterEllipsis" FontFamily="Segoe UI Variable Text, Segoe UI"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="10,0,0,0"
                                 VerticalAlignment="Center" IsEnabled="{Binding HasMedia}">
                         <controls:IconButton IconText="&#xE892;" Width="26" Height="26"
                                              Command="{Binding Music.PreviousCommand}"/>
                         <controls:IconButton IconText="{Binding Music.IsPlaying, Converter={StaticResource PlayPauseIconConverter}}"
-                                             Width="30" Height="30" Margin="4,0"
+                                             Width="32" Height="32" Margin="4,0"
                                              Command="{Binding Music.PlayPauseCommand}"/>
                         <controls:IconButton IconText="&#xE893;" Width="26" Height="26"
                                              Command="{Binding Music.NextCommand}"/>
