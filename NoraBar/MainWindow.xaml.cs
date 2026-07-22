@@ -123,10 +123,14 @@ public partial class MainWindow : Window
         }
 
         IslandHost.Content = evaluation.View;
-        AnimateSize(
+        var desiredSize = new HudSize(
             GetPresentationWidth(evaluation.PreferredSize.Width),
-            GetPresentationHeight(evaluation.PreferredSize.Height),
-            collapseContent: false);
+            GetPresentationHeight(evaluation.PreferredSize.Height));
+        HudSize targetSize = HudInteractiveSizePolicy.ResolveTarget(
+            desiredSize,
+            new HudSize(HudBorder.ActualWidth, HudBorder.ActualHeight),
+            HudBorder.IsMouseOver);
+        AnimateSize(targetSize.Width, targetSize.Height, collapseContent: false);
     }
 
     internal void DetachHudRouter()
