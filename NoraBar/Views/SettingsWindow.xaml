@@ -1130,9 +1130,40 @@
                                                           Tag="{x:Static models:HomeHudDesignVariant.FusionBalanced}"/>
                                             <ComboBoxItem Content="Fusion Expressive (22C)"
                                                           Tag="{x:Static models:HomeHudDesignVariant.FusionExpressive}"/>
-                                        </ComboBox>
-                                    </Grid>
-                                </Border>
+                                         </ComboBox>
+                                     </Grid>
+                                 </Border>
+
+                                 <Border Style="{StaticResource SettingCardStyle}">
+                                     <Grid>
+                                         <Grid.ColumnDefinitions>
+                                             <ColumnDefinition Width="*"/>
+                                             <ColumnDefinition Width="Auto"/>
+                                         </Grid.ColumnDefinitions>
+                                         <StackPanel Margin="0,0,16,0">
+                                             <TextBlock Text="Widget Layout Customization" Style="{StaticResource CardHeaderStyle}"/>
+                                             <TextBlock Text="Edit, reorder, add, or remove widgets on your Home HUD with drag and drop." Style="{StaticResource CardSubHeaderStyle}"/>
+                                         </StackPanel>
+                                         <Button Grid.Column="1"
+                                                 Click="OpenWidgetCustomizer_Click"
+                                                 Content="Edit Layout..."
+                                                 Background="#FF64B5F6" Foreground="Black" FontWeight="Bold"
+                                                 Padding="12,6" VerticalAlignment="Center" Height="32" BorderThickness="0" Cursor="Hand">
+                                             <Button.Template>
+                                                 <ControlTemplate TargetType="Button">
+                                                     <Border Background="{TemplateBinding Background}" CornerRadius="4" x:Name="Brd">
+                                                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                     </Border>
+                                                     <ControlTemplate.Triggers>
+                                                         <Trigger Property="IsMouseOver" Value="True">
+                                                             <Setter TargetName="Brd" Property="Background" Value="#FF90CAF9"/>
+                                                         </Trigger>
+                                                     </ControlTemplate.Triggers>
+                                                 </ControlTemplate>
+                                             </Button.Template>
+                                         </Button>
+                                     </Grid>
+                                 </Border>
 
                                 <Border Style="{StaticResource SettingCardStyle}">
                                     <Grid>

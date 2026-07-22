@@ -4,6 +4,7 @@ using System.Windows.Input;
 using NoraBar.Hud.Music;
 using NoraBar.Hud;
 using NoraBar.Hud.Home;
+using NoraBar.Views.Home;
 using NoraBar.ViewModels;
 
 namespace NoraBar.Views
@@ -291,6 +292,24 @@ namespace NoraBar.Views
             PreviewHost.Content = preview.View;
             PreviewHost.Width = preview.PreferredSize.Width;
             PreviewHost.Height = preview.PreferredSize.Height;
+        }
+
+        private void OpenWidgetCustomizer_Click(object sender, RoutedEventArgs e)
+        {
+            if (_viewModel is null) return;
+
+            HomeWidgetCustomizerViewModel customizerVm = new HomeWidgetCustomizerViewModel(_viewModel.ActiveHomeWidgets);
+            HomeWidgetCustomizerWindow dialog = new HomeWidgetCustomizerWindow
+            {
+                Owner = this,
+                DataContext = customizerVm
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                _viewModel.ActiveHomeWidgets = customizerVm.GetResultConfigs();
+                UpdatePreview();
+            }
         }
     }
 }
