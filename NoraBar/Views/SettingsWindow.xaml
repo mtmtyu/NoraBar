@@ -1108,31 +1108,6 @@
                                     </Style>
                                 </StackPanel.Style>
 
-                                <Border Style="{StaticResource SettingCardStyle}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Margin="0,0,16,0">
-                                            <TextBlock Text="{Binding HomeDesignText}" Style="{StaticResource CardHeaderStyle}"/>
-                                            <TextBlock Text="{Binding HomeDesignDescriptionText}" Style="{StaticResource CardSubHeaderStyle}"/>
-                                        </StackPanel>
-                                        <ComboBox Grid.Column="1"
-                                                  SelectedValue="{Binding HomeHudDesignVariant}"
-                                                  SelectedValuePath="Tag"
-                                                  Width="190" Height="32">
-                                            <ComboBoxItem Content="Activity Modules (20)"
-                                                          Tag="{x:Static models:HomeHudDesignVariant.ActivityModules}"/>
-                                            <ComboBoxItem Content="Classic System (21)"
-                                                          Tag="{x:Static models:HomeHudDesignVariant.ClassicSystemOverlay}"/>
-                                            <ComboBoxItem Content="Fusion Balanced (22B)"
-                                                          Tag="{x:Static models:HomeHudDesignVariant.FusionBalanced}"/>
-                                            <ComboBoxItem Content="Fusion Expressive (22C)"
-                                                          Tag="{x:Static models:HomeHudDesignVariant.FusionExpressive}"/>
-                                         </ComboBox>
-                                     </Grid>
-                                 </Border>
 
                                  <Border Style="{StaticResource SettingCardStyle}">
                                      <Grid>
