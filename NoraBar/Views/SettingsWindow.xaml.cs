@@ -302,7 +302,8 @@ namespace NoraBar.Views
             HomeWidgetCustomizerWindow dialog = new HomeWidgetCustomizerWindow
             {
                 Owner = this,
-                DataContext = customizerVm
+                DataContext = customizerVm,
+                MainViewModel = _viewModel
             };
 
             if (dialog.ShowDialog() == true)

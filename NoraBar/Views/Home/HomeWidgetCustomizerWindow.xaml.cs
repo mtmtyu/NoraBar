@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using NoraBar.Hud.Home;
 using NoraBar.ViewModels;
 
 namespace NoraBar.Views.Home;
@@ -8,10 +9,61 @@ namespace NoraBar.Views.Home;
 public partial class HomeWidgetCustomizerWindow : Window
 {
     private Point _dragStartPoint;
+    private DynamicWidgetHomeView? _previewView;
+    private HomeHudViewModel? _previewHomeViewModel;
+
+    public MainViewModel? MainViewModel { get; set; }
 
     public HomeWidgetCustomizerWindow()
     {
         InitializeComponent();
+        DataContextChanged += HomeWidgetCustomizerWindow_DataContextChanged;
+    }
+
+    private void HomeWidgetCustomizerWindow_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.OldValue is HomeWidgetCustomizerViewModel oldVm)
+        {
+            oldVm.PreviewInvalidated -= CustomizerVm_PreviewInvalidated;
+        }
+
+        if (e.NewValue is HomeWidgetCustomizerViewModel newVm)
+        {
+            newVm.PreviewInvalidated += CustomizerVm_PreviewInvalidated;
+            UpdateLivePreview();
+        }
+    }
+
+    private void CustomizerVm_PreviewInvalidated(object? sender, EventArgs e)
+    {
+        Dispatcher.Invoke(UpdateLivePreview);
+    }
+
+    private void UpdateLivePreview()
+    {
+        if (DataContext is not HomeWidgetCustomizerViewModel customizerVm)
+        {
+            return;
+        }
+
+        if (MainViewModel != null)
+        {
+            _previewHomeViewModel ??= new HomeHudViewModel(MainViewModel);
+            _previewView ??= new DynamicWidgetHomeView();
+
+            // Create temporary MainViewModel or update active widgets for preview
+            var currentActive = MainViewModel.ActiveHomeWidgets;
+            MainViewModel.ActiveHomeWidgets = customizerVm.GetResultConfigs();
+
+            _previewHomeViewModel.Initialize();
+            _previewView.DataContext = _previewHomeViewModel;
+            _previewView.RebuildWidgets();
+
+            // Restore MainViewModel.ActiveHomeWidgets so uncommitted changes aren't persisted until user clicks Save
+            MainViewModel.ActiveHomeWidgets = currentActive;
+
+            LivePreviewHost.Content = _previewView;
+        }
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
