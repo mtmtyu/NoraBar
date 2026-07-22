@@ -344,15 +344,16 @@ namespace NoraBar.ViewModels
 
         private void UpdateCurrentLyric(TimeSpan position)
         {
-            if (_currentLyrics == null || _currentLyrics.Count == 0 || !ShowLyrics)
+            var lyrics = _currentLyrics;
+            if (lyrics == null || lyrics.Count == 0 || !ShowLyrics)
             {
                 return;
             }
 
             int newIndex = -1;
-            for (int i = 0; i < _currentLyrics.Count; i++)
+            for (int i = 0; i < lyrics.Count; i++)
             {
-                if (position >= _currentLyrics[i].StartTime)
+                if (position >= lyrics[i].StartTime)
                 {
                     newIndex = i;
                 }
@@ -378,7 +379,10 @@ namespace NoraBar.ViewModels
                         LyricsList[_currentLyricIndex].IsCurrent = true;
                     }
 
-                    string currentText = _currentLyricIndex >= 0 ? _currentLyrics[_currentLyricIndex].Text : "";
+                    var currentLyrics = _currentLyrics;
+                    string currentText = (currentLyrics != null && _currentLyricIndex >= 0 && _currentLyricIndex < currentLyrics.Count)
+                        ? currentLyrics[_currentLyricIndex].Text
+                        : "";
                     if (CurrentLyric != currentText)
                     {
                         CurrentLyric = currentText;
