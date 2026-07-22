@@ -18,13 +18,16 @@
     <Window.Resources>
         <SolidColorBrush x:Key="HudNavigationToolTipBackgroundBrush" Color="#F0202020"/>
         <SolidColorBrush x:Key="HudNavigationToolTipBorderBrush" Color="#66FFFFFF"/>
-        <SolidColorBrush x:Key="RightRailNavigationBackgroundBrush" Color="#14FFFFFF"/>
-        <SolidColorBrush x:Key="RightRailNavigationBorderBrush" Color="#30FFFFFF"/>
-        <SolidColorBrush x:Key="RightRailNavigationForegroundBrush" Color="#E6FFFFFF"/>
-        <SolidColorBrush x:Key="RightRailNavigationHoverBackgroundBrush" Color="#30FFFFFF"/>
-        <SolidColorBrush x:Key="RightRailNavigationHoverBorderBrush" Color="#70FFFFFF"/>
-        <SolidColorBrush x:Key="RightRailNavigationCurrentBackgroundBrush" Color="#40FFFFFF"/>
-        <SolidColorBrush x:Key="RightRailNavigationCurrentBorderBrush" Color="#80FFFFFF"/>
+        <SolidColorBrush x:Key="RightRailNavigationBackgroundBrush" Color="#D9202020"/>
+        <SolidColorBrush x:Key="RightRailNavigationBorderBrush" Color="#CCFFFFFF"/>
+        <SolidColorBrush x:Key="RightRailNavigationForegroundBrush" Color="#FFFFFFFF"/>
+        <SolidColorBrush x:Key="RightRailNavigationHoverBackgroundBrush" Color="#F2FFFFFF"/>
+        <SolidColorBrush x:Key="RightRailNavigationHoverBorderBrush" Color="#E6202020"/>
+        <SolidColorBrush x:Key="RightRailNavigationHoverForegroundBrush" Color="#FF202020"/>
+        <SolidColorBrush x:Key="RightRailNavigationCurrentBackgroundBrush" Color="#FFFFFFFF"/>
+        <SolidColorBrush x:Key="RightRailNavigationCurrentBorderBrush" Color="#FF202020"/>
+        <SolidColorBrush x:Key="RightRailNavigationCurrentForegroundBrush" Color="#FF202020"/>
+        <SolidColorBrush x:Key="RightRailNavigationFocusBorderBrush" Color="#FF60CDFF"/>
         <system:Int32 x:Key="HudNavigationToolTipInitialShowDelay">250</system:Int32>
         <system:Int32 x:Key="HudNavigationToolTipBetweenShowDelay">100</system:Int32>
         <system:Int32 x:Key="HudNavigationToolTipShowDuration">5000</system:Int32>
@@ -212,17 +215,20 @@
                                                         Value="{StaticResource RightRailNavigationCurrentBackgroundBrush}"/>
                                                 <Setter TargetName="IconBackground" Property="BorderBrush"
                                                         Value="{StaticResource RightRailNavigationCurrentBorderBrush}"/>
-                                                <Setter Property="Foreground" Value="White"/>
+                                                <Setter Property="Foreground"
+                                                        Value="{StaticResource RightRailNavigationCurrentForegroundBrush}"/>
                                             </DataTrigger>
                                             <Trigger Property="IsMouseOver" Value="True">
                                                 <Setter TargetName="IconBackground" Property="Background"
                                                         Value="{StaticResource RightRailNavigationHoverBackgroundBrush}"/>
                                                 <Setter TargetName="IconBackground" Property="BorderBrush"
                                                         Value="{StaticResource RightRailNavigationHoverBorderBrush}"/>
-                                                <Setter Property="Foreground" Value="White"/>
+                                                <Setter Property="Foreground"
+                                                        Value="{StaticResource RightRailNavigationHoverForegroundBrush}"/>
                                             </Trigger>
                                             <Trigger Property="IsKeyboardFocused" Value="True">
-                                                <Setter TargetName="IconBackground" Property="BorderBrush" Value="White"/>
+                                                <Setter TargetName="IconBackground" Property="BorderBrush"
+                                                        Value="{StaticResource RightRailNavigationFocusBorderBrush}"/>
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>

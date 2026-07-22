@@ -8,6 +8,7 @@ public sealed class MainWindowNavigationAccessibilityTests
 {
     private static readonly XNamespace PresentationNamespace =
         "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+
     [Fact]
     public void RightRailNavigationButton_ProvidesVisibleAccessibleTooltipStates()
     {
@@ -45,6 +46,16 @@ public sealed class MainWindowNavigationAccessibilityTests
             null,
             "Foreground",
             "{StaticResource RightRailNavigationForegroundBrush}");
+        AssertBrushColor(window, "RightRailNavigationBackgroundBrush", "#D9202020");
+        AssertBrushColor(window, "RightRailNavigationBorderBrush", "#CCFFFFFF");
+        AssertBrushColor(window, "RightRailNavigationForegroundBrush", "#FFFFFFFF");
+        AssertBrushColor(window, "RightRailNavigationHoverBackgroundBrush", "#F2FFFFFF");
+        AssertBrushColor(window, "RightRailNavigationHoverBorderBrush", "#E6202020");
+        AssertBrushColor(window, "RightRailNavigationHoverForegroundBrush", "#FF202020");
+        AssertBrushColor(window, "RightRailNavigationCurrentBackgroundBrush", "#FFFFFFFF");
+        AssertBrushColor(window, "RightRailNavigationCurrentBorderBrush", "#FF202020");
+        AssertBrushColor(window, "RightRailNavigationCurrentForegroundBrush", "#FF202020");
+        AssertBrushColor(window, "RightRailNavigationFocusBorderBrush", "#FF60CDFF");
 
         XElement toolTip = Assert.Single(
             button.Descendants(PresentationNamespace + "ToolTip"));
@@ -96,7 +107,11 @@ public sealed class MainWindowNavigationAccessibilityTests
             "IconBackground",
             "BorderBrush",
             "{StaticResource RightRailNavigationHoverBorderBrush}");
-        AssertSetter(hoverTrigger, null, "Foreground", "White");
+        AssertSetter(
+            hoverTrigger,
+            null,
+            "Foreground",
+            "{StaticResource RightRailNavigationHoverForegroundBrush}");
 
         XElement keyboardFocusTrigger = Assert.Single(
             template.Descendants(PresentationNamespace + "Trigger"),
@@ -104,7 +119,11 @@ public sealed class MainWindowNavigationAccessibilityTests
                 (string?)trigger.Attribute("Property"),
                 "IsKeyboardFocused",
                 StringComparison.Ordinal));
-        AssertSetter(keyboardFocusTrigger, "IconBackground", "BorderBrush", "White");
+        AssertSetter(
+            keyboardFocusTrigger,
+            "IconBackground",
+            "BorderBrush",
+            "{StaticResource RightRailNavigationFocusBorderBrush}");
 
         XElement currentTrigger = Assert.Single(
             template.Descendants(PresentationNamespace + "DataTrigger"),
@@ -122,11 +141,30 @@ public sealed class MainWindowNavigationAccessibilityTests
             "IconBackground",
             "BorderBrush",
             "{StaticResource RightRailNavigationCurrentBorderBrush}");
-        AssertSetter(currentTrigger, null, "Foreground", "White");
+        AssertSetter(
+            currentTrigger,
+            null,
+            "Foreground",
+            "{StaticResource RightRailNavigationCurrentForegroundBrush}");
     }
 
     private const string XamlNamespaceName =
         "http://schemas.microsoft.com/winfx/2006/xaml";
+
+    private static void AssertBrushColor(
+        XElement window,
+        string resourceKey,
+        string color)
+    {
+        XElement brush = Assert.Single(
+            window.Descendants(PresentationNamespace + "SolidColorBrush"),
+            element => string.Equals(
+                (string?)element.Attribute(XName.Get("Key", XamlNamespaceName)),
+                resourceKey,
+                StringComparison.Ordinal));
+
+        Assert.Equal(color, (string?)brush.Attribute("Color"));
+    }
 
     private static void AssertSetter(
         XElement setterOwner,
