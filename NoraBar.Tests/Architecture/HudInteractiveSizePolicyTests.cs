@@ -7,7 +7,7 @@ namespace NoraBar.Tests.Architecture;
 public sealed class HudInteractiveSizePolicyTests
 {
     [Fact]
-    public void ResolveTargets_PreservesInteractiveAreaWithoutStretchingContent()
+    public void ResolveTargets_PreservesInteractiveAreaWithCenteredContent()
     {
         var preferredContentSize = new HudSize(450, 80);
         var desiredContainerSize = new HudSize(498, 80);
@@ -17,26 +17,10 @@ public sealed class HudInteractiveSizePolicyTests
             preferredContentSize,
             desiredContainerSize,
             currentContainerSize,
-            isPointerOver: true,
-            usesRightRailNavigation: true);
+            isPointerOver: true);
 
         Assert.Equal(currentContainerSize, result.ContainerSize);
         Assert.Equal(preferredContentSize, result.ContentSize);
-        Assert.Equal(HorizontalAlignment.Right, result.ContentHorizontalAlignment);
-    }
-
-    [Fact]
-    public void ResolveTargets_UsesCenterAlignmentWithoutRightRailNavigation()
-    {
-        var preferredContentSize = new HudSize(450, 80);
-
-        HudInteractiveSizeTargets result = HudInteractiveSizePolicy.ResolveTargets(
-            preferredContentSize,
-            new HudSize(450, 80),
-            new HudSize(450, 80),
-            isPointerOver: false,
-            usesRightRailNavigation: false);
-
         Assert.Equal(HorizontalAlignment.Center, result.ContentHorizontalAlignment);
     }
 
@@ -49,13 +33,13 @@ public sealed class HudInteractiveSizePolicyTests
             var targets = new HudInteractiveSizeTargets(
                 new HudSize(848, 120),
                 new HudSize(450, 80),
-                HorizontalAlignment.Right);
+                HorizontalAlignment.Center);
 
             HudInteractiveSizePolicy.ApplyContentLayout(contentHost, targets);
 
             Assert.Equal(450, contentHost.Width);
             Assert.Equal(80, contentHost.Height);
-            Assert.Equal(HorizontalAlignment.Right, contentHost.HorizontalAlignment);
+            Assert.Equal(HorizontalAlignment.Center, contentHost.HorizontalAlignment);
         });
     }
 

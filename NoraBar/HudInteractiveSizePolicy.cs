@@ -14,20 +14,16 @@ internal static class HudInteractiveSizePolicy
         HudSize preferredContentSize,
         HudSize desiredContainerSize,
         HudSize currentContainerSize,
-        bool isPointerOver,
-        bool usesRightRailNavigation)
+        bool isPointerOver)
     {
         HudSize containerSize = ResolveTarget(
             desiredContainerSize,
             currentContainerSize,
             isPointerOver);
-        HorizontalAlignment contentHorizontalAlignment = usesRightRailNavigation
-            ? HorizontalAlignment.Right
-            : HorizontalAlignment.Center;
         return new HudInteractiveSizeTargets(
             containerSize,
             preferredContentSize,
-            contentHorizontalAlignment);
+            HorizontalAlignment.Center);
     }
 
     internal static void ApplyContentLayout(

@@ -130,8 +130,7 @@ public partial class MainWindow : Window
             evaluation.PreferredSize,
             desiredContainerSize,
             new HudSize(HudBorder.ActualWidth, HudBorder.ActualHeight),
-            HudBorder.IsMouseOver,
-            UsesRightRailNavigation());
+            HudBorder.IsMouseOver);
         HudInteractiveSizePolicy.ApplyContentLayout(IslandHost, sizeTargets);
         AnimateSize(
             sizeTargets.ContainerSize.Width,
