@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using NoraBar.Hud.Home.Widgets;
 using NoraBar.Models;
 using NoraBar.Services;
 
@@ -11,8 +12,12 @@ internal static class HomeHudSettingsJson
     private const string TimeFormatProperty = "TimeFormat";
     private const string FirstClockProperty = "FirstClock";
     private const string SecondClockProperty = "SecondClock";
+    private const string WidgetsProperty = "Widgets";
     private const string LabelProperty = "Label";
     private const string TimeZoneIdProperty = "TimeZoneId";
+    private const string IdProperty = "Id";
+    private const string TypeProperty = "Type";
+    private const string StyleProperty = "Style";
 
     internal static HomeHudSettings Read(UserSettings settings)
     {
@@ -29,7 +34,8 @@ internal static class HomeHudSettingsJson
             ReadEnum(payload, DesignVariantProperty, defaults.DesignVariant),
             ReadEnum(payload, TimeFormatProperty, defaults.TimeFormat),
             ReadClock(payload, FirstClockProperty, defaults.FirstClock),
-            ReadClock(payload, SecondClockProperty, defaults.SecondClock));
+            ReadClock(payload, SecondClockProperty, defaults.SecondClock),
+            ReadWidgets(payload));
     }
 
     internal static void Write(UserSettings settings, HomeHudSettings homeSettings)
@@ -43,7 +49,53 @@ internal static class HomeHudSettingsJson
         root[TimeFormatProperty] = (int)homeSettings.TimeFormat;
         root[FirstClockProperty] = CreateClockNode(homeSettings.FirstClock);
         root[SecondClockProperty] = CreateClockNode(homeSettings.SecondClock);
+        root[WidgetsProperty] = CreateWidgetsNode(homeSettings.EffectiveWidgets);
         settings.Modules[BuiltInHudIds.Home] = JsonSerializer.SerializeToElement(root);
+    }
+
+    private static JsonArray CreateWidgetsNode(IReadOnlyList<HomeWidgetConfig> widgets)
+    {
+        JsonArray array = new JsonArray();
+        foreach (HomeWidgetConfig widget in widgets)
+        {
+            array.Add(new JsonObject
+            {
+                [IdProperty] = widget.Id,
+                [TypeProperty] = (int)widget.Type,
+                [StyleProperty] = (int)widget.Style
+            });
+        }
+        return array;
+    }
+
+    private static IReadOnlyList<HomeWidgetConfig>? ReadWidgets(JsonElement payload)
+    {
+        if (!payload.TryGetProperty(WidgetsProperty, out JsonElement widgetsElement)
+            || widgetsElement.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        List<HomeWidgetConfig> list = new List<HomeWidgetConfig>();
+        foreach (JsonElement item in widgetsElement.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            string? id = ReadNonEmptyString(item, IdProperty);
+            if (id is null)
+            {
+                continue;
+            }
+
+            HomeWidgetType type = ReadEnum(item, TypeProperty, HomeWidgetType.DigitalClock);
+            HomeWidgetStyle style = ReadEnum(item, StyleProperty, HomeWidgetStyle.ClockMinimal);
+            list.Add(new HomeWidgetConfig(id, type, style));
+        }
+
+        return list.Count > 0 ? list.AsReadOnly() : null;
     }
 
     private static JsonObject ReadExistingObject(UserSettings settings)
