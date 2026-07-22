@@ -63,4 +63,23 @@ public sealed class HomeWidgetCustomizerViewModelTests
         Assert.Equal("w2", vm.ActiveWidgets[0].Id);
         Assert.Equal("w1", vm.ActiveWidgets[1].Id);
     }
+
+    [Fact]
+    public void ItemStyleChangeAndCollectionChange_TriggersPreviewInvalidated()
+    {
+        List<HomeWidgetConfig> initial = new List<HomeWidgetConfig>
+        {
+            new("w1", HomeWidgetType.DigitalClock, HomeWidgetStyle.ClockMinimal)
+        };
+        HomeWidgetCustomizerViewModel vm = new HomeWidgetCustomizerViewModel(initial);
+        int eventCount = 0;
+        vm.PreviewInvalidated += (s, e) => eventCount++;
+
+        vm.ActiveWidgets[0].Style = HomeWidgetStyle.ClockExpressive;
+        Assert.True(eventCount > 0);
+
+        int countBeforeAdd = eventCount;
+        vm.AddWidgetCommand.Execute(vm.CatalogWidgets[0]);
+        Assert.True(eventCount > countBeforeAdd);
+    }
 }

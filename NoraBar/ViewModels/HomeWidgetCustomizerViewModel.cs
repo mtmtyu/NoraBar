@@ -69,10 +69,18 @@ public sealed class HomeWidgetCustomizerViewModel : ViewModelBase
     public ICommand MoveUpCommand { get; }
     public ICommand MoveDownCommand { get; }
 
+    public event EventHandler? PreviewInvalidated;
+
     public HomeWidgetCustomizerViewModel(IEnumerable<HomeWidgetConfig> currentWidgets)
     {
         ActiveWidgets = new ObservableCollection<HomeWidgetCustomizerItemViewModel>(
             currentWidgets.Select(w => new HomeWidgetCustomizerItemViewModel(w.Id, w.Type, w.Style)));
+
+        foreach (HomeWidgetCustomizerItemViewModel item in ActiveWidgets)
+        {
+            item.PropertyChanged += Item_PropertyChanged;
+        }
+        ActiveWidgets.CollectionChanged += ActiveWidgets_CollectionChanged;
 
         CatalogWidgets = new ObservableCollection<HomeWidgetCustomizerItemViewModel>
         {
@@ -122,6 +130,30 @@ public sealed class HomeWidgetCustomizerViewModel : ViewModelBase
                 }
             }
         });
+    }
+
+    private void ActiveWidgets_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems != null)
+        {
+            foreach (HomeWidgetCustomizerItemViewModel item in e.NewItems.OfType<HomeWidgetCustomizerItemViewModel>())
+            {
+                item.PropertyChanged += Item_PropertyChanged;
+            }
+        }
+        if (e.OldItems != null)
+        {
+            foreach (HomeWidgetCustomizerItemViewModel item in e.OldItems.OfType<HomeWidgetCustomizerItemViewModel>())
+            {
+                item.PropertyChanged -= Item_PropertyChanged;
+            }
+        }
+        PreviewInvalidated?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void Item_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        PreviewInvalidated?.Invoke(this, EventArgs.Empty);
     }
 
     public void MoveItem(int oldIndex, int newIndex)
