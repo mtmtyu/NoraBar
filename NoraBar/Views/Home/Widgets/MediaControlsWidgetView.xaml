@@ -424,6 +424,139 @@
                 </Grid>
             </Border>
         </DataTemplate>
+
+        <!-- Artwork Blur & 3-Line Lyrics Template -->
+        <DataTemplate x:Key="MediaBlurLyricsTemplate">
+            <Border x:Name="RootCard" Width="280" Height="130" CornerRadius="12" Background="#1E1E2E" Margin="4,2" ClipToBounds="True">
+                <Border.OpacityMask>
+                    <VisualBrush Stretch="None">
+                        <VisualBrush.Visual>
+                            <Border Width="280" Height="130" CornerRadius="12" Background="Black"/>
+                        </VisualBrush.Visual>
+                    </VisualBrush>
+                </Border.OpacityMask>
+                <Grid ClipToBounds="True">
+                    <!-- Blur Artwork Background -->
+                    <Grid>
+                        <TextBlock Text="&#xE93C;" FontFamily="Segoe Fluent Icons" Foreground="#22FFFFFF"
+                                   FontSize="48" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Image Source="{Binding Music.AlbumArt}" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality">
+                            <Image.Effect>
+                                <BlurEffect Radius="25"/>
+                            </Image.Effect>
+                        </Image>
+                        <!-- Dark Overlay -->
+                        <Border Background="#A00B0D19"/>
+                    </Grid>
+
+                    <!-- Center: 3-Line Synced Lyrics -->
+                    <Grid VerticalAlignment="Center" Margin="12,6,12,36" Height="68">
+                        <ListBox x:Name="LyricsListBoxBlur"
+                                 ItemsSource="{Binding Music.LyricsList}"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 ScrollViewer.CanContentScroll="True"
+                                 ScrollViewer.VerticalScrollBarVisibility="Hidden"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 VirtualizingPanel.IsVirtualizing="True"
+                                 VirtualizingPanel.VirtualizationMode="Recycling"
+                                 VirtualizingPanel.ScrollUnit="Pixel"
+                                 Focusable="False"
+                                 HorizontalContentAlignment="Stretch"
+                                 IsHitTestVisible="False">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Margin" Value="0"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <ContentPresenter />
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Text}" 
+                                               TextAlignment="Center" 
+                                               TextWrapping="Wrap"
+                                               Margin="0,3,0,3"
+                                               HorizontalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="FontSize" Value="11"/>
+                                                <Setter Property="Foreground" Value="#66FFFFFF"/>
+                                                <Setter Property="FontWeight" Value="Normal"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                        <Setter Property="FontSize" Value="13"/>
+                                                        <Setter Property="Foreground" Value="#FFFFFFFF"/>
+                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <TextBlock Text="{Binding Music.CurrentLyric}"
+                                   Foreground="#AAFFFFFF"
+                                   FontSize="12"
+                                   TextAlignment="Center"
+                                   TextWrapping="Wrap"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   IsHitTestVisible="False">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Music.LyricsList.Count}" Value="0">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+
+                    <!-- Bottom Bar: Bottom-Left Track Info, Bottom-Right Media Controls -->
+                    <Grid VerticalAlignment="Bottom" Margin="10,0,10,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Bottom Left: Small Rounded Album Art + Title & Artist -->
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Border Width="34" Height="34" CornerRadius="6" ClipToBounds="True" Background="#20FFFFFF" Margin="0,0,8,0" VerticalAlignment="Center">
+                                <Image Source="{Binding Music.AlbumArt}" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality"/>
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="{Binding MediaTitle}" Foreground="White" FontWeight="SemiBold"
+                                           FontSize="12" MaxWidth="120" TextTrimming="CharacterEllipsis" FontFamily="Segoe UI Variable Text, Segoe UI"/>
+                                <TextBlock Text="{Binding MediaArtist}" Foreground="#A8FFFFFF" FontSize="10"
+                                           MaxWidth="120" TextTrimming="CharacterEllipsis" FontFamily="Segoe UI Variable Text, Segoe UI"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Bottom Right: Playback Controls -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" IsEnabled="{Binding HasMedia}">
+                            <controls:IconButton IconText="&#xE892;" Width="26" Height="26" Margin="0,0,4,0" Command="{Binding Music.PreviousCommand}"/>
+                            <controls:IconButton IconText="{Binding Music.IsPlaying, Converter={StaticResource PlayPauseIconConverter}}" Width="28" Height="28" Margin="0,0,4,0" Command="{Binding Music.PlayPauseCommand}"/>
+                            <controls:IconButton IconText="&#xE893;" Width="26" Height="26" Command="{Binding Music.NextCommand}"/>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Border>
+        </DataTemplate>
     </UserControl.Resources>
 
     <ContentControl x:Name="MediaContentControl" Content="{Binding}"/>

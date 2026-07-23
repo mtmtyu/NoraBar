@@ -7,5 +7,6 @@ public enum HomeWidgetStyle
     MediaArtworkHover,
     MediaArtworkHoverSmall,
     MediaArtworkHoverMedium,
-    MediaArtworkHoverLarge
+    MediaArtworkHoverLarge,
+    MediaBlurLyrics
 }

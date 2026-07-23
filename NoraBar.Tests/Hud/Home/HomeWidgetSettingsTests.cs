@@ -100,4 +100,27 @@ public sealed class HomeWidgetSettingsTests
         Assert.Equal(HomeWidgetStyle.MediaArtworkHoverMedium, reloaded.EffectiveWidgets[1].Style);
         Assert.Equal(HomeWidgetStyle.MediaArtworkHoverLarge, reloaded.EffectiveWidgets[2].Style);
     }
+
+    [Fact]
+    public void WriteAndRead_PreservesMediaBlurLyricsStyle()
+    {
+        UserSettings settings = new UserSettings();
+        List<HomeWidgetConfig> customWidgets = new List<HomeWidgetConfig>
+        {
+            new("w1", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics)
+        };
+
+        HomeHudSettings customSettings = new HomeHudSettings(
+            HomeHudDesignVariant.FusionBalanced,
+            HomeHudTimeFormat.TwelveHour,
+            new HomeWorldClockSettings("NYC", "Eastern Standard Time"),
+            new HomeWorldClockSettings("LON", "GMT Standard Time"),
+            customWidgets);
+
+        HomeHudSettingsJson.Write(settings, customSettings);
+        HomeHudSettings reloaded = HomeHudSettingsJson.Read(settings);
+
+        Assert.Single(reloaded.EffectiveWidgets);
+        Assert.Equal(HomeWidgetStyle.MediaBlurLyrics, reloaded.EffectiveWidgets[0].Style);
+    }
 }

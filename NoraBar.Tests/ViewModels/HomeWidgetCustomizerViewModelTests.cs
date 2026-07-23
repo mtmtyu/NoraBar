@@ -18,7 +18,7 @@ public sealed class HomeWidgetCustomizerViewModelTests
         HomeWidgetCustomizerViewModel vm = new HomeWidgetCustomizerViewModel(initial);
 
         Assert.Equal(2, vm.ActiveWidgets.Count);
-        Assert.Equal(5, vm.CatalogWidgets.Count);
+        Assert.Equal(6, vm.CatalogWidgets.Count);
         Assert.Equal("w1", vm.ActiveWidgets[0].Id);
     }
 
@@ -31,6 +31,7 @@ public sealed class HomeWidgetCustomizerViewModelTests
         Assert.Contains(HomeWidgetStyle.MediaArtworkHoverSmall, item.AvailableStyles);
         Assert.Contains(HomeWidgetStyle.MediaArtworkHoverMedium, item.AvailableStyles);
         Assert.Contains(HomeWidgetStyle.MediaArtworkHoverLarge, item.AvailableStyles);
+        Assert.Contains(HomeWidgetStyle.MediaBlurLyrics, item.AvailableStyles);
     }
 
     [Fact]

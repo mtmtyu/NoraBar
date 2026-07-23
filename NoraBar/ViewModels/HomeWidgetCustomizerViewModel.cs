@@ -43,7 +43,8 @@ public sealed class HomeWidgetCustomizerItemViewModel : ViewModelBase
             HomeWidgetStyle.MediaCompact,
             HomeWidgetStyle.MediaArtworkHoverSmall,
             HomeWidgetStyle.MediaArtworkHoverMedium,
-            HomeWidgetStyle.MediaArtworkHoverLarge
+            HomeWidgetStyle.MediaArtworkHoverLarge,
+            HomeWidgetStyle.MediaBlurLyrics
         ],
         _ => [Style]
     };
@@ -87,7 +88,8 @@ public sealed class HomeWidgetCustomizerViewModel : ViewModelBase
             new("catalog_media", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact),
             new("catalog_media_artwork_sm", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverSmall),
             new("catalog_media_artwork_md", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverMedium),
-            new("catalog_media_artwork_lg", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverLarge)
+            new("catalog_media_artwork_lg", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverLarge),
+            new("catalog_media_blur_lyrics", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics)
         };
 
         AddWidgetCommand = new RelayCommand(p =>
