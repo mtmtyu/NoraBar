@@ -1,7 +1,7 @@
 [Setup]
 AppId={{9F588B98-96BC-4A2D-A58F-3A9B266474CD}
 AppName=NoraBar
-AppVersion=1.0.3
+AppVersion=1.1.0
 AppPublisher=mtmtyu
 DefaultDirName={autopf}\NoraBar
 DefaultGroupName=NoraBar
