@@ -19,7 +19,16 @@
                     </Border>
                     <TextBlock Text="&#xE93C;" FontFamily="Segoe Fluent Icons" Foreground="#88FFFFFF"
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    <Image Source="{Binding Music.AlbumArt}" Stretch="UniformToFill"/>
+                    <Border CornerRadius="8">
+                        <Border.OpacityMask>
+                            <VisualBrush>
+                                <VisualBrush.Visual>
+                                    <Border Width="34" Height="34" CornerRadius="8" Background="Black"/>
+                                </VisualBrush.Visual>
+                            </VisualBrush>
+                        </Border.OpacityMask>
+                        <Image Source="{Binding Music.AlbumArt}" Stretch="UniformToFill"/>
+                    </Border>
                 </Grid>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                     <TextBlock Text="{Binding MediaTitle}" Foreground="White" FontWeight="SemiBold"
@@ -34,6 +43,386 @@
                                          Command="{Binding Music.PlayPauseCommand}"/>
                 </StackPanel>
             </Grid>
+        </DataTemplate>
+
+        <!-- Artwork Cover Hover Template (Default / Medium) -->
+        <DataTemplate x:Key="MediaArtworkHoverTemplate">
+            <Border x:Name="RootCard" Width="190" Height="105" CornerRadius="10" Background="#1E1E2E" Margin="4,2" ClipToBounds="True">
+                <Border.OpacityMask>
+                    <VisualBrush Stretch="None">
+                        <VisualBrush.Visual>
+                            <Border Width="190" Height="105" CornerRadius="10" Background="Black"/>
+                        </VisualBrush.Visual>
+                    </VisualBrush>
+                </Border.OpacityMask>
+                <Grid ClipToBounds="True">
+                    <Grid>
+                        <TextBlock Text="&#xE93C;" FontFamily="Segoe Fluent Icons" Foreground="#33FFFFFF"
+                                   FontSize="32" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Image Source="{Binding Music.AlbumArt}" Stretch="UniformToFill"/>
+                        <Border VerticalAlignment="Bottom" Height="70">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                    <GradientStop Color="#00000000" Offset="0"/>
+                                    <GradientStop Color="#B0000000" Offset="0.5"/>
+                                    <GradientStop Color="#E6000000" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                    </Grid>
+
+                    <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Margin="10,0,10,6">
+                        <StackPanel.RenderTransform>
+                            <TranslateTransform Y="38"/>
+                        </StackPanel.RenderTransform>
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsMouseOver, ElementName=RootCard}" Value="True">
+                                        <DataTrigger.EnterActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                                     To="0" Duration="0:0:0.25">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.EnterActions>
+                                        <DataTrigger.ExitActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                                     To="38" Duration="0:0:0.20">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseIn"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.ExitActions>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+
+                        <StackPanel Margin="0,0,0,6">
+                            <TextBlock Text="{Binding MediaTitle}" Foreground="White" FontWeight="Bold"
+                                       FontSize="13" MaxWidth="170" TextTrimming="CharacterEllipsis"
+                                       FontFamily="Segoe UI Variable Text, Segoe UI">
+                                <TextBlock.Effect>
+                                    <DropShadowEffect BlurRadius="4" ShadowDepth="1" Opacity="0.9" Color="Black"/>
+                                </TextBlock.Effect>
+                            </TextBlock>
+                            <TextBlock Text="{Binding MediaArtist}" Foreground="#E0FFFFFF" FontSize="11"
+                                       MaxWidth="170" TextTrimming="CharacterEllipsis"
+                                       FontFamily="Segoe UI Variable Text, Segoe UI">
+                                <TextBlock.Effect>
+                                    <DropShadowEffect BlurRadius="4" ShadowDepth="1" Opacity="0.9" Color="Black"/>
+                                </TextBlock.Effect>
+                            </TextBlock>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Height="32"
+                                    Background="Transparent" IsEnabled="{Binding HasMedia}">
+                            <controls:IconButton IconText="&#xE892;" Width="28" Height="28" Margin="6,0"
+                                                 Command="{Binding Music.SkipPreviousCommand}"/>
+                            <controls:IconButton IconText="{Binding Music.IsPlaying, Converter={StaticResource PlayPauseIconConverter}}"
+                                                 Width="32" Height="32" Margin="6,0"
+                                                 Command="{Binding Music.PlayPauseCommand}"/>
+                            <controls:IconButton IconText="&#xE893;" Width="28" Height="28" Margin="6,0"
+                                                 Command="{Binding Music.SkipNextCommand}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <!-- Artwork Cover Hover Template (Small: 150 x 85) -->
+        <DataTemplate x:Key="MediaArtworkHoverSmallTemplate">
+            <Border x:Name="RootCard" Width="150" Height="85" CornerRadius="8" Background="#1E1E2E" Margin="4,2" ClipToBounds="True">
+                <Border.OpacityMask>
+                    <VisualBrush Stretch="None">
+                        <VisualBrush.Visual>
+                            <Border Width="150" Height="85" CornerRadius="8" Background="Black"/>
+                        </VisualBrush.Visual>
+                    </VisualBrush>
+                </Border.OpacityMask>
+                <Grid ClipToBounds="True">
+                    <Grid>
+                        <TextBlock Text="&#xE93C;" FontFamily="Segoe Fluent Icons" Foreground="#33FFFFFF"
+                                   FontSize="26" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Image Source="{Binding Music.AlbumArt}" Stretch="UniformToFill"/>
+                        <Border VerticalAlignment="Bottom" Height="55">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                    <GradientStop Color="#00000000" Offset="0"/>
+                                    <GradientStop Color="#B0000000" Offset="0.5"/>
+                                    <GradientStop Color="#E6000000" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                    </Grid>
+
+                    <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Margin="8,0,8,4">
+                        <StackPanel.RenderTransform>
+                            <TranslateTransform Y="30"/>
+                        </StackPanel.RenderTransform>
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsMouseOver, ElementName=RootCard}" Value="True">
+                                        <DataTrigger.EnterActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                                     To="0" Duration="0:0:0.25">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.EnterActions>
+                                        <DataTrigger.ExitActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                                     To="30" Duration="0:0:0.20">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseIn"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.ExitActions>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+
+                        <StackPanel Margin="0,0,0,4">
+                            <TextBlock Text="{Binding MediaTitle}" Foreground="White" FontWeight="Bold"
+                                       FontSize="11" MaxWidth="134" TextTrimming="CharacterEllipsis"
+                                       FontFamily="Segoe UI Variable Text, Segoe UI">
+                                <TextBlock.Effect>
+                                    <DropShadowEffect BlurRadius="4" ShadowDepth="1" Opacity="0.9" Color="Black"/>
+                                </TextBlock.Effect>
+                            </TextBlock>
+                            <TextBlock Text="{Binding MediaArtist}" Foreground="#E0FFFFFF" FontSize="10"
+                                       MaxWidth="134" TextTrimming="CharacterEllipsis"
+                                       FontFamily="Segoe UI Variable Text, Segoe UI">
+                                <TextBlock.Effect>
+                                    <DropShadowEffect BlurRadius="4" ShadowDepth="1" Opacity="0.9" Color="Black"/>
+                                </TextBlock.Effect>
+                            </TextBlock>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Height="26"
+                                    Background="Transparent" IsEnabled="{Binding HasMedia}">
+                            <controls:IconButton IconText="&#xE892;" Width="24" Height="24" Margin="3,0"
+                                                 Command="{Binding Music.SkipPreviousCommand}"/>
+                            <controls:IconButton IconText="{Binding Music.IsPlaying, Converter={StaticResource PlayPauseIconConverter}}"
+                                                 Width="26" Height="26" Margin="3,0"
+                                                 Command="{Binding Music.PlayPauseCommand}"/>
+                            <controls:IconButton IconText="&#xE893;" Width="24" Height="24" Margin="3,0"
+                                                 Command="{Binding Music.SkipNextCommand}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <!-- Artwork Cover Hover Template (Medium: 190 x 105) -->
+        <DataTemplate x:Key="MediaArtworkHoverMediumTemplate">
+            <Border x:Name="RootCard" Width="190" Height="105" CornerRadius="10" Background="#1E1E2E" Margin="4,2" ClipToBounds="True">
+                <Border.OpacityMask>
+                    <VisualBrush Stretch="None">
+                        <VisualBrush.Visual>
+                            <Border Width="190" Height="105" CornerRadius="10" Background="Black"/>
+                        </VisualBrush.Visual>
+                    </VisualBrush>
+                </Border.OpacityMask>
+                <Grid ClipToBounds="True">
+                    <Grid>
+                        <TextBlock Text="&#xE93C;" FontFamily="Segoe Fluent Icons" Foreground="#33FFFFFF"
+                                   FontSize="32" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Image Source="{Binding Music.AlbumArt}" Stretch="UniformToFill"/>
+                        <Border VerticalAlignment="Bottom" Height="70">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                    <GradientStop Color="#00000000" Offset="0"/>
+                                    <GradientStop Color="#B0000000" Offset="0.5"/>
+                                    <GradientStop Color="#E6000000" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                    </Grid>
+
+                    <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Margin="10,0,10,6">
+                        <StackPanel.RenderTransform>
+                            <TranslateTransform Y="38"/>
+                        </StackPanel.RenderTransform>
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsMouseOver, ElementName=RootCard}" Value="True">
+                                        <DataTrigger.EnterActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                                     To="0" Duration="0:0:0.25">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.EnterActions>
+                                        <DataTrigger.ExitActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                                     To="38" Duration="0:0:0.20">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseIn"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.ExitActions>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+
+                        <StackPanel Margin="0,0,0,6">
+                            <TextBlock Text="{Binding MediaTitle}" Foreground="White" FontWeight="Bold"
+                                       FontSize="13" MaxWidth="170" TextTrimming="CharacterEllipsis"
+                                       FontFamily="Segoe UI Variable Text, Segoe UI">
+                                <TextBlock.Effect>
+                                    <DropShadowEffect BlurRadius="4" ShadowDepth="1" Opacity="0.9" Color="Black"/>
+                                </TextBlock.Effect>
+                            </TextBlock>
+                            <TextBlock Text="{Binding MediaArtist}" Foreground="#E0FFFFFF" FontSize="11"
+                                       MaxWidth="170" TextTrimming="CharacterEllipsis"
+                                       FontFamily="Segoe UI Variable Text, Segoe UI">
+                                <TextBlock.Effect>
+                                    <DropShadowEffect BlurRadius="4" ShadowDepth="1" Opacity="0.9" Color="Black"/>
+                                </TextBlock.Effect>
+                            </TextBlock>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Height="32"
+                                    Background="Transparent" IsEnabled="{Binding HasMedia}">
+                            <controls:IconButton IconText="&#xE892;" Width="28" Height="28" Margin="6,0"
+                                                 Command="{Binding Music.SkipPreviousCommand}"/>
+                            <controls:IconButton IconText="{Binding Music.IsPlaying, Converter={StaticResource PlayPauseIconConverter}}"
+                                                 Width="32" Height="32" Margin="6,0"
+                                                 Command="{Binding Music.PlayPauseCommand}"/>
+                            <controls:IconButton IconText="&#xE893;" Width="28" Height="28" Margin="6,0"
+                                                 Command="{Binding Music.SkipNextCommand}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <!-- Artwork Cover Hover Template (Large: 240 x 135) -->
+        <DataTemplate x:Key="MediaArtworkHoverLargeTemplate">
+            <Border x:Name="RootCard" Width="240" Height="135" CornerRadius="12" Background="#1E1E2E" Margin="4,2" ClipToBounds="True">
+                <Border.OpacityMask>
+                    <VisualBrush Stretch="None">
+                        <VisualBrush.Visual>
+                            <Border Width="240" Height="135" CornerRadius="12" Background="Black"/>
+                        </VisualBrush.Visual>
+                    </VisualBrush>
+                </Border.OpacityMask>
+                <Grid ClipToBounds="True">
+                    <Grid>
+                        <TextBlock Text="&#xE93C;" FontFamily="Segoe Fluent Icons" Foreground="#33FFFFFF"
+                                   FontSize="40" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Image Source="{Binding Music.AlbumArt}" Stretch="UniformToFill"/>
+                        <Border VerticalAlignment="Bottom" Height="90">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                    <GradientStop Color="#00000000" Offset="0"/>
+                                    <GradientStop Color="#B0000000" Offset="0.5"/>
+                                    <GradientStop Color="#E6000000" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                    </Grid>
+
+                    <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Margin="14,0,14,8">
+                        <StackPanel.RenderTransform>
+                            <TranslateTransform Y="44"/>
+                        </StackPanel.RenderTransform>
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsMouseOver, ElementName=RootCard}" Value="True">
+                                        <DataTrigger.EnterActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                                     To="0" Duration="0:0:0.25">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.EnterActions>
+                                        <DataTrigger.ExitActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                                     To="44" Duration="0:0:0.20">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseIn"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.ExitActions>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+
+                        <StackPanel Margin="0,0,0,6">
+                            <TextBlock Text="{Binding MediaTitle}" Foreground="White" FontWeight="Bold"
+                                       FontSize="15" MaxWidth="212" TextTrimming="CharacterEllipsis"
+                                       FontFamily="Segoe UI Variable Text, Segoe UI">
+                                <TextBlock.Effect>
+                                    <DropShadowEffect BlurRadius="4" ShadowDepth="1" Opacity="0.9" Color="Black"/>
+                                </TextBlock.Effect>
+                            </TextBlock>
+                            <TextBlock Text="{Binding MediaArtist}" Foreground="#E0FFFFFF" FontSize="12"
+                                       MaxWidth="212" TextTrimming="CharacterEllipsis"
+                                       FontFamily="Segoe UI Variable Text, Segoe UI">
+                                <TextBlock.Effect>
+                                    <DropShadowEffect BlurRadius="4" ShadowDepth="1" Opacity="0.9" Color="Black"/>
+                                </TextBlock.Effect>
+                            </TextBlock>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Height="38"
+                                    Background="Transparent" IsEnabled="{Binding HasMedia}">
+                            <controls:IconButton IconText="&#xE892;" Width="34" Height="34" Margin="8,0"
+                                                 Command="{Binding Music.SkipPreviousCommand}"/>
+                            <controls:IconButton IconText="{Binding Music.IsPlaying, Converter={StaticResource PlayPauseIconConverter}}"
+                                                 Width="38" Height="38" Margin="8,0"
+                                                 Command="{Binding Music.PlayPauseCommand}"/>
+                            <controls:IconButton IconText="&#xE893;" Width="34" Height="34" Margin="8,0"
+                                                 Command="{Binding Music.SkipNextCommand}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
         </DataTemplate>
     </UserControl.Resources>
 

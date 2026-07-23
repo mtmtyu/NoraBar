@@ -3,5 +3,9 @@ namespace NoraBar.Hud.Home.Widgets;
 public enum HomeWidgetStyle
 {
     ClockMinimal,
-    MediaCompact
+    MediaCompact,
+    MediaArtworkHover,
+    MediaArtworkHoverSmall,
+    MediaArtworkHoverMedium,
+    MediaArtworkHoverLarge
 }

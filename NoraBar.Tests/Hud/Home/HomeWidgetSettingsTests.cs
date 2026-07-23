@@ -48,4 +48,56 @@ public sealed class HomeWidgetSettingsTests
         Assert.Equal(HomeWidgetType.MediaControls, reloaded.EffectiveWidgets[1].Type);
         Assert.Equal(HomeWidgetStyle.MediaCompact, reloaded.EffectiveWidgets[1].Style);
     }
+
+    [Fact]
+    public void WriteAndRead_PreservesMediaArtworkHoverStyle()
+    {
+        UserSettings settings = new UserSettings();
+        List<HomeWidgetConfig> customWidgets = new List<HomeWidgetConfig>
+        {
+            new("w1", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHover)
+        };
+
+        HomeHudSettings customSettings = new HomeHudSettings(
+            HomeHudDesignVariant.FusionBalanced,
+            HomeHudTimeFormat.TwelveHour,
+            new HomeWorldClockSettings("NYC", "Eastern Standard Time"),
+            new HomeWorldClockSettings("LON", "GMT Standard Time"),
+            customWidgets);
+
+        HomeHudSettingsJson.Write(settings, customSettings);
+        HomeHudSettings reloaded = HomeHudSettingsJson.Read(settings);
+
+        Assert.Single(reloaded.EffectiveWidgets);
+        Assert.Equal("w1", reloaded.EffectiveWidgets[0].Id);
+        Assert.Equal(HomeWidgetType.MediaControls, reloaded.EffectiveWidgets[0].Type);
+        Assert.Equal(HomeWidgetStyle.MediaArtworkHover, reloaded.EffectiveWidgets[0].Style);
+    }
+
+    [Fact]
+    public void WriteAndRead_PreservesMediaArtworkHoverSizeStyles()
+    {
+        UserSettings settings = new UserSettings();
+        List<HomeWidgetConfig> customWidgets = new List<HomeWidgetConfig>
+        {
+            new("w1", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverSmall),
+            new("w2", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverMedium),
+            new("w3", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverLarge)
+        };
+
+        HomeHudSettings customSettings = new HomeHudSettings(
+            HomeHudDesignVariant.FusionBalanced,
+            HomeHudTimeFormat.TwelveHour,
+            new HomeWorldClockSettings("NYC", "Eastern Standard Time"),
+            new HomeWorldClockSettings("LON", "GMT Standard Time"),
+            customWidgets);
+
+        HomeHudSettingsJson.Write(settings, customSettings);
+        HomeHudSettings reloaded = HomeHudSettingsJson.Read(settings);
+
+        Assert.Equal(3, reloaded.EffectiveWidgets.Count);
+        Assert.Equal(HomeWidgetStyle.MediaArtworkHoverSmall, reloaded.EffectiveWidgets[0].Style);
+        Assert.Equal(HomeWidgetStyle.MediaArtworkHoverMedium, reloaded.EffectiveWidgets[1].Style);
+        Assert.Equal(HomeWidgetStyle.MediaArtworkHoverLarge, reloaded.EffectiveWidgets[2].Style);
+    }
 }

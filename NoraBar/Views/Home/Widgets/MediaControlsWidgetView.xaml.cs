@@ -14,6 +14,13 @@ public partial class MediaControlsWidgetView : UserControl
 
     public void SetStyle(HomeWidgetStyle style)
     {
-        MediaContentControl.ContentTemplate = Resources["MediaCompactTemplate"] as DataTemplate;
+        MediaContentControl.ContentTemplate = style switch
+        {
+            HomeWidgetStyle.MediaArtworkHoverSmall => Resources["MediaArtworkHoverSmallTemplate"] as DataTemplate,
+            HomeWidgetStyle.MediaArtworkHoverMedium => Resources["MediaArtworkHoverMediumTemplate"] as DataTemplate,
+            HomeWidgetStyle.MediaArtworkHoverLarge => Resources["MediaArtworkHoverLargeTemplate"] as DataTemplate,
+            HomeWidgetStyle.MediaArtworkHover => Resources["MediaArtworkHoverTemplate"] as DataTemplate,
+            _ => Resources["MediaCompactTemplate"] as DataTemplate
+        };
     }
 }

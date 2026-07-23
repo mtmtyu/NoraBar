@@ -18,8 +18,19 @@ public sealed class HomeWidgetCustomizerViewModelTests
         HomeWidgetCustomizerViewModel vm = new HomeWidgetCustomizerViewModel(initial);
 
         Assert.Equal(2, vm.ActiveWidgets.Count);
-        Assert.Equal(2, vm.CatalogWidgets.Count);
+        Assert.Equal(5, vm.CatalogWidgets.Count);
         Assert.Equal("w1", vm.ActiveWidgets[0].Id);
+    }
+
+    [Fact]
+    public void MediaControls_AvailableStyles_IncludesMediaArtworkHoverSizes()
+    {
+        HomeWidgetCustomizerItemViewModel item = new HomeWidgetCustomizerItemViewModel("w1", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact);
+
+        Assert.Contains(HomeWidgetStyle.MediaCompact, item.AvailableStyles);
+        Assert.Contains(HomeWidgetStyle.MediaArtworkHoverSmall, item.AvailableStyles);
+        Assert.Contains(HomeWidgetStyle.MediaArtworkHoverMedium, item.AvailableStyles);
+        Assert.Contains(HomeWidgetStyle.MediaArtworkHoverLarge, item.AvailableStyles);
     }
 
     [Fact]

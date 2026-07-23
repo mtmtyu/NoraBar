@@ -39,7 +39,12 @@ public sealed class HomeWidgetCustomizerItemViewModel : ViewModelBase
     public IReadOnlyList<HomeWidgetStyle> AvailableStyles => Type switch
     {
         HomeWidgetType.DigitalClock => [HomeWidgetStyle.ClockMinimal],
-        HomeWidgetType.MediaControls => [HomeWidgetStyle.MediaCompact],
+        HomeWidgetType.MediaControls => [
+            HomeWidgetStyle.MediaCompact,
+            HomeWidgetStyle.MediaArtworkHoverSmall,
+            HomeWidgetStyle.MediaArtworkHoverMedium,
+            HomeWidgetStyle.MediaArtworkHoverLarge
+        ],
         _ => [Style]
     };
 
@@ -79,7 +84,10 @@ public sealed class HomeWidgetCustomizerViewModel : ViewModelBase
         CatalogWidgets = new ObservableCollection<HomeWidgetCustomizerItemViewModel>
         {
             new("catalog_clock", HomeWidgetType.DigitalClock, HomeWidgetStyle.ClockMinimal),
-            new("catalog_media", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact)
+            new("catalog_media", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact),
+            new("catalog_media_artwork_sm", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverSmall),
+            new("catalog_media_artwork_md", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverMedium),
+            new("catalog_media_artwork_lg", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverLarge)
         };
 
         AddWidgetCommand = new RelayCommand(p =>

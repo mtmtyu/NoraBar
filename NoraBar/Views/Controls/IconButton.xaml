@@ -5,17 +5,18 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              mc:Ignorable="d" 
              d:DesignHeight="40" d:DesignWidth="40">
-    <Button Background="Transparent" BorderThickness="0" Command="{Binding Path=Command, RelativeSource={RelativeSource AncestorType=UserControl}}" RenderTransformOrigin="0.5,0.5">
+    <Button Background="Transparent" BorderThickness="0" Command="{Binding Path=Command, RelativeSource={RelativeSource AncestorType=UserControl}}" RenderTransformOrigin="0.5,0.5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
         <Button.RenderTransform>
             <ScaleTransform x:Name="ButtonScale" ScaleX="1" ScaleY="1" />
         </Button.RenderTransform>
         <Button.Template>
             <ControlTemplate TargetType="Button">
-                <Border Background="#01FFFFFF" CornerRadius="20" Width="40" Height="40"
-                        x:Name="BgBorder" BorderThickness="1" BorderBrush="#10FFFFFF">
+                <Border Background="#01FFFFFF" CornerRadius="20"
+                        x:Name="BgBorder" BorderThickness="1" BorderBrush="#10FFFFFF"
+                        HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                     <TextBlock Text="{Binding Path=IconText, RelativeSource={RelativeSource AncestorType=UserControl}}" 
                                Foreground="{StaticResource TextPrimaryBrush}" 
-                               FontSize="16" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                               FontSize="14" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
                 <ControlTemplate.Triggers>
