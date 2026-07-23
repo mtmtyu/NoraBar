@@ -36,7 +36,7 @@ internal static class HomeHudPreviewFactory
         view.DataContext = source;
         return new HomeHudPreview(
             view,
-            HomeHudLayout.Calculate(source.DesignVariant),
+            HomeHudLayout.Calculate(source.DesignVariant, source.ActiveWidgets),
             source);
     }
 }

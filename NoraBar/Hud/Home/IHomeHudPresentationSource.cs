@@ -6,6 +6,8 @@ internal interface IHomeHudPresentationSource : IDisposable
 {
     HomeHudDesignVariant DesignVariant { get; }
 
+    IReadOnlyList<NoraBar.Hud.Home.Widgets.HomeWidgetConfig>? ActiveWidgets { get; }
+
     object ViewDataContext { get; }
 
     event EventHandler? PresentationInvalidated;

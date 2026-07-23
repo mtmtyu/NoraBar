@@ -100,6 +100,8 @@ public sealed class HomeHudModuleTests
         public HomeHudDesignVariant DesignVariant { get; set; } =
             HomeHudDesignVariant.FusionBalanced;
 
+        public IReadOnlyList<NoraBar.Hud.Home.Widgets.HomeWidgetConfig>? ActiveWidgets { get; set; }
+
         public object ViewDataContext { get; } = new();
         public int InitializeCount { get; private set; }
         public int StartCount { get; private set; }

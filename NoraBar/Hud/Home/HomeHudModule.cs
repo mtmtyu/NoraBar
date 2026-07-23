@@ -144,7 +144,7 @@ internal sealed class HomeHudModule : IHudModule
         lock (_syncRoot)
         {
             ObjectDisposedException.ThrowIf(_isDisposed, this);
-            return HomeHudLayout.Calculate(ResolveVariant(_source.DesignVariant));
+            return HomeHudLayout.Calculate(ResolveVariant(_source.DesignVariant), _source.ActiveWidgets);
         }
     }
 
