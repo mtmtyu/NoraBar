@@ -420,6 +420,10 @@ namespace NoraBar.ViewModels
         public string TimeZoneText => T(LocalizationKey.TimeZone);
         public string DesignStyleText => T(LocalizationKey.DesignStyle);
         public string DesignStyleDescriptionText => T(LocalizationKey.DesignStyleDescription);
+        public string DesignMinimalText => T(LocalizationKey.DesignMinimal);
+        public string DesignProductivityText => T(LocalizationKey.DesignProductivity);
+        public string DesignLyricsFocusText => T(LocalizationKey.DesignLyricsFocus);
+        public string PreviewBadgeText => T(LocalizationKey.PreviewBadge);
         public string ProgressBarText => T(LocalizationKey.ProgressBar);
         public string ProgressBarDescriptionText => T(LocalizationKey.ProgressBarDescription);
         public string ShowLyricsText => T(LocalizationKey.ShowLyrics);
@@ -998,6 +1002,10 @@ namespace NoraBar.ViewModels
             OnPropertyChanged(nameof(AboutText));
             OnPropertyChanged(nameof(DesignStyleText));
             OnPropertyChanged(nameof(DesignStyleDescriptionText));
+            OnPropertyChanged(nameof(DesignMinimalText));
+            OnPropertyChanged(nameof(DesignProductivityText));
+            OnPropertyChanged(nameof(DesignLyricsFocusText));
+            OnPropertyChanged(nameof(PreviewBadgeText));
             OnPropertyChanged(nameof(ProgressBarText));
             OnPropertyChanged(nameof(ProgressBarDescriptionText));
             OnPropertyChanged(nameof(ShowLyricsText));

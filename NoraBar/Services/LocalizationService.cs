@@ -119,7 +119,11 @@ namespace NoraBar.Services
         WidgetMediaArtworkSmall,
         WidgetMediaArtworkMedium,
         WidgetMediaArtworkLarge,
-        WidgetMediaBlurLyrics
+        WidgetMediaBlurLyrics,
+        DesignMinimal,
+        DesignProductivity,
+        DesignLyricsFocus,
+        PreviewBadge
     }
 
     public static class LocalizationService
@@ -243,7 +247,11 @@ namespace NoraBar.Services
                     [LocalizationKey.WidgetMediaArtworkSmall] = "メディアコントロール (アートワーク小)",
                     [LocalizationKey.WidgetMediaArtworkMedium] = "メディアコントロール (アートワーク中)",
                     [LocalizationKey.WidgetMediaArtworkLarge] = "メディアコントロール (アートワーク大)",
-                    [LocalizationKey.WidgetMediaBlurLyrics] = "メディアコントロール (背景ぼかし＆歌詞)"
+                    [LocalizationKey.WidgetMediaBlurLyrics] = "メディアコントロール (背景ぼかし＆歌詞)",
+                    [LocalizationKey.DesignMinimal] = "Minimal (デザイン A)",
+                    [LocalizationKey.DesignProductivity] = "Productivity (デザイン B)",
+                    [LocalizationKey.DesignLyricsFocus] = "Lyrics focused (デザイン C)",
+                    [LocalizationKey.PreviewBadge] = "プレビュー"
                 },
                 [AppLanguage.English] = new Dictionary<LocalizationKey, string>
                 {
@@ -361,7 +369,11 @@ namespace NoraBar.Services
                     [LocalizationKey.WidgetMediaArtworkSmall] = "Media Controls (Small Artwork)",
                     [LocalizationKey.WidgetMediaArtworkMedium] = "Media Controls (Medium Artwork)",
                     [LocalizationKey.WidgetMediaArtworkLarge] = "Media Controls (Large Artwork)",
-                    [LocalizationKey.WidgetMediaBlurLyrics] = "Media Controls (Blur & Lyrics)"
+                    [LocalizationKey.WidgetMediaBlurLyrics] = "Media Controls (Blur & Lyrics)",
+                    [LocalizationKey.DesignMinimal] = "Minimal (Design A)",
+                    [LocalizationKey.DesignProductivity] = "Productivity (Design B)",
+                    [LocalizationKey.DesignLyricsFocus] = "Lyrics focused (Design C)",
+                    [LocalizationKey.PreviewBadge] = "PREVIEW"
                 }
             };
 

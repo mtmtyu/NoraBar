@@ -983,9 +983,9 @@
                                               Width="160"
                                               Height="32"
                                               VerticalAlignment="Center">
-                                        <ComboBoxItem Content="Minimal (Design A)" Tag="{x:Static models:DesignVariant.MinimalFloatingPill}"/>
-                                        <ComboBoxItem Content="Productivity (Design B)" Tag="{x:Static models:DesignVariant.ProductivityCommandIsland}"/>
-                                        <ComboBoxItem Content="Lyrics focused (Design C)" Tag="{x:Static models:DesignVariant.LyricsFocusedSidebar}"/>
+                                        <ComboBoxItem Content="{Binding DesignMinimalText}" Tag="{x:Static models:DesignVariant.MinimalFloatingPill}"/>
+                                        <ComboBoxItem Content="{Binding DesignProductivityText}" Tag="{x:Static models:DesignVariant.ProductivityCommandIsland}"/>
+                                        <ComboBoxItem Content="{Binding DesignLyricsFocusText}" Tag="{x:Static models:DesignVariant.LyricsFocusedSidebar}"/>
                                     </ComboBox>
                                 </Grid>
                             </Border>
@@ -1392,7 +1392,7 @@
                                 </Border.Background>
                             </Border>
 
-                            <TextBlock Text="PREVIEW" FontSize="10" FontWeight="Bold" Foreground="#44FFFFFF" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="16,16,0,0"/>
+                            <TextBlock Text="{Binding PreviewBadgeText}" FontSize="10" FontWeight="Bold" Foreground="#44FFFFFF" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="16,16,0,0"/>
 
                             <!-- Center Host for the Active HUD Music Control View -->
                             <Viewbox Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="16">
