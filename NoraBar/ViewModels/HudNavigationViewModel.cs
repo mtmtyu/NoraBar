@@ -227,6 +227,35 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
         }
     }
 
+    internal async Task ReorderAsync(int oldIndex, int newIndex)
+    {
+        if (oldIndex < 0 || oldIndex >= Items.Count || newIndex < 0 || newIndex >= Items.Count || oldIndex == newIndex)
+        {
+            return;
+        }
+
+        await _configurationGate.WaitAsync();
+        try
+        {
+            Items.Move(oldIndex, newIndex);
+            string[] enabledIds = Items
+                .Where(item => item.IsEnabled)
+                .Select(item => item.Id)
+                .ToArray();
+            await _router.ApplyConfigurationAsync(
+                _defaultHudId,
+                enabledIds,
+                CancellationToken.None);
+            _settings.EnabledHudModuleIds = [.. enabledIds];
+            _saveSettings();
+            NotifyConfigurationChanged();
+        }
+        finally
+        {
+            _configurationGate.Release();
+        }
+    }
+
     internal async Task ResetToDefaultsAsync()
     {
         await _configurationGate.WaitAsync();

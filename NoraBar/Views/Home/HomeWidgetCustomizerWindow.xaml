@@ -104,9 +104,9 @@
                     <TextBlock Grid.Row="0" Text="{Binding ActiveWidgetsHeaderText}" Style="{StaticResource SectionHeaderStyle}"/>
                     <Border Grid.Row="1" Background="#0D1117" CornerRadius="10" BorderBrush="#1AFFFFFF" BorderThickness="1" Padding="6">
                         <ListBox x:Name="ActiveWidgetsListBox" ItemsSource="{Binding ActiveWidgets}" Background="Transparent" BorderThickness="0"
-                                 AllowDrop="True" PreviewMouseLeftButtonDown="ActiveWidgets_PreviewMouseLeftButtonDown"
+                                 PreviewMouseLeftButtonDown="ActiveWidgets_PreviewMouseLeftButtonDown"
                                  PreviewMouseMove="ActiveWidgets_PreviewMouseMove"
-                                 Drop="ActiveWidgets_Drop" DragOver="ActiveWidgets_DragOver">
+                                 PreviewMouseLeftButtonUp="ActiveWidgets_PreviewMouseLeftButtonUp">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>

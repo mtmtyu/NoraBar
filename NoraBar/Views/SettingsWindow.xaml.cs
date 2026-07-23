@@ -6,6 +6,7 @@ using NoraBar.Hud;
 using NoraBar.Hud.Home;
 using NoraBar.Views.Home;
 using NoraBar.ViewModels;
+using NoraBar.Views.Helpers;
 
 namespace NoraBar.Views
 {
@@ -15,6 +16,7 @@ namespace NoraBar.Views
         private HomeHudPreview? _homePreview;
         private bool _isCloseAnimationCompleted = false;
         private bool _isClosingApp = false;
+        private readonly AnimatedReorderHelper _hudModulesReorderHelper;
 
         public void ForceClose()
         {
@@ -45,6 +47,13 @@ namespace NoraBar.Views
         public SettingsWindow()
         {
             InitializeComponent();
+            _hudModulesReorderHelper = new AnimatedReorderHelper(HudModulesItemsControl, (fromIdx, toIdx) =>
+            {
+                if (_viewModel?.HudNavigation != null)
+                {
+                    _ = _viewModel.HudNavigation.ReorderAsync(fromIdx, toIdx);
+                }
+            });
             
             // Clean up event handler on unload to prevent memory leaks
             this.Unloaded += (s, e) =>
@@ -311,6 +320,21 @@ namespace NoraBar.Views
                 _viewModel.ActiveHomeWidgets = customizerVm.GetResultConfigs();
                 UpdatePreview();
             }
+        }
+
+        private void HudModules_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _hudModulesReorderHelper.HandlePreviewMouseLeftButtonDown(sender, e);
+        }
+
+        private void HudModules_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            _hudModulesReorderHelper.HandlePreviewMouseMove(sender, e);
+        }
+
+        private void HudModules_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            _hudModulesReorderHelper.HandlePreviewMouseLeftButtonUp(sender, e);
         }
     }
 }

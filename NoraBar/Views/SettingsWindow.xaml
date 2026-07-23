@@ -798,24 +798,29 @@
                                         <TextBlock Text="{Binding HudModulesText}" Style="{StaticResource CardHeaderStyle}"/>
                                         <TextBlock Text="{Binding HudModulesDescriptionText}" Style="{StaticResource CardSubHeaderStyle}"/>
                                     </StackPanel>
-                                    <ItemsControl Grid.Column="1" ItemsSource="{Binding HudNavigation.Items}">
+                                     <ItemsControl x:Name="HudModulesItemsControl" Grid.Column="1" ItemsSource="{Binding HudNavigation.Items}"
+                                                   PreviewMouseLeftButtonDown="HudModules_PreviewMouseLeftButtonDown"
+                                                   PreviewMouseMove="HudModules_PreviewMouseMove"
+                                                   PreviewMouseLeftButtonUp="HudModules_PreviewMouseLeftButtonUp">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <Grid Margin="0,3">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
                                                         <ColumnDefinition Width="*"/>
                                                         <ColumnDefinition Width="Auto"/>
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
-                                                    <CheckBox IsChecked="{Binding IsEnabled}" Style="{StaticResource ToggleSwitchStyle}"
+                                                     <TextBlock Grid.Column="0" Text="&#xE700;" FontFamily="Segoe Fluent Icons" Foreground="#8AFFFFFF" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0" Cursor="SizeAll"/>
+                                                     <CheckBox Grid.Column="1" IsChecked="{Binding IsEnabled}" Style="{StaticResource ToggleSwitchStyle}"
                                                               Margin="0,0,10,0" VerticalAlignment="Center"/>
-                                                    <TextBlock Grid.Column="1" Text="{Binding DisplayName}" Foreground="White"
+                                                    <TextBlock Grid.Column="2" Text="{Binding DisplayName}" Foreground="White"
                                                                VerticalAlignment="Center"/>
-                                                    <Button Grid.Column="2" Content="↑" Command="{Binding MoveUpCommand}"
+                                                    <Button Grid.Column="3" Content="↑" Command="{Binding MoveUpCommand}"
                                                             Width="28" Height="26" Margin="4,0" Background="#1AFFFFFF"
                                                             Foreground="White" BorderThickness="0"/>
-                                                    <Button Grid.Column="3" Content="↓" Command="{Binding MoveDownCommand}"
+                                                    <Button Grid.Column="4" Content="↓" Command="{Binding MoveDownCommand}"
                                                             Width="28" Height="26" Background="#1AFFFFFF"
                                                             Foreground="White" BorderThickness="0"/>
                                                 </Grid>
