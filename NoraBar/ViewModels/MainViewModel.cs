@@ -409,6 +409,9 @@ namespace NoraBar.ViewModels
         public string HudModulesDescriptionText => T(LocalizationKey.HudModulesDescription);
         public string HomeDesignText => T(LocalizationKey.HomeDesign);
         public string HomeDesignDescriptionText => T(LocalizationKey.HomeDesignDescription);
+        public string WidgetLayoutCustomizationText => T(LocalizationKey.WidgetLayoutCustomization);
+        public string WidgetLayoutCustomizationDescriptionText => T(LocalizationKey.WidgetLayoutCustomizationDescription);
+        public string EditWidgetLayoutButtonText => T(LocalizationKey.EditWidgetLayoutButton);
         public string TimeFormatText => T(LocalizationKey.TimeFormat);
         public string TimeFormatDescriptionText => T(LocalizationKey.TimeFormatDescription);
         public string WorldClocksText => T(LocalizationKey.WorldClocks);
@@ -983,6 +986,9 @@ namespace NoraBar.ViewModels
             OnPropertyChanged(nameof(HudModulesDescriptionText));
             OnPropertyChanged(nameof(HomeDesignText));
             OnPropertyChanged(nameof(HomeDesignDescriptionText));
+            OnPropertyChanged(nameof(WidgetLayoutCustomizationText));
+            OnPropertyChanged(nameof(WidgetLayoutCustomizationDescriptionText));
+            OnPropertyChanged(nameof(EditWidgetLayoutButtonText));
             OnPropertyChanged(nameof(TimeFormatText));
             OnPropertyChanged(nameof(TimeFormatDescriptionText));
             OnPropertyChanged(nameof(WorldClocksText));

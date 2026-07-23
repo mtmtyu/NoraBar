@@ -100,7 +100,26 @@ namespace NoraBar.Services
         WorldClocks,
         WorldClocksDescription,
         ClockLabel,
-        TimeZone
+        TimeZone,
+        WidgetLayoutCustomization,
+        WidgetLayoutCustomizationDescription,
+        EditWidgetLayoutButton,
+        WidgetCustomizerTitle,
+        WidgetCustomizerHeader,
+        WidgetCustomizerHeaderDescription,
+        WidgetLivePreview,
+        ActiveWidgetsHeader,
+        AddWidgetsHeader,
+        AddWidgetButton,
+        Cancel,
+        SaveAndApply,
+        WidgetDigitalClock,
+        WidgetMediaControls,
+        WidgetMediaCompact,
+        WidgetMediaArtworkSmall,
+        WidgetMediaArtworkMedium,
+        WidgetMediaArtworkLarge,
+        WidgetMediaBlurLyrics
     }
 
     public static class LocalizationService
@@ -205,7 +224,26 @@ namespace NoraBar.Services
                     [LocalizationKey.WorldClocks] = "世界時計",
                     [LocalizationKey.WorldClocksDescription] = "2つの表示名とWindowsタイムゾーンを設定します。",
                     [LocalizationKey.ClockLabel] = "表示名",
-                    [LocalizationKey.TimeZone] = "タイムゾーン"
+                    [LocalizationKey.TimeZone] = "タイムゾーン",
+                    [LocalizationKey.WidgetLayoutCustomization] = "ウィジェットレイアウトのカスタマイズ",
+                    [LocalizationKey.WidgetLayoutCustomizationDescription] = "ドラッグ＆ドロップでHome HUDのウィジェットの編集、並び替え、追加、削除を行います。",
+                    [LocalizationKey.EditWidgetLayoutButton] = "レイアウトを編集...",
+                    [LocalizationKey.WidgetCustomizerTitle] = "Home HUD ウィジェットのカスタマイズ",
+                    [LocalizationKey.WidgetCustomizerHeader] = "ウィジェットレイアウトのカスタマイズ",
+                    [LocalizationKey.WidgetCustomizerHeaderDescription] = "ドラッグ＆ドロップでウィジェットの並び替えを行い、Home HUDをリアルタイムでプレビューできます",
+                    [LocalizationKey.WidgetLivePreview] = "HUD ライブプレビュー",
+                    [LocalizationKey.ActiveWidgetsHeader] = "有効なウィジェット（ドラッグして並び替え）",
+                    [LocalizationKey.AddWidgetsHeader] = "ウィジェットを追加",
+                    [LocalizationKey.AddWidgetButton] = "+ 追加",
+                    [LocalizationKey.Cancel] = "キャンセル",
+                    [LocalizationKey.SaveAndApply] = "保存して適用",
+                    [LocalizationKey.WidgetDigitalClock] = "デジタル時計",
+                    [LocalizationKey.WidgetMediaControls] = "メディアコントロール",
+                    [LocalizationKey.WidgetMediaCompact] = "メディアコントロール (コンパクト)",
+                    [LocalizationKey.WidgetMediaArtworkSmall] = "メディアコントロール (アートワーク小)",
+                    [LocalizationKey.WidgetMediaArtworkMedium] = "メディアコントロール (アートワーク中)",
+                    [LocalizationKey.WidgetMediaArtworkLarge] = "メディアコントロール (アートワーク大)",
+                    [LocalizationKey.WidgetMediaBlurLyrics] = "メディアコントロール (背景ぼかし＆歌詞)"
                 },
                 [AppLanguage.English] = new Dictionary<LocalizationKey, string>
                 {
@@ -304,7 +342,26 @@ namespace NoraBar.Services
                     [LocalizationKey.WorldClocks] = "World Clocks",
                     [LocalizationKey.WorldClocksDescription] = "Configure two labels and Windows time zones.",
                     [LocalizationKey.ClockLabel] = "Label",
-                    [LocalizationKey.TimeZone] = "Time zone"
+                    [LocalizationKey.TimeZone] = "Time zone",
+                    [LocalizationKey.WidgetLayoutCustomization] = "Widget Layout Customization",
+                    [LocalizationKey.WidgetLayoutCustomizationDescription] = "Edit, reorder, add, or remove widgets on your Home HUD with drag and drop.",
+                    [LocalizationKey.EditWidgetLayoutButton] = "Edit Layout...",
+                    [LocalizationKey.WidgetCustomizerTitle] = "Home HUD Widget Customizer",
+                    [LocalizationKey.WidgetCustomizerHeader] = "Widget Layout Customizer",
+                    [LocalizationKey.WidgetCustomizerHeaderDescription] = "Drag and drop widgets to reorder and preview your Home HUD in real-time",
+                    [LocalizationKey.WidgetLivePreview] = "HUD Live Preview",
+                    [LocalizationKey.ActiveWidgetsHeader] = "Active Widgets (Drag to Reorder)",
+                    [LocalizationKey.AddWidgetsHeader] = "Add Widgets",
+                    [LocalizationKey.AddWidgetButton] = "+ Add",
+                    [LocalizationKey.Cancel] = "Cancel",
+                    [LocalizationKey.SaveAndApply] = "Save & Apply",
+                    [LocalizationKey.WidgetDigitalClock] = "Digital Clock",
+                    [LocalizationKey.WidgetMediaControls] = "Media Controls",
+                    [LocalizationKey.WidgetMediaCompact] = "Media Controls (Compact)",
+                    [LocalizationKey.WidgetMediaArtworkSmall] = "Media Controls (Small Artwork)",
+                    [LocalizationKey.WidgetMediaArtworkMedium] = "Media Controls (Medium Artwork)",
+                    [LocalizationKey.WidgetMediaArtworkLarge] = "Media Controls (Large Artwork)",
+                    [LocalizationKey.WidgetMediaBlurLyrics] = "Media Controls (Blur & Lyrics)"
                 }
             };
 

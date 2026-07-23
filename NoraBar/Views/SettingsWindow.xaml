@@ -1116,12 +1116,12 @@
                                              <ColumnDefinition Width="Auto"/>
                                          </Grid.ColumnDefinitions>
                                          <StackPanel Margin="0,0,16,0">
-                                             <TextBlock Text="Widget Layout Customization" Style="{StaticResource CardHeaderStyle}"/>
-                                             <TextBlock Text="Edit, reorder, add, or remove widgets on your Home HUD with drag and drop." Style="{StaticResource CardSubHeaderStyle}"/>
+                                             <TextBlock Text="{Binding WidgetLayoutCustomizationText}" Style="{StaticResource CardHeaderStyle}"/>
+                                             <TextBlock Text="{Binding WidgetLayoutCustomizationDescriptionText}" Style="{StaticResource CardSubHeaderStyle}"/>
                                          </StackPanel>
                                          <Button Grid.Column="1"
                                                  Click="OpenWidgetCustomizer_Click"
-                                                 Content="Edit Layout..."
+                                                 Content="{Binding EditWidgetLayoutButtonText}"
                                                  Background="#FF64B5F6" Foreground="Black" FontWeight="Bold"
                                                  Padding="12,6" VerticalAlignment="Center" Height="32" BorderThickness="0" Cursor="Hand">
                                              <Button.Template>

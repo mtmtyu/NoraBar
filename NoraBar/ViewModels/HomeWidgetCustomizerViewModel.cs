@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using NoraBar.Hud.Home.Widgets;
+using NoraBar.Services;
 
 namespace NoraBar.ViewModels;
 
@@ -22,10 +23,15 @@ public sealed class HomeWidgetCustomizerItemViewModel : ViewModelBase
         }
     }
 
-    public string Title => Type switch
+    public string Title => (Type, Style) switch
     {
-        HomeWidgetType.DigitalClock => "Digital Clock",
-        HomeWidgetType.MediaControls => "Media Controls",
+        (HomeWidgetType.DigitalClock, _) => LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.WidgetDigitalClock),
+        (HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact) => LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.WidgetMediaCompact),
+        (HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverSmall) => LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.WidgetMediaArtworkSmall),
+        (HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverMedium) => LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.WidgetMediaArtworkMedium),
+        (HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverLarge) => LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.WidgetMediaArtworkLarge),
+        (HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics) => LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.WidgetMediaBlurLyrics),
+        (HomeWidgetType.MediaControls, _) => LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.WidgetMediaControls),
         _ => Type.ToString()
     };
 
@@ -63,6 +69,19 @@ public sealed class HomeWidgetCustomizerViewModel : ViewModelBase
 {
     public ObservableCollection<HomeWidgetCustomizerItemViewModel> ActiveWidgets { get; }
     public ObservableCollection<HomeWidgetCustomizerItemViewModel> CatalogWidgets { get; }
+
+    public string TitleText => T(LocalizationKey.WidgetCustomizerTitle);
+    public string HeaderText => T(LocalizationKey.WidgetCustomizerHeader);
+    public string HeaderDescriptionText => T(LocalizationKey.WidgetCustomizerHeaderDescription);
+    public string LivePreviewText => T(LocalizationKey.WidgetLivePreview);
+    public string ActiveWidgetsHeaderText => T(LocalizationKey.ActiveWidgetsHeader);
+    public string AddWidgetsHeaderText => T(LocalizationKey.AddWidgetsHeader);
+    public string AddWidgetButtonText => T(LocalizationKey.AddWidgetButton);
+    public string CancelButtonText => T(LocalizationKey.Cancel);
+    public string SaveAndApplyButtonText => T(LocalizationKey.SaveAndApply);
+
+    private static string T(LocalizationKey key) =>
+        LocalizationService.GetText(SettingsService.Load().Language, key);
 
     public ICommand AddWidgetCommand { get; }
     public ICommand RemoveWidgetCommand { get; }
