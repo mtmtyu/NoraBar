@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using NoraBar.Hud.Home;
@@ -16,7 +17,25 @@ public partial class DynamicWidgetHomeView : UserControl
 
     private void DynamicWidgetHomeView_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
+        if (e.OldValue is INotifyPropertyChanged oldVm)
+        {
+            oldVm.PropertyChanged -= ViewModel_PropertyChanged;
+        }
+
+        if (e.NewValue is INotifyPropertyChanged newVm)
+        {
+            newVm.PropertyChanged += ViewModel_PropertyChanged;
+        }
+
         RebuildWidgets();
+    }
+
+    private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(HomeHudViewModel.ActiveWidgets))
+        {
+            RebuildWidgets();
+        }
     }
 
     public void RebuildWidgets()
