@@ -28,15 +28,64 @@ public sealed class AnimatedReorderHelper
 
     private static readonly IEasingFunction EaseOut = new CubicEase { EasingMode = EasingMode.EaseOut };
 
+    private bool _isAnimatingSwap;
+
     public AnimatedReorderHelper(ItemsControl itemsControl, Action<int, int> onReorderCommitted)
     {
         _itemsControl = itemsControl ?? throw new ArgumentNullException(nameof(itemsControl));
         _onReorderCommitted = onReorderCommitted ?? throw new ArgumentNullException(nameof(onReorderCommitted));
     }
 
+    public void AnimateSwap(int fromIndex, int toIndex)
+    {
+        if (_isDragging || _isAnimatingSwap)
+        {
+            return;
+        }
+
+        int count = _itemsControl.Items.Count;
+        if (fromIndex < 0 || fromIndex >= count || toIndex < 0 || toIndex >= count || fromIndex == toIndex)
+        {
+            return;
+        }
+
+        if (_itemsControl.ItemContainerGenerator.ContainerFromIndex(fromIndex) is not FrameworkElement cFrom ||
+            _itemsControl.ItemContainerGenerator.ContainerFromIndex(toIndex) is not FrameworkElement cTo)
+        {
+            _onReorderCommitted(fromIndex, toIndex);
+            return;
+        }
+
+        _isAnimatingSwap = true;
+
+        Point posFrom = cFrom.TranslatePoint(new Point(0, 0), _itemsControl);
+        Point posTo = cTo.TranslatePoint(new Point(0, 0), _itemsControl);
+        double deltaY = posTo.Y - posFrom.Y;
+
+        TranslateTransform tFrom = EnsureTransformGroup(cFrom, out _);
+        TranslateTransform tTo = EnsureTransformGroup(cTo, out _);
+
+        DoubleAnimation animFrom = new(0, deltaY, TimeSpan.FromMilliseconds(160)) { EasingFunction = EaseOut };
+        DoubleAnimation animTo = new(0, -deltaY, TimeSpan.FromMilliseconds(160)) { EasingFunction = EaseOut };
+
+        animFrom.Completed += (s, e) =>
+        {
+            tFrom.BeginAnimation(TranslateTransform.YProperty, null);
+            tTo.BeginAnimation(TranslateTransform.YProperty, null);
+            tFrom.Y = 0;
+            tTo.Y = 0;
+            _isAnimatingSwap = false;
+            _onReorderCommitted(fromIndex, toIndex);
+        };
+
+        tFrom.BeginAnimation(TranslateTransform.YProperty, animFrom);
+        tTo.BeginAnimation(TranslateTransform.YProperty, animTo);
+    }
+
     public void HandlePreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (_isDragging) return;
+        if (_isDragging || _isAnimatingSwap) return;
+        if (IsInteractiveControl(e.OriginalSource as DependencyObject)) return;
 
         FrameworkElement? container = FindItemContainer(e.OriginalSource as DependencyObject);
         if (container == null) return;
@@ -304,5 +353,18 @@ public sealed class AnimatedReorderHelper
 
         scaleTransform = scale;
         return translate;
+    }
+
+    private static bool IsInteractiveControl(DependencyObject? element)
+    {
+        while (element != null && element is not ItemsControl)
+        {
+            if (element is Button || element is CheckBox || element is TextBox || element is ComboBox)
+            {
+                return true;
+            }
+            element = VisualTreeHelper.GetParent(element);
+        }
+        return false;
     }
 }

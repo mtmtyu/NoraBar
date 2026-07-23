@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using NoraBar.Hud.Music;
 using NoraBar.Hud;
@@ -335,6 +336,30 @@ namespace NoraBar.Views
         private void HudModules_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             _hudModulesReorderHelper.HandlePreviewMouseLeftButtonUp(sender, e);
+        }
+
+        private void HudModuleMoveUp_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.DataContext is HudNavigationItemViewModel item && _viewModel?.HudNavigation != null)
+            {
+                int index = _viewModel.HudNavigation.Items.IndexOf(item);
+                if (index > 0)
+                {
+                    _hudModulesReorderHelper.AnimateSwap(index, index - 1);
+                }
+            }
+        }
+
+        private void HudModuleMoveDown_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.DataContext is HudNavigationItemViewModel item && _viewModel?.HudNavigation != null)
+            {
+                int index = _viewModel.HudNavigation.Items.IndexOf(item);
+                if (index >= 0 && index < _viewModel.HudNavigation.Items.Count - 1)
+                {
+                    _hudModulesReorderHelper.AnimateSwap(index, index + 1);
+                }
+            }
         }
     }
 }

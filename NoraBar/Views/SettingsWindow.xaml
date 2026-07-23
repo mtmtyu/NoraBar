@@ -817,10 +817,10 @@
                                                               Margin="0,0,10,0" VerticalAlignment="Center"/>
                                                     <TextBlock Grid.Column="2" Text="{Binding DisplayName}" Foreground="White"
                                                                VerticalAlignment="Center"/>
-                                                    <Button Grid.Column="3" Content="↑" Command="{Binding MoveUpCommand}"
+                                                    <Button Grid.Column="3" Content="↑" Click="HudModuleMoveUp_Click"
                                                             Width="28" Height="26" Margin="4,0" Background="#1AFFFFFF"
                                                             Foreground="White" BorderThickness="0"/>
-                                                    <Button Grid.Column="4" Content="↓" Command="{Binding MoveDownCommand}"
+                                                    <Button Grid.Column="4" Content="↓" Click="HudModuleMoveDown_Click"
                                                             Width="28" Height="26" Background="#1AFFFFFF"
                                                             Foreground="White" BorderThickness="0"/>
                                                 </Grid>

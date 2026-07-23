@@ -122,4 +122,28 @@ public partial class HomeWidgetCustomizerWindow : Window
     {
         _reorderHelper.HandlePreviewMouseLeftButtonUp(sender, e);
     }
+
+    private void MoveUp_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.DataContext is HomeWidgetCustomizerItemViewModel item && DataContext is HomeWidgetCustomizerViewModel vm)
+        {
+            int index = vm.ActiveWidgets.IndexOf(item);
+            if (index > 0)
+            {
+                _reorderHelper.AnimateSwap(index, index - 1);
+            }
+        }
+    }
+
+    private void MoveDown_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.DataContext is HomeWidgetCustomizerItemViewModel item && DataContext is HomeWidgetCustomizerViewModel vm)
+        {
+            int index = vm.ActiveWidgets.IndexOf(item);
+            if (index >= 0 && index < vm.ActiveWidgets.Count - 1)
+            {
+                _reorderHelper.AnimateSwap(index, index + 1);
+            }
+        }
+    }
 }
