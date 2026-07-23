@@ -16,7 +16,7 @@
                         HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                     <TextBlock Text="{Binding Path=IconText, RelativeSource={RelativeSource AncestorType=UserControl}}" 
                                Foreground="{StaticResource TextPrimaryBrush}" 
-                               FontSize="14" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                               FontSize="{Binding Path=FontSize, RelativeSource={RelativeSource AncestorType=UserControl}}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
                 <ControlTemplate.Triggers>
