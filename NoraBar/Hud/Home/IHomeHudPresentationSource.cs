@@ -8,6 +8,10 @@ internal interface IHomeHudPresentationSource : IDisposable
 
     IReadOnlyList<NoraBar.Hud.Home.Widgets.HomeWidgetConfig>? ActiveWidgets { get; }
 
+    double MaxWidgetWidth { get; }
+
+    double MaxWidgetHeight { get; }
+
     object ViewDataContext { get; }
 
     event EventHandler? PresentationInvalidated;

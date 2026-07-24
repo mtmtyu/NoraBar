@@ -2,6 +2,13 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Border Style="{StaticResource IslandBorderStyle}" Padding="12,8">
-        <StackPanel x:Name="WidgetsContainer" Orientation="Horizontal" VerticalAlignment="Center"/>
+        <ScrollViewer x:Name="WidgetsScrollViewer"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      Focusable="False">
+            <WrapPanel x:Name="WidgetsContainer"
+                       Orientation="Horizontal"
+                       VerticalAlignment="Center"/>
+        </ScrollViewer>
     </Border>
 </UserControl>

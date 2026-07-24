@@ -32,7 +32,9 @@ public partial class DynamicWidgetHomeView : UserControl
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(HomeHudViewModel.ActiveWidgets))
+        if (e.PropertyName is nameof(HomeHudViewModel.ActiveWidgets)
+            or nameof(HomeHudViewModel.MaxWidgetWidth)
+            or nameof(HomeHudViewModel.MaxWidgetHeight))
         {
             RebuildWidgets();
         }
@@ -46,6 +48,9 @@ public partial class DynamicWidgetHomeView : UserControl
         {
             return;
         }
+
+        WidgetsScrollViewer.MaxHeight = Math.Max(50.0, vm.MaxWidgetHeight - 16.0);
+        WidgetsContainer.MaxWidth = Math.Max(100.0, vm.MaxWidgetWidth - 24.0);
 
         bool first = true;
         foreach (HomeWidgetConfig widget in vm.ActiveWidgets)

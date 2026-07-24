@@ -7,7 +7,11 @@ namespace NoraBar.Hud.Home;
 
 internal static class HomeHudLayout
 {
-    internal static HudSize Calculate(HomeHudDesignVariant variant, IReadOnlyList<HomeWidgetConfig>? activeWidgets = null)
+    internal static HudSize Calculate(
+        HomeHudDesignVariant variant,
+        IReadOnlyList<HomeWidgetConfig>? activeWidgets = null,
+        double maxWidgetWidth = 800,
+        double maxWidgetHeight = 300)
     {
         HudSize baseSize = variant switch
         {
@@ -23,27 +27,53 @@ internal static class HomeHudLayout
             return baseSize;
         }
 
-        double totalWidth = 28;
-        double maxHeight = 0;
+        const double horizontalPadding = 24.0;
+        const double verticalPadding = 16.0;
+        const double separatorWidth = 21.0;
+        const double lineSpacing = 8.0;
+
+        double contentMaxWidthLimit = Math.Max(150.0, maxWidgetWidth - horizontalPadding);
+
+        double overallContentWidth = 0;
+        double overallContentHeight = 0;
+
+        double currentLineWidth = 0;
+        double currentLineHeight = 0;
 
         for (int i = 0; i < activeWidgets.Count; i++)
         {
-            if (i > 0)
-            {
-                totalWidth += 21;
-            }
-
             HomeWidgetConfig widget = activeWidgets[i];
             (double w, double h) = GetWidgetDimensions(widget.Style);
-            totalWidth += w;
-            if (h > maxHeight)
+
+            double spacingNeeded = currentLineWidth > 0 ? separatorWidth : 0;
+
+            if (currentLineWidth > 0 && (currentLineWidth + spacingNeeded + w) > contentMaxWidthLimit)
             {
-                maxHeight = h;
+                // Wrap to next line
+                overallContentWidth = Math.Max(overallContentWidth, currentLineWidth);
+                overallContentHeight += currentLineHeight + lineSpacing;
+
+                currentLineWidth = w;
+                currentLineHeight = h;
+            }
+            else
+            {
+                currentLineWidth += spacingNeeded + w;
+                currentLineHeight = Math.Max(currentLineHeight, h);
             }
         }
 
-        double finalHeight = Math.Max(baseSize.Height, maxHeight + 20);
-        double finalWidth = Math.Max(baseSize.Width, totalWidth);
+        if (currentLineWidth > 0)
+        {
+            overallContentWidth = Math.Max(overallContentWidth, currentLineWidth);
+            overallContentHeight += currentLineHeight;
+        }
+
+        double calculatedWidth = overallContentWidth + horizontalPadding;
+        double calculatedHeight = overallContentHeight + verticalPadding;
+
+        double finalWidth = Math.Min(maxWidgetWidth, Math.Max(baseSize.Width, calculatedWidth));
+        double finalHeight = Math.Min(maxWidgetHeight, Math.Max(baseSize.Height, calculatedHeight));
 
         return new HudSize(finalWidth, finalHeight);
     }
