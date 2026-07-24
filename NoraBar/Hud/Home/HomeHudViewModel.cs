@@ -186,6 +186,18 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
 
     public IReadOnlyList<NoraBar.Hud.Home.Widgets.HomeWidgetConfig> ActiveWidgets => OverrideWidgets ?? _viewModel.ActiveHomeWidgets;
 
+    public void UpdateActiveWidgets(IReadOnlyList<NoraBar.Hud.Home.Widgets.HomeWidgetConfig> widgets)
+    {
+        if (OverrideWidgets != null)
+        {
+            OverrideWidgets = widgets;
+        }
+        else
+        {
+            _viewModel.ActiveHomeWidgets = widgets;
+        }
+    }
+
     private double? _overrideMaxWidgetWidth;
     public double? OverrideMaxWidgetWidth
     {
