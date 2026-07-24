@@ -224,7 +224,7 @@ public partial class MainWindow : Window
         {
             Dispatcher.Invoke(ApplyWindowPosition);
         }
-        else if (e.PropertyName == nameof(MainViewModel.IsPositionEditMode))
+        else if (e.PropertyName is nameof(MainViewModel.IsPositionEditMode) or nameof(MainViewModel.IsWidgetEditMode))
         {
             Dispatcher.Invoke(UpdateEditModeVisuals);
         }
@@ -316,6 +316,15 @@ public partial class MainWindow : Window
                 Color.FromArgb(0x40, 0x00, 0xFF, 0x00));
             HudBorder.Cursor = Cursors.SizeAll;
             _hudRouter.SetPresentationState(HudPresentationState.Expanded);
+            return;
+        }
+
+        if (_viewModel.IsWidgetEditMode)
+        {
+            HudBorder.Background = new SolidColorBrush(
+                Color.FromArgb(0x20, 0x64, 0xB5, 0xF6));
+            HudBorder.Cursor = Cursors.Arrow;
+            _hudRouter.SetPresentationState(HudPresentationState.Pinned);
             return;
         }
 
@@ -451,7 +460,7 @@ public partial class MainWindow : Window
 
     private void HudBorder_MouseEnter(object sender, MouseEventArgs e)
     {
-        if (IsShutdownRequested || _viewModel.IsPositionEditMode)
+        if (IsShutdownRequested || _viewModel.IsPositionEditMode || _viewModel.IsWidgetEditMode)
         {
             return;
         }
@@ -461,7 +470,7 @@ public partial class MainWindow : Window
 
     private void HudBorder_MouseLeave(object sender, MouseEventArgs e)
     {
-        if (IsShutdownRequested || _viewModel.IsPositionEditMode)
+        if (IsShutdownRequested || _viewModel.IsPositionEditMode || _viewModel.IsWidgetEditMode)
         {
             return;
         }

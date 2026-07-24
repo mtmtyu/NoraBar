@@ -202,7 +202,26 @@ namespace NoraBar.ViewModels
         public bool IsPositionEditMode
         {
             get => _isPositionEditMode;
-            set => SetProperty(ref _isPositionEditMode, value);
+            set
+            {
+                if (SetProperty(ref _isPositionEditMode, value) && value)
+                {
+                    IsWidgetEditMode = false;
+                }
+            }
+        }
+
+        private bool _isWidgetEditMode;
+        public bool IsWidgetEditMode
+        {
+            get => _isWidgetEditMode;
+            set
+            {
+                if (SetProperty(ref _isWidgetEditMode, value) && value)
+                {
+                    IsPositionEditMode = false;
+                }
+            }
         }
 
         public IReadOnlyList<LanguageOption> AvailableLanguages { get; } =

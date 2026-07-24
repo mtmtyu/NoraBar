@@ -217,6 +217,8 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
     public double MaxWidgetWidth => OverrideMaxWidgetWidth ?? _viewModel.MaxWidgetWidth;
     public double MaxWidgetHeight => OverrideMaxWidgetHeight ?? _viewModel.MaxWidgetHeight;
 
+    public bool IsWidgetEditMode => _viewModel.IsWidgetEditMode;
+
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         switch (e.PropertyName)
@@ -225,10 +227,12 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
             case nameof(MainViewModel.ActiveHomeWidgets):
             case nameof(MainViewModel.MaxWidgetWidth):
             case nameof(MainViewModel.MaxWidgetHeight):
+            case nameof(MainViewModel.IsWidgetEditMode):
                 PresentationInvalidated?.Invoke(this, EventArgs.Empty);
                 OnPropertyChanged(nameof(ActiveWidgets));
                 OnPropertyChanged(nameof(MaxWidgetWidth));
                 OnPropertyChanged(nameof(MaxWidgetHeight));
+                OnPropertyChanged(nameof(IsWidgetEditMode));
                 break;
             case nameof(MainViewModel.HomeHudTimeFormat):
             case nameof(MainViewModel.FirstWorldClockTimeZoneId):
