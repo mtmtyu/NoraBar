@@ -125,7 +125,8 @@ namespace NoraBar.Services
         DesignLyricsFocus,
         PreviewBadge,
         MaxWidgetWidthLabel,
-        MaxWidgetHeightLabel
+        MaxWidgetHeightLabel,
+        Done
     }
 
     public static class LocalizationService
@@ -240,6 +241,7 @@ namespace NoraBar.Services
                     [LocalizationKey.WidgetLivePreview] = "HUD ライブプレビュー",
                     [LocalizationKey.MaxWidgetWidthLabel] = "最大幅",
                     [LocalizationKey.MaxWidgetHeightLabel] = "最大高さ",
+                    [LocalizationKey.Done] = "完了",
                     [LocalizationKey.ActiveWidgetsHeader] = "有効なウィジェット（ドラッグして並び替え）",
                     [LocalizationKey.AddWidgetsHeader] = "ウィジェットを追加",
                     [LocalizationKey.AddWidgetButton] = "+ 追加",
@@ -364,6 +366,7 @@ namespace NoraBar.Services
                     [LocalizationKey.WidgetLivePreview] = "HUD Live Preview",
                     [LocalizationKey.MaxWidgetWidthLabel] = "Max Width",
                     [LocalizationKey.MaxWidgetHeightLabel] = "Max Height",
+                    [LocalizationKey.Done] = "Done",
                     [LocalizationKey.ActiveWidgetsHeader] = "Active Widgets (Drag to Reorder)",
                     [LocalizationKey.AddWidgetsHeader] = "Add Widgets",
                     [LocalizationKey.AddWidgetButton] = "+ Add",

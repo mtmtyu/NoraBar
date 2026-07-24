@@ -308,24 +308,8 @@ namespace NoraBar.Views
         {
             if (_viewModel is null) return;
 
-            HomeWidgetCustomizerViewModel customizerVm = new HomeWidgetCustomizerViewModel(
-                _viewModel.ActiveHomeWidgets,
-                _viewModel.MaxWidgetWidth,
-                _viewModel.MaxWidgetHeight);
-            HomeWidgetCustomizerWindow dialog = new HomeWidgetCustomizerWindow
-            {
-                Owner = this,
-                DataContext = customizerVm,
-                MainViewModel = _viewModel
-            };
-
-            if (dialog.ShowDialog() == true)
-            {
-                _viewModel.ActiveHomeWidgets = customizerVm.GetResultConfigs();
-                _viewModel.MaxWidgetWidth = customizerVm.MaxWidgetWidth;
-                _viewModel.MaxWidgetHeight = customizerVm.MaxWidgetHeight;
-                UpdatePreview();
-            }
+            _viewModel.IsWidgetEditMode = true;
+            WindowState = WindowState.Minimized;
         }
 
         private void HudModules_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)

@@ -458,6 +458,9 @@ namespace NoraBar.ViewModels
         public string LanguageText => T(LocalizationKey.Language);
         public string LanguageDescriptionText => T(LocalizationKey.LanguageDescription);
         public string VersionText => T(LocalizationKey.Version);
+        public string DoneText => T(LocalizationKey.Done);
+        public string MaxWidgetWidthLabelText => T(LocalizationKey.MaxWidgetWidthLabel);
+        public string MaxWidgetHeightLabelText => T(LocalizationKey.MaxWidgetHeightLabel);
         public string CheckUpdatesText => T(LocalizationKey.CheckUpdates);
         public string CheckUpdatesDescriptionText => T(LocalizationKey.CheckUpdatesDescription);
         public string CheckUpdatesButtonText => T(LocalizationKey.CheckUpdatesButton);
@@ -735,6 +738,18 @@ namespace NoraBar.ViewModels
 
             SettingsService.Save(_settings);
         }
+
+        public string AddWidgetsHeaderText => T(LocalizationKey.AddWidgetsHeader);
+
+        public IReadOnlyList<HomeWidgetCustomizerItemViewModel> CatalogWidgets { get; } =
+        [
+            new("catalog_clock", NoraBar.Hud.Home.Widgets.HomeWidgetType.DigitalClock, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.ClockMinimal),
+            new("catalog_media", NoraBar.Hud.Home.Widgets.HomeWidgetType.MediaControls, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.MediaCompact),
+            new("catalog_media_artwork_sm", NoraBar.Hud.Home.Widgets.HomeWidgetType.MediaControls, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.MediaArtworkHoverSmall),
+            new("catalog_media_artwork_md", NoraBar.Hud.Home.Widgets.HomeWidgetType.MediaControls, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.MediaArtworkHoverMedium),
+            new("catalog_media_artwork_lg", NoraBar.Hud.Home.Widgets.HomeWidgetType.MediaControls, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.MediaArtworkHoverLarge),
+            new("catalog_media_blur_lyrics", NoraBar.Hud.Home.Widgets.HomeWidgetType.MediaControls, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.MediaBlurLyrics)
+        ];
 
         private IReadOnlyList<NoraBar.Hud.Home.Widgets.HomeWidgetConfig> _activeHomeWidgets = NoraBar.Hud.Home.HomeHudSettings.Default.EffectiveWidgets;
         public IReadOnlyList<NoraBar.Hud.Home.Widgets.HomeWidgetConfig> ActiveHomeWidgets

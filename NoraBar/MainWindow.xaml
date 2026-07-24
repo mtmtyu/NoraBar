@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:models="clr-namespace:NoraBar.Models"
+        xmlns:homeViews="clr-namespace:NoraBar.Views.Home"
         xmlns:system="clr-namespace:System;assembly=System.Runtime"
         mc:Ignorable="d"
         Title="NoraBar" Height="250" Width="800"
@@ -237,6 +238,11 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+
+                <!-- Overlay Palette for Widget Edit Mode -->
+                <homeViews:WidgetPaletteOverlayView VerticalAlignment="Bottom"
+                                                   Margin="10,0,10,10"
+                                                   Visibility="{Binding IsWidgetEditMode, Converter={StaticResource BoolToVis}}"/>
             </Grid>
         </Border>
     </Grid>

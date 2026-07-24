@@ -1,0 +1,91 @@
+<UserControl x:Class="NoraBar.Views.Home.WidgetPaletteOverlayView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Background="#F018181F" BorderBrush="#35FFFFFF" BorderThickness="1" CornerRadius="12" Padding="14,10" Margin="0,8,0,0">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="20" ShadowDepth="6" Opacity="0.45" Color="Black"/>
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header and Done Button -->
+            <Grid Grid.Row="0" Margin="0,0,0,10">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="&#xE710;" FontFamily="Segoe Fluent Icons" Foreground="#FF64B5F6" FontSize="15" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding AddWidgetsHeaderText}" FontWeight="Bold" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
+                    <TextBlock Text="（ドラッグしてHUDへ配置）" FontSize="11" Foreground="#A0FFFFFF" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                </StackPanel>
+
+                <Button Content="{Binding DoneText}" Click="DoneButton_Click" HorizontalAlignment="Right" VerticalAlignment="Center"
+                        Padding="16,4" Background="#FF64B5F6" Foreground="Black" FontWeight="Bold" FontSize="12" BorderThickness="0" Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
+
+            <!-- Catalog Items ItemsControl -->
+            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,10">
+                <ItemsControl x:Name="CatalogItemsControl" ItemsSource="{Binding CatalogWidgets}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="#1AFFFFFF" BorderBrush="#25FFFFFF" BorderThickness="1" CornerRadius="8" Padding="10,6" Margin="0,0,8,0" Cursor="Hand"
+                                    PreviewMouseLeftButtonDown="CatalogItem_PreviewMouseLeftButtonDown"
+                                    PreviewMouseMove="CatalogItem_PreviewMouseMove">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding IconText}" FontFamily="Segoe Fluent Icons" Foreground="#FF81D4FA" FontSize="14" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="{Binding Title}" Foreground="White" FontSize="12" FontWeight="Medium" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Button Content="+" Click="AddCatalogItem_Click" Background="#20FFFFFF" Foreground="White" FontWeight="Bold" Width="20" Height="20" BorderThickness="0" Cursor="Hand">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}" CornerRadius="10">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- Max Size Sliders -->
+            <Grid Grid.Row="2" Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="20"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <Grid Margin="0,0,0,2">
+                        <TextBlock Text="{Binding MaxWidgetWidthLabelText}" FontSize="11" Foreground="#A0FFFFFF" HorizontalAlignment="Left"/>
+                        <TextBlock Text="{Binding MaxWidgetWidth, StringFormat={}{0:F0} px}" FontSize="11" Foreground="#FF64B5F6" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <Slider Minimum="300" Maximum="1400" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding MaxWidgetWidth, Mode=TwoWay}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                    <Grid Margin="0,0,0,2">
+                        <TextBlock Text="{Binding MaxWidgetHeightLabelText}" FontSize="11" Foreground="#A0FFFFFF" HorizontalAlignment="Left"/>
+                        <TextBlock Text="{Binding MaxWidgetHeight, StringFormat={}{0:F0} px}" FontSize="11" Foreground="#FF64B5F6" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <Slider Minimum="100" Maximum="800" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding MaxWidgetHeight, Mode=TwoWay}"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>
