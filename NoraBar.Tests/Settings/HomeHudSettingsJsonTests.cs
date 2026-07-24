@@ -51,4 +51,24 @@ public sealed class HomeHudSettingsJsonTests
         Assert.True(payload.GetProperty("FutureProperty").GetProperty("enabled").GetBoolean());
         Assert.Equal("TYO", payload.GetProperty("SecondClock").GetProperty("Label").GetString());
     }
+
+    [Fact]
+    public void WriteAndRead_PreservesMaxWidgetWidthAndHeight()
+    {
+        var settings = new UserSettings();
+        var home = new HomeHudSettings(
+            HomeHudDesignVariant.FusionBalanced,
+            HomeHudTimeFormat.System,
+            new HomeWorldClockSettings("NYC", "Eastern Standard Time"),
+            new HomeWorldClockSettings("LON", "GMT Standard Time"),
+            null,
+            950,
+            450);
+
+        HomeHudSettingsJson.Write(settings, home);
+        HomeHudSettings reloaded = HomeHudSettingsJson.Read(settings);
+
+        Assert.Equal(950, reloaded.MaxWidgetWidth);
+        Assert.Equal(450, reloaded.MaxWidgetHeight);
+    }
 }

@@ -28,7 +28,7 @@ internal static class HomeHudLayout
         }
 
         const double horizontalPadding = 24.0;
-        const double verticalPadding = 16.0;
+        const double verticalPadding = 20.0;
         const double separatorWidth = 21.0;
         const double lineSpacing = 8.0;
 

@@ -94,14 +94,14 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
                             <Grid Margin="0,0,0,2">
-                                <TextBlock Text="Max Width / 最大幅" FontSize="11" Foreground="#A0FFFFFF" HorizontalAlignment="Left"/>
+                                <TextBlock Text="{Binding MaxWidgetWidthLabelText}" FontSize="11" Foreground="#A0FFFFFF" HorizontalAlignment="Left"/>
                                 <TextBlock Text="{Binding MaxWidgetWidth, StringFormat={}{0:F0} px}" FontSize="11" Foreground="#FF64B5F6" FontWeight="SemiBold" HorizontalAlignment="Right"/>
                             </Grid>
                             <Slider Minimum="300" Maximum="1400" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding MaxWidgetWidth, Mode=TwoWay}"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2">
                             <Grid Margin="0,0,0,2">
-                                <TextBlock Text="Max Height / 最大高さ" FontSize="11" Foreground="#A0FFFFFF" HorizontalAlignment="Left"/>
+                                <TextBlock Text="{Binding MaxWidgetHeightLabelText}" FontSize="11" Foreground="#A0FFFFFF" HorizontalAlignment="Left"/>
                                 <TextBlock Text="{Binding MaxWidgetHeight, StringFormat={}{0:F0} px}" FontSize="11" Foreground="#FF64B5F6" FontWeight="SemiBold" HorizontalAlignment="Right"/>
                             </Grid>
                             <Slider Minimum="100" Maximum="800" TickFrequency="10" IsSnapToTickEnabled="True" Value="{Binding MaxWidgetHeight, Mode=TwoWay}"/>

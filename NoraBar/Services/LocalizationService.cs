@@ -123,7 +123,9 @@ namespace NoraBar.Services
         DesignMinimal,
         DesignProductivity,
         DesignLyricsFocus,
-        PreviewBadge
+        PreviewBadge,
+        MaxWidgetWidthLabel,
+        MaxWidgetHeightLabel
     }
 
     public static class LocalizationService
@@ -236,6 +238,8 @@ namespace NoraBar.Services
                     [LocalizationKey.WidgetCustomizerHeader] = "ウィジェットレイアウトのカスタマイズ",
                     [LocalizationKey.WidgetCustomizerHeaderDescription] = "ドラッグ＆ドロップでウィジェットの並び替えを行い、Home HUDをリアルタイムでプレビューできます",
                     [LocalizationKey.WidgetLivePreview] = "HUD ライブプレビュー",
+                    [LocalizationKey.MaxWidgetWidthLabel] = "最大幅",
+                    [LocalizationKey.MaxWidgetHeightLabel] = "最大高さ",
                     [LocalizationKey.ActiveWidgetsHeader] = "有効なウィジェット（ドラッグして並び替え）",
                     [LocalizationKey.AddWidgetsHeader] = "ウィジェットを追加",
                     [LocalizationKey.AddWidgetButton] = "+ 追加",
@@ -358,6 +362,8 @@ namespace NoraBar.Services
                     [LocalizationKey.WidgetCustomizerHeader] = "Widget Layout Customizer",
                     [LocalizationKey.WidgetCustomizerHeaderDescription] = "Drag and drop widgets to reorder and preview your Home HUD in real-time",
                     [LocalizationKey.WidgetLivePreview] = "HUD Live Preview",
+                    [LocalizationKey.MaxWidgetWidthLabel] = "Max Width",
+                    [LocalizationKey.MaxWidgetHeightLabel] = "Max Height",
                     [LocalizationKey.ActiveWidgetsHeader] = "Active Widgets (Drag to Reorder)",
                     [LocalizationKey.AddWidgetsHeader] = "Add Widgets",
                     [LocalizationKey.AddWidgetButton] = "+ Add",

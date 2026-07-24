@@ -74,6 +74,8 @@ public sealed class HomeWidgetCustomizerViewModel : ViewModelBase
     public string HeaderText => T(LocalizationKey.WidgetCustomizerHeader);
     public string HeaderDescriptionText => T(LocalizationKey.WidgetCustomizerHeaderDescription);
     public string LivePreviewText => T(LocalizationKey.WidgetLivePreview);
+    public string MaxWidgetWidthLabelText => T(LocalizationKey.MaxWidgetWidthLabel);
+    public string MaxWidgetHeightLabelText => T(LocalizationKey.MaxWidgetHeightLabel);
     public string ActiveWidgetsHeaderText => T(LocalizationKey.ActiveWidgetsHeader);
     public string AddWidgetsHeaderText => T(LocalizationKey.AddWidgetsHeader);
     public string AddWidgetButtonText => T(LocalizationKey.AddWidgetButton);

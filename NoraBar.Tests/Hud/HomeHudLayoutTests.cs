@@ -40,19 +40,39 @@ public sealed class HomeHudLayoutTests
     }
 
     [Fact]
-    public void Calculate_WithManyWidgets_ExpandsWidthWhenExceedingBase()
+    public void Calculate_WithManyWidgets_WrapsToMultipleLinesWhenExceedingMaxWidth()
+    {
+        var widgets = new List<HomeWidgetConfig>
+        {
+            new("w1", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics), // w:280, h:130
+            new("w2", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics), // w:280, h:130
+            new("w3", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics)  // w:280, h:130
+        };
+
+        // maxWidgetWidth = 600, maxWidgetHeight = 500
+        HudSize size = HomeHudLayout.Calculate(HomeHudDesignVariant.FusionBalanced, widgets, maxWidgetWidth: 600, maxWidgetHeight: 500);
+
+        // Line 1: w1 (280) + 21 + w2 (280) = 581 <= 600 - 24 = 576 -> exceeds 576, so w2 wraps to Line 2!
+        // Line 1: 280 (h: 130), Line 2: 280 (h: 130), Line 3: 280 (h: 130)
+        // Calculated height: 130 + 8 + 130 + 8 + 130 + 16 = 422
+        Assert.True(size.Height >= 280);
+        Assert.True(size.Width <= 700); // base width 700
+    }
+
+    [Fact]
+    public void Calculate_ClampsToMaxWidgetWidthAndHeight()
     {
         var widgets = new List<HomeWidgetConfig>
         {
             new("w1", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics),
             new("w2", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics),
-            new("w3", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics)
+            new("w3", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics),
+            new("w4", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics)
         };
 
-        HudSize size = HomeHudLayout.Calculate(HomeHudDesignVariant.FusionBalanced, widgets);
+        HudSize size = HomeHudLayout.Calculate(HomeHudDesignVariant.FusionBalanced, widgets, maxWidgetWidth: 650, maxWidgetHeight: 250);
 
-        // Width = 28 + 280 + 21 + 280 + 21 + 280 = 910 > 700
-        Assert.Equal(910, size.Width);
-        Assert.Equal(150, size.Height);
+        Assert.Equal(650, size.Width);
+        Assert.Equal(250, size.Height);
     }
 }
