@@ -90,8 +90,40 @@ public sealed class HomeWidgetCustomizerViewModel : ViewModelBase
 
     public event EventHandler? PreviewInvalidated;
 
-    public HomeWidgetCustomizerViewModel(IEnumerable<HomeWidgetConfig> currentWidgets)
+    private double _maxWidgetWidth;
+    public double MaxWidgetWidth
     {
+        get => _maxWidgetWidth;
+        set
+        {
+            if (SetProperty(ref _maxWidgetWidth, value))
+            {
+                PreviewInvalidated?.Invoke(this, EventArgs.Empty);
+            }
+        }
+    }
+
+    private double _maxWidgetHeight;
+    public double MaxWidgetHeight
+    {
+        get => _maxWidgetHeight;
+        set
+        {
+            if (SetProperty(ref _maxWidgetHeight, value))
+            {
+                PreviewInvalidated?.Invoke(this, EventArgs.Empty);
+            }
+        }
+    }
+
+    public HomeWidgetCustomizerViewModel(
+        IEnumerable<HomeWidgetConfig> currentWidgets,
+        double maxWidgetWidth = 800,
+        double maxWidgetHeight = 300)
+    {
+        _maxWidgetWidth = maxWidgetWidth;
+        _maxWidgetHeight = maxWidgetHeight;
+
         ActiveWidgets = new ObservableCollection<HomeWidgetCustomizerItemViewModel>(
             currentWidgets.Select(w => new HomeWidgetCustomizerItemViewModel(w.Id, w.Type, w.Style)));
 

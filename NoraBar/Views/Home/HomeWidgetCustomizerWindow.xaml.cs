@@ -75,6 +75,8 @@ public partial class HomeWidgetCustomizerWindow : Window
             }
 
             _previewHomeViewModel.OverrideWidgets = customizerVm.GetResultConfigs();
+            _previewHomeViewModel.OverrideMaxWidgetWidth = customizerVm.MaxWidgetWidth;
+            _previewHomeViewModel.OverrideMaxWidgetHeight = customizerVm.MaxWidgetHeight;
 
             if (_previewView is null)
             {

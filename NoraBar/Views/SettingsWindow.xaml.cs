@@ -308,7 +308,10 @@ namespace NoraBar.Views
         {
             if (_viewModel is null) return;
 
-            HomeWidgetCustomizerViewModel customizerVm = new HomeWidgetCustomizerViewModel(_viewModel.ActiveHomeWidgets);
+            HomeWidgetCustomizerViewModel customizerVm = new HomeWidgetCustomizerViewModel(
+                _viewModel.ActiveHomeWidgets,
+                _viewModel.MaxWidgetWidth,
+                _viewModel.MaxWidgetHeight);
             HomeWidgetCustomizerWindow dialog = new HomeWidgetCustomizerWindow
             {
                 Owner = this,
@@ -319,6 +322,8 @@ namespace NoraBar.Views
             if (dialog.ShowDialog() == true)
             {
                 _viewModel.ActiveHomeWidgets = customizerVm.GetResultConfigs();
+                _viewModel.MaxWidgetWidth = customizerVm.MaxWidgetWidth;
+                _viewModel.MaxWidgetHeight = customizerVm.MaxWidgetHeight;
                 UpdatePreview();
             }
         }
