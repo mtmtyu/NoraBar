@@ -7,7 +7,7 @@
         xmlns:homeViews="clr-namespace:NoraBar.Views.Home"
         xmlns:system="clr-namespace:System;assembly=System.Runtime"
         mc:Ignorable="d"
-        Title="NoraBar" Height="250" Width="800"
+        Title="NoraBar" Height="650" Width="1200"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -71,7 +71,7 @@
         </Style>
     </Window.Resources>
 
-    <Grid>
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Top">
         <!-- HudBorder is the main interactive container for the island. In idle, it's 200x2 and invisible. -->
         <Border x:Name="HudBorder"
                 HorizontalAlignment="Center"
@@ -239,12 +239,13 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-
-                <!-- Overlay Palette for Widget Edit Mode -->
-                <homeViews:WidgetPaletteOverlayView VerticalAlignment="Bottom"
-                                                   Margin="10,0,10,10"
-                                                   Visibility="{Binding IsWidgetEditMode, Converter={StaticResource BoolToVis}}"/>
             </Grid>
         </Border>
-    </Grid>
+
+        <!-- Overlay Palette for Widget Edit Mode (Positioned clearly below the HUD with Margin="0,16,0,0") -->
+        <homeViews:WidgetPaletteOverlayView VerticalAlignment="Top"
+                                           HorizontalAlignment="Center"
+                                           Margin="0,16,0,0"
+                                           Visibility="{Binding IsWidgetEditMode, Converter={StaticResource BoolToVis}}"/>
+    </StackPanel>
 </Window>
