@@ -151,4 +151,19 @@ public class MainViewModelSettingsTests
         Assert.Same(additionalProperties, settings.AdditionalProperties);
         Assert.True(settings.AdditionalProperties["FutureSetting"].GetProperty("enabled").GetBoolean());
     }
+
+    [Fact]
+    public void IsWidgetEditMode_TogglesStateAndClearsIsPositionEditMode()
+    {
+        var viewModel = new MainViewModel();
+        viewModel.IsPositionEditMode = true;
+
+        Assert.True(viewModel.IsPositionEditMode);
+        Assert.False(viewModel.IsWidgetEditMode);
+
+        viewModel.IsWidgetEditMode = true;
+
+        Assert.True(viewModel.IsWidgetEditMode);
+        Assert.False(viewModel.IsPositionEditMode);
+    }
 }

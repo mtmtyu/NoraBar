@@ -17,7 +17,7 @@
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="&#xE710;" FontFamily="Segoe Fluent Icons" Foreground="#FF64B5F6" FontSize="15" VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <TextBlock Text="{Binding AddWidgetsHeaderText}" FontWeight="Bold" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
-                    <TextBlock Text="（ドラッグしてHUDへ配置）" FontSize="11" Foreground="#A0FFFFFF" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                    <TextBlock Text="{Binding DragToArrangeHintText}" FontSize="11" Foreground="#A0FFFFFF" VerticalAlignment="Center" Margin="6,0,0,0"/>
                 </StackPanel>
 
                 <Button Content="{Binding DoneText}" Click="DoneButton_Click" HorizontalAlignment="Right" VerticalAlignment="Center"

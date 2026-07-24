@@ -459,6 +459,7 @@ namespace NoraBar.ViewModels
         public string LanguageDescriptionText => T(LocalizationKey.LanguageDescription);
         public string VersionText => T(LocalizationKey.Version);
         public string DoneText => T(LocalizationKey.Done);
+        public string DragToArrangeHintText => T(LocalizationKey.DragToArrangeHint);
         public string MaxWidgetWidthLabelText => T(LocalizationKey.MaxWidgetWidthLabel);
         public string MaxWidgetHeightLabelText => T(LocalizationKey.MaxWidgetHeightLabel);
         public string CheckUpdatesText => T(LocalizationKey.CheckUpdates);
