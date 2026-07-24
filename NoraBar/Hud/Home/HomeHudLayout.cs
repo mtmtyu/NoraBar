@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using NoraBar.Hud.Home.Widgets;
 using NoraBar.Models;
@@ -22,71 +21,39 @@ internal static class HomeHudLayout
             _ => new HudSize(700, 88)
         };
 
+        double constrainedWidth = HomeWidgetLayoutMetrics.NormalizeMaxWidth(maxWidgetWidth);
+        double constrainedHeight = HomeWidgetLayoutMetrics.NormalizeMaxHeight(maxWidgetHeight);
+
         if (activeWidgets is null || activeWidgets.Count == 0)
         {
-            return baseSize;
+            return new HudSize(
+                Math.Min(constrainedWidth, baseSize.Width),
+                Math.Min(constrainedHeight, baseSize.Height));
         }
 
-        const double horizontalPadding = 24.0;
-        const double verticalPadding = 20.0;
-        const double separatorWidth = 21.0;
-        const double lineSpacing = 8.0;
+        double contentWidth = Math.Max(
+            1.0,
+            constrainedWidth - HomeWidgetLayoutMetrics.RootHorizontalPadding);
 
-        double contentMaxWidthLimit = Math.Max(150.0, maxWidgetWidth - horizontalPadding);
-
-        double overallContentWidth = 0;
-        double overallContentHeight = 0;
-
-        double currentLineWidth = 0;
-        double currentLineHeight = 0;
-
-        for (int i = 0; i < activeWidgets.Count; i++)
+        var itemSizes = new List<HomeWidgetLayoutSize>(activeWidgets.Count);
+        foreach (HomeWidgetConfig widget in activeWidgets)
         {
-            HomeWidgetConfig widget = activeWidgets[i];
-            (double w, double h) = GetWidgetDimensions(widget.Style);
-
-            double spacingNeeded = currentLineWidth > 0 ? separatorWidth : 0;
-
-            if (currentLineWidth > 0 && (currentLineWidth + spacingNeeded + w) > contentMaxWidthLimit)
-            {
-                // Wrap to next line
-                overallContentWidth = Math.Max(overallContentWidth, currentLineWidth);
-                overallContentHeight += currentLineHeight + lineSpacing;
-
-                currentLineWidth = w;
-                currentLineHeight = h;
-            }
-            else
-            {
-                currentLineWidth += spacingNeeded + w;
-                currentLineHeight = Math.Max(currentLineHeight, h);
-            }
+            itemSizes.Add(HomeWidgetLayoutMetrics.GetSize(widget.Style));
         }
 
-        if (currentLineWidth > 0)
-        {
-            overallContentWidth = Math.Max(overallContentWidth, currentLineWidth);
-            overallContentHeight += currentLineHeight;
-        }
+        HomeWidgetLayoutPlan plan = HomeWidgetLayoutMetrics.CreatePlan(
+            itemSizes,
+            contentWidth);
 
-        double calculatedWidth = overallContentWidth + horizontalPadding;
-        double calculatedHeight = overallContentHeight + verticalPadding;
+        double calculatedHeight =
+            plan.ContentHeight + HomeWidgetLayoutMetrics.RootVerticalPadding;
+        double finalHeight = Math.Min(
+            constrainedHeight,
+            Math.Max(baseSize.Height, calculatedHeight));
 
-        double finalWidth = Math.Min(maxWidgetWidth, Math.Max(baseSize.Width, calculatedWidth));
-        double finalHeight = Math.Min(maxWidgetHeight, Math.Max(baseSize.Height, calculatedHeight));
-
-        return new HudSize(finalWidth, finalHeight);
+        // The configured maximum width is also the widget viewport width.
+        // Using one width for both planning and rendering prevents later additions
+        // from changing earlier row assignments.
+        return new HudSize(constrainedWidth, finalHeight);
     }
-
-    private static (double Width, double Height) GetWidgetDimensions(HomeWidgetStyle style) => style switch
-    {
-        HomeWidgetStyle.ClockMinimal => (120, 40),
-        HomeWidgetStyle.MediaCompact => (200, 40),
-        HomeWidgetStyle.MediaArtworkHoverSmall => (160, 90),
-        HomeWidgetStyle.MediaArtworkHover => (190, 105),
-        HomeWidgetStyle.MediaArtworkHoverMedium => (190, 105),
-        HomeWidgetStyle.MediaArtworkHoverLarge => (240, 135),
-        HomeWidgetStyle.MediaBlurLyrics => (280, 130),
-        _ => (150, 50)
-    };
 }

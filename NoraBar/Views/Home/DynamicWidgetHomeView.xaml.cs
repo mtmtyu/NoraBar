@@ -15,6 +15,7 @@ public partial class DynamicWidgetHomeView : UserControl
 {
     private Point _dragStartPoint;
     private int _draggedWidgetIndex = -1;
+    private WrapPanelAnimatedReorderHelper? _reorderHelper;
 
     public DynamicWidgetHomeView()
     {
@@ -58,72 +59,77 @@ public partial class DynamicWidgetHomeView : UserControl
             return;
         }
 
-        WidgetsScrollViewer.MaxHeight = Math.Max(50.0, vm.MaxWidgetHeight - 16.0);
-        WidgetsContainer.MaxWidth = Math.Max(100.0, vm.MaxWidgetWidth - 24.0);
+        double viewportWidth = HomeWidgetLayoutMetrics.NormalizeMaxWidth(vm.MaxWidgetWidth);
+        double viewportHeight = HomeWidgetLayoutMetrics.NormalizeMaxHeight(vm.MaxWidgetHeight);
+        double contentWidth = Math.Max(
+            1.0,
+            viewportWidth - HomeWidgetLayoutMetrics.RootHorizontalPadding);
+        double contentHeight = Math.Max(
+            1.0,
+            viewportHeight - HomeWidgetLayoutMetrics.RootVerticalPadding);
 
-        if (vm.IsWidgetEditMode)
-        {
-            RootIslandBorder.BorderBrush = new SolidColorBrush(Color.FromArgb(0xC0, 0x64, 0xB5, 0xF6));
-            RootIslandBorder.BorderThickness = new Thickness(2);
-        }
-        else
-        {
-            RootIslandBorder.ClearValue(Border.BorderBrushProperty);
-            RootIslandBorder.ClearValue(Border.BorderThicknessProperty);
-        }
+        WidgetsScrollViewer.Width = contentWidth;
+        WidgetsScrollViewer.MaxHeight = contentHeight;
+        WidgetsContainer.Width = contentWidth;
+        EditOutlineBorder.Visibility = vm.IsWidgetEditMode
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
-        bool first = true;
         for (int i = 0; i < vm.ActiveWidgets.Count; i++)
         {
             HomeWidgetConfig widget = vm.ActiveWidgets[i];
-            if (!first && !vm.IsWidgetEditMode)
-            {
-                Border separator = new Border
-                {
-                    BorderBrush = Brushes.White,
-                    Opacity = 0.12,
-                    BorderThickness = new Thickness(1, 0, 0, 0),
-                    Margin = new Thickness(10, 4, 10, 4)
-                };
-                WidgetsContainer.Children.Add(separator);
-            }
-            first = false;
-
             UIElement? element = CreateWidgetElement(widget, vm);
-            if (element != null)
+            if (element is null)
             {
-                FrameworkElement wrapped = WrapWidgetContainer(element, widget, i, vm);
-                WidgetsContainer.Children.Add(wrapped);
+                continue;
             }
+
+            FrameworkElement wrapped = WrapWidgetContainer(element, widget, i, vm);
+            WidgetsContainer.Children.Add(wrapped);
         }
     }
 
-    private FrameworkElement WrapWidgetContainer(UIElement innerWidget, HomeWidgetConfig widgetConfig, int index, HomeHudViewModel vm)
+    private FrameworkElement WrapWidgetContainer(
+        UIElement innerWidget,
+        HomeWidgetConfig widgetConfig,
+        int index,
+        HomeHudViewModel vm)
     {
-        if (!vm.IsWidgetEditMode)
+        HomeWidgetLayoutSize size = HomeWidgetLayoutMetrics.GetSize(widgetConfig.Style);
+        var container = new Grid
         {
-            return (FrameworkElement)innerWidget;
+            Width = size.Width,
+            Height = size.Height,
+            Tag = index,
+            ClipToBounds = false
+        };
+
+        if (innerWidget is FrameworkElement innerElement)
+        {
+            innerElement.HorizontalAlignment = HorizontalAlignment.Stretch;
+            innerElement.VerticalAlignment = VerticalAlignment.Stretch;
         }
 
-        Grid container = new Grid
-        {
-            Margin = new Thickness(4),
-            Tag = index,
-            Cursor = Cursors.SizeAll
-        };
+        container.Children.Add(innerWidget);
 
-        Border border = new Border
+        if (!vm.IsWidgetEditMode)
         {
-            BorderBrush = new SolidColorBrush(Color.FromArgb(0x80, 0x64, 0xB5, 0xF6)),
+            return container;
+        }
+
+        container.Cursor = Cursors.SizeAll;
+
+        var selectionBorder = new Border
+        {
+            BorderBrush = new SolidColorBrush(Color.FromArgb(0xA0, 0x64, 0xB5, 0xF6)),
             BorderThickness = new Thickness(1.5),
             CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(4),
-            Background = new SolidColorBrush(Color.FromArgb(0x1A, 0xFF, 0xFF, 0xFF))
+            Background = new SolidColorBrush(Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF)),
+            IsHitTestVisible = false
         };
-        border.Child = innerWidget;
-        container.Children.Add(border);
+        container.Children.Add(selectionBorder);
 
-        Button deleteButton = new Button
+        var deleteButton = new Button
         {
             Content = "\uE711",
             FontFamily = new FontFamily("Segoe Fluent Icons"),
@@ -138,27 +144,37 @@ public partial class DynamicWidgetHomeView : UserControl
             Cursor = Cursors.Hand,
             ToolTip = "Remove Widget"
         };
-        ControlTemplate btnTemplate = new ControlTemplate(typeof(Button));
-        FrameworkElementFactory borderFactory = new FrameworkElementFactory(typeof(Border));
-        borderFactory.SetValue(Border.BackgroundProperty, new TemplateBindingExtension(Button.BackgroundProperty));
-        borderFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(10));
-        FrameworkElementFactory contentFactory = new FrameworkElementFactory(typeof(ContentPresenter));
-        contentFactory.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-        contentFactory.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
-        borderFactory.AppendChild(contentFactory);
-        btnTemplate.VisualTree = borderFactory;
-        deleteButton.Template = btnTemplate;
 
-        deleteButton.Click += (s, e) =>
+        var buttonTemplate = new ControlTemplate(typeof(Button));
+        var borderFactory = new FrameworkElementFactory(typeof(Border));
+        borderFactory.SetValue(
+            Border.BackgroundProperty,
+            new TemplateBindingExtension(Button.BackgroundProperty));
+        borderFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(10));
+
+        var contentFactory = new FrameworkElementFactory(typeof(ContentPresenter));
+        contentFactory.SetValue(
+            ContentPresenter.HorizontalAlignmentProperty,
+            HorizontalAlignment.Center);
+        contentFactory.SetValue(
+            ContentPresenter.VerticalAlignmentProperty,
+            VerticalAlignment.Center);
+
+        borderFactory.AppendChild(contentFactory);
+        buttonTemplate.VisualTree = borderFactory;
+        deleteButton.Template = buttonTemplate;
+
+        deleteButton.Click += (_, e) =>
         {
             e.Handled = true;
             RemoveWidgetAt(index, vm);
         };
         container.Children.Add(deleteButton);
 
-        container.PreviewMouseLeftButtonDown += (s, e) =>
+        container.PreviewMouseLeftButtonDown += (_, e) =>
         {
-            if (e.OriginalSource is Button || IsDescendantOfButton(e.OriginalSource as DependencyObject))
+            if (e.OriginalSource is Button
+                || IsDescendantOfButton(e.OriginalSource as DependencyObject))
             {
                 return;
             }
@@ -171,63 +187,76 @@ public partial class DynamicWidgetHomeView : UserControl
             e.Handled = true;
         };
 
-        container.PreviewMouseMove += (s, e) =>
+        container.PreviewMouseMove += (_, e) =>
         {
             if (container.IsMouseCaptured && _draggedWidgetIndex >= 0)
             {
-                Point currentPos = e.GetPosition(WidgetsContainer);
-                _reorderHelper?.UpdateDrag(currentPos);
+                Point currentPosition = e.GetPosition(WidgetsContainer);
+                _reorderHelper?.UpdateDrag(currentPosition);
             }
         };
 
-        container.PreviewMouseLeftButtonUp += (s, e) =>
+        container.PreviewMouseLeftButtonUp += (_, _) =>
         {
-            if (container.IsMouseCaptured)
+            if (!container.IsMouseCaptured)
             {
-                container.ReleaseMouseCapture();
-                _reorderHelper?.EndDrag();
-                _draggedWidgetIndex = -1;
+                return;
             }
+
+            container.ReleaseMouseCapture();
+            _reorderHelper?.EndDrag();
+            _draggedWidgetIndex = -1;
         };
 
         return container;
     }
 
-    private WrapPanelAnimatedReorderHelper? _reorderHelper;
-
     private void EnsureReorderHelper(HomeHudViewModel vm)
     {
-        _reorderHelper ??= new WrapPanelAnimatedReorderHelper(WidgetsContainer, (fromIdx, toIdx) =>
+        _reorderHelper ??= new WrapPanelAnimatedReorderHelper(WidgetsContainer, (fromIndex, toIndex) =>
         {
             List<HomeWidgetConfig> currentWidgets = vm.ActiveWidgets.ToList();
-            if (fromIdx >= 0 && fromIdx < currentWidgets.Count && toIdx >= 0 && toIdx < currentWidgets.Count && fromIdx != toIdx)
+            if (fromIndex < 0
+                || fromIndex >= currentWidgets.Count
+                || toIndex < 0
+                || toIndex >= currentWidgets.Count
+                || fromIndex == toIndex)
             {
-                HomeWidgetConfig item = currentWidgets[fromIdx];
-                currentWidgets.RemoveAt(fromIdx);
-                currentWidgets.Insert(toIdx, item);
-                UpdateWidgets(vm, currentWidgets);
+                return;
             }
+
+            HomeWidgetConfig item = currentWidgets[fromIndex];
+            currentWidgets.RemoveAt(fromIndex);
+            currentWidgets.Insert(toIndex, item);
+            UpdateWidgets(vm, currentWidgets);
         });
     }
 
     private static bool IsDescendantOfButton(DependencyObject? element)
     {
-        while (element != null)
+        while (element is not null)
         {
-            if (element is Button) return true;
+            if (element is Button)
+            {
+                return true;
+            }
+
             element = VisualTreeHelper.GetParent(element);
         }
+
         return false;
     }
 
     private static void RemoveWidgetAt(int index, HomeHudViewModel vm)
     {
         List<HomeWidgetConfig> current = vm.ActiveWidgets.ToList();
-        if (index >= 0 && index < current.Count)
+        if (index < 0 || index >= current.Count)
         {
-            current.RemoveAt(index);
-            UpdateWidgets(vm, current);
+            return;
         }
+
+        current.RemoveAt(index);
+        UpdateWidgets(vm, current);
     }
 
     private static void UpdateWidgets(HomeHudViewModel vm, List<HomeWidgetConfig> newList)
@@ -244,14 +273,18 @@ public partial class DynamicWidgetHomeView : UserControl
             return;
         }
 
-        if (e.Data.GetDataPresent("NoraBarWidgetReorderIndex") || e.Data.GetDataPresent("NoraBarCatalogWidgetConfig"))
+        if (e.Data.GetDataPresent("NoraBarWidgetReorderIndex")
+            || e.Data.GetDataPresent("NoraBarCatalogWidgetConfig"))
         {
-            e.Effects = e.Data.GetDataPresent("NoraBarCatalogWidgetConfig") ? DragDropEffects.Copy : DragDropEffects.Move;
+            e.Effects = e.Data.GetDataPresent("NoraBarCatalogWidgetConfig")
+                ? DragDropEffects.Copy
+                : DragDropEffects.Move;
         }
         else
         {
             e.Effects = DragDropEffects.None;
         }
+
         e.Handled = true;
     }
 
@@ -264,21 +297,27 @@ public partial class DynamicWidgetHomeView : UserControl
 
         List<HomeWidgetConfig> currentWidgets = vm.ActiveWidgets.ToList();
 
-        if (e.Data.GetDataPresent("NoraBarCatalogWidgetConfig") && e.Data.GetData("NoraBarCatalogWidgetConfig") is HomeWidgetConfig catalogConfig)
+        if (e.Data.GetDataPresent("NoraBarCatalogWidgetConfig")
+            && e.Data.GetData("NoraBarCatalogWidgetConfig") is HomeWidgetConfig catalogConfig)
         {
             string newId = $"widget_{catalogConfig.Type.ToString().ToLowerInvariant()}_{Guid.NewGuid():N}";
-            HomeWidgetConfig newWidget = new HomeWidgetConfig(newId, catalogConfig.Type, catalogConfig.Style);
+            var newWidget = new HomeWidgetConfig(newId, catalogConfig.Type, catalogConfig.Style);
             currentWidgets.Add(newWidget);
             UpdateWidgets(vm, currentWidgets);
             return;
         }
 
-        if (e.Data.GetDataPresent("NoraBarWidgetReorderIndex") && e.Data.GetData("NoraBarWidgetReorderIndex") is int fromIndex)
+        if (e.Data.GetDataPresent("NoraBarWidgetReorderIndex")
+            && e.Data.GetData("NoraBarWidgetReorderIndex") is int fromIndex)
         {
             Point dropPoint = e.GetPosition(WidgetsContainer);
             int targetIndex = CalculateDropIndex(dropPoint);
 
-            if (fromIndex >= 0 && fromIndex < currentWidgets.Count && targetIndex >= 0 && targetIndex <= currentWidgets.Count && fromIndex != targetIndex)
+            if (fromIndex >= 0
+                && fromIndex < currentWidgets.Count
+                && targetIndex >= 0
+                && targetIndex <= currentWidgets.Count
+                && fromIndex != targetIndex)
             {
                 HomeWidgetConfig item = currentWidgets[fromIndex];
                 currentWidgets.RemoveAt(fromIndex);
@@ -295,16 +334,19 @@ public partial class DynamicWidgetHomeView : UserControl
         int index = 0;
         foreach (UIElement child in WidgetsContainer.Children)
         {
-            if (child is FrameworkElement fe)
+            if (child is FrameworkElement element)
             {
-                Point pos = fe.TranslatePoint(new Point(0, 0), WidgetsContainer);
-                if (dropPoint.X < pos.X + (fe.ActualWidth / 2.0) && dropPoint.Y < pos.Y + fe.ActualHeight)
+                Point position = element.TranslatePoint(new Point(0, 0), WidgetsContainer);
+                if (dropPoint.X < position.X + (element.ActualWidth / 2.0)
+                    && dropPoint.Y < position.Y + element.ActualHeight)
                 {
                     return index;
                 }
+
                 index++;
             }
         }
+
         return WidgetsContainer.Children.Count;
     }
 
@@ -313,12 +355,12 @@ public partial class DynamicWidgetHomeView : UserControl
         switch (widget.Type)
         {
             case HomeWidgetType.DigitalClock:
-                DigitalClockWidgetView clockView = new DigitalClockWidgetView { DataContext = vm };
+                var clockView = new DigitalClockWidgetView { DataContext = vm };
                 clockView.SetStyle(widget.Style);
                 return clockView;
 
             case HomeWidgetType.MediaControls:
-                MediaControlsWidgetView mediaView = new MediaControlsWidgetView { DataContext = vm };
+                var mediaView = new MediaControlsWidgetView { DataContext = vm };
                 mediaView.SetStyle(widget.Style);
                 return mediaView;
 

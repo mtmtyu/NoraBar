@@ -23,7 +23,7 @@ public sealed class HomeHudLayoutTests
     }
 
     [Fact]
-    public void Calculate_WithActiveWidgets_ExpandsSizeForLargeWidgets()
+    public void Calculate_WithActiveWidgets_UsesConfiguredViewportWidth()
     {
         var widgets = new List<HomeWidgetConfig>
         {
@@ -31,32 +31,63 @@ public sealed class HomeHudLayoutTests
             new("w2", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics)
         };
 
-        HudSize size = HomeHudLayout.Calculate(HomeHudDesignVariant.FusionBalanced, widgets);
+        HudSize size = HomeHudLayout.Calculate(
+            HomeHudDesignVariant.FusionBalanced,
+            widgets);
 
-        // MediaBlurLyrics height 130 -> 130 + 20 = 150 > 88
+        Assert.Equal(800, size.Width);
         Assert.Equal(150, size.Height);
-        // Base width 700 maintained since calculated width (449) is less than 700
-        Assert.Equal(700, size.Width);
     }
 
     [Fact]
-    public void Calculate_WithManyWidgets_WrapsToMultipleLinesWhenExceedingMaxWidth()
+    public void Calculate_WithManyWidgets_UsesTheSameWrappingWidthAsTheView()
     {
         var widgets = new List<HomeWidgetConfig>
         {
-            new("w1", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics), // w:280, h:130
-            new("w2", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics), // w:280, h:130
-            new("w3", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics)  // w:280, h:130
+            new("w1", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics),
+            new("w2", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics),
+            new("w3", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics)
         };
 
-        // maxWidgetWidth = 600, maxWidgetHeight = 500
-        HudSize size = HomeHudLayout.Calculate(HomeHudDesignVariant.FusionBalanced, widgets, maxWidgetWidth: 600, maxWidgetHeight: 500);
+        HudSize size = HomeHudLayout.Calculate(
+            HomeHudDesignVariant.FusionBalanced,
+            widgets,
+            maxWidgetWidth: 600,
+            maxWidgetHeight: 500);
 
-        // Line 1: w1 (280) + 21 + w2 (280) = 581 <= 600 - 24 = 576 -> exceeds 576, so w2 wraps to Line 2!
-        // Line 1: 280 (h: 130), Line 2: 280 (h: 130), Line 3: 280 (h: 130)
-        // Calculated height: 130 + 8 + 130 + 8 + 130 + 16 = 422
-        Assert.True(size.Height >= 280);
-        Assert.True(size.Width <= 700); // base width 700
+        Assert.Equal(600, size.Width);
+        Assert.Equal(418, size.Height);
+    }
+
+    [Fact]
+    public void Calculate_AppendingLargeWidget_PreservesEarlierRowAssignments()
+    {
+        var widgets = new List<HomeWidgetConfig>
+        {
+            new("clock", HomeWidgetType.DigitalClock, HomeWidgetStyle.ClockMinimal),
+            new("compact", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact),
+            new("large1", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverLarge)
+        };
+
+        HudSize withOneLarge = HomeHudLayout.Calculate(
+            HomeHudDesignVariant.FusionBalanced,
+            widgets,
+            maxWidgetWidth: 500,
+            maxWidgetHeight: 800);
+
+        widgets.Add(new HomeWidgetConfig(
+            "large2",
+            HomeWidgetType.MediaControls,
+            HomeWidgetStyle.MediaArtworkHoverLarge));
+
+        HudSize withTwoLarge = HomeHudLayout.Calculate(
+            HomeHudDesignVariant.FusionBalanced,
+            widgets,
+            maxWidgetWidth: 500,
+            maxWidgetHeight: 800);
+
+        Assert.Equal(new HudSize(500, 195), withOneLarge);
+        Assert.Equal(new HudSize(500, 334), withTwoLarge);
     }
 
     [Fact]
@@ -70,9 +101,31 @@ public sealed class HomeHudLayoutTests
             new("w4", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics)
         };
 
-        HudSize size = HomeHudLayout.Calculate(HomeHudDesignVariant.FusionBalanced, widgets, maxWidgetWidth: 650, maxWidgetHeight: 250);
+        HudSize size = HomeHudLayout.Calculate(
+            HomeHudDesignVariant.FusionBalanced,
+            widgets,
+            maxWidgetWidth: 650,
+            maxWidgetHeight: 250);
 
         Assert.Equal(650, size.Width);
         Assert.Equal(250, size.Height);
+    }
+
+    [Theory]
+    [InlineData(HomeWidgetStyle.ClockMinimal, 120, 40)]
+    [InlineData(HomeWidgetStyle.MediaCompact, 236, 40)]
+    [InlineData(HomeWidgetStyle.MediaArtworkHoverSmall, 158, 89)]
+    [InlineData(HomeWidgetStyle.MediaArtworkHoverMedium, 198, 109)]
+    [InlineData(HomeWidgetStyle.MediaArtworkHoverLarge, 248, 139)]
+    [InlineData(HomeWidgetStyle.MediaBlurLyrics, 288, 134)]
+    public void WidgetMetrics_MatchRenderedOuterSize(
+        HomeWidgetStyle style,
+        double expectedWidth,
+        double expectedHeight)
+    {
+        HomeWidgetLayoutSize size = HomeWidgetLayoutMetrics.GetSize(style);
+
+        Assert.Equal(expectedWidth, size.Width);
+        Assert.Equal(expectedHeight, size.Height);
     }
 }
