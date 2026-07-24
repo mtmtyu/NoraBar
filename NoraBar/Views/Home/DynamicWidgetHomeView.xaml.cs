@@ -6,6 +6,7 @@ using System.Windows.Media;
 using NoraBar.Hud.Home;
 using NoraBar.Hud.Home.Widgets;
 using NoraBar.ViewModels;
+using NoraBar.Views.Helpers;
 using NoraBar.Views.Home.Widgets;
 
 namespace NoraBar.Views.Home;
@@ -49,6 +50,7 @@ public partial class DynamicWidgetHomeView : UserControl
 
     public void RebuildWidgets()
     {
+        _reorderHelper = null;
         WidgetsContainer.Children.Clear();
 
         if (DataContext is not HomeHudViewModel vm || vm.ActiveWidgets is null)
@@ -156,27 +158,66 @@ public partial class DynamicWidgetHomeView : UserControl
 
         container.PreviewMouseLeftButtonDown += (s, e) =>
         {
-            _dragStartPoint = e.GetPosition(this);
+            if (e.OriginalSource is Button || IsDescendantOfButton(e.OriginalSource as DependencyObject))
+            {
+                return;
+            }
+
+            _dragStartPoint = e.GetPosition(WidgetsContainer);
             _draggedWidgetIndex = index;
+            EnsureReorderHelper(vm);
+            _reorderHelper?.StartDrag(container, _dragStartPoint, index);
+            container.CaptureMouse();
+            e.Handled = true;
         };
 
         container.PreviewMouseMove += (s, e) =>
         {
-            if (e.LeftButton == MouseButtonState.Pressed && _draggedWidgetIndex >= 0)
+            if (container.IsMouseCaptured && _draggedWidgetIndex >= 0)
             {
-                Point currentPos = e.GetPosition(this);
-                Vector diff = _dragStartPoint - currentPos;
-                if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
-                    Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
-                {
-                    DataObject dragData = new DataObject("NoraBarWidgetReorderIndex", _draggedWidgetIndex);
-                    DragDrop.DoDragDrop(container, dragData, DragDropEffects.Move);
-                    _draggedWidgetIndex = -1;
-                }
+                Point currentPos = e.GetPosition(WidgetsContainer);
+                _reorderHelper?.UpdateDrag(currentPos);
+            }
+        };
+
+        container.PreviewMouseLeftButtonUp += (s, e) =>
+        {
+            if (container.IsMouseCaptured)
+            {
+                container.ReleaseMouseCapture();
+                _reorderHelper?.EndDrag();
+                _draggedWidgetIndex = -1;
             }
         };
 
         return container;
+    }
+
+    private WrapPanelAnimatedReorderHelper? _reorderHelper;
+
+    private void EnsureReorderHelper(HomeHudViewModel vm)
+    {
+        _reorderHelper ??= new WrapPanelAnimatedReorderHelper(WidgetsContainer, (fromIdx, toIdx) =>
+        {
+            List<HomeWidgetConfig> currentWidgets = vm.ActiveWidgets.ToList();
+            if (fromIdx >= 0 && fromIdx < currentWidgets.Count && toIdx >= 0 && toIdx < currentWidgets.Count && fromIdx != toIdx)
+            {
+                HomeWidgetConfig item = currentWidgets[fromIdx];
+                currentWidgets.RemoveAt(fromIdx);
+                currentWidgets.Insert(toIdx, item);
+                UpdateWidgets(vm, currentWidgets);
+            }
+        });
+    }
+
+    private static bool IsDescendantOfButton(DependencyObject? element)
+    {
+        while (element != null)
+        {
+            if (element is Button) return true;
+            element = VisualTreeHelper.GetParent(element);
+        }
+        return false;
     }
 
     private static void RemoveWidgetAt(int index, HomeHudViewModel vm)
