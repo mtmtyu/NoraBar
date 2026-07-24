@@ -17,6 +17,7 @@
         Icon="Assets/AppIcon.ico">
 
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <SolidColorBrush x:Key="HudNavigationToolTipBackgroundBrush" Color="#F0202020"/>
         <SolidColorBrush x:Key="HudNavigationToolTipBorderBrush" Color="#66FFFFFF"/>
         <SolidColorBrush x:Key="RightRailNavigationBackgroundBrush" Color="#D9202020"/>
