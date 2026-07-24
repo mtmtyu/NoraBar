@@ -186,14 +186,49 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
 
     public IReadOnlyList<NoraBar.Hud.Home.Widgets.HomeWidgetConfig> ActiveWidgets => OverrideWidgets ?? _viewModel.ActiveHomeWidgets;
 
+    private double? _overrideMaxWidgetWidth;
+    public double? OverrideMaxWidgetWidth
+    {
+        get => _overrideMaxWidgetWidth;
+        set
+        {
+            if (SetProperty(ref _overrideMaxWidgetWidth, value))
+            {
+                OnPropertyChanged(nameof(MaxWidgetWidth));
+                PresentationInvalidated?.Invoke(this, EventArgs.Empty);
+            }
+        }
+    }
+
+    private double? _overrideMaxWidgetHeight;
+    public double? OverrideMaxWidgetHeight
+    {
+        get => _overrideMaxWidgetHeight;
+        set
+        {
+            if (SetProperty(ref _overrideMaxWidgetHeight, value))
+            {
+                OnPropertyChanged(nameof(MaxWidgetHeight));
+                PresentationInvalidated?.Invoke(this, EventArgs.Empty);
+            }
+        }
+    }
+
+    public double MaxWidgetWidth => OverrideMaxWidgetWidth ?? _viewModel.MaxWidgetWidth;
+    public double MaxWidgetHeight => OverrideMaxWidgetHeight ?? _viewModel.MaxWidgetHeight;
+
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         switch (e.PropertyName)
         {
             case nameof(MainViewModel.HomeHudDesignVariant):
             case nameof(MainViewModel.ActiveHomeWidgets):
+            case nameof(MainViewModel.MaxWidgetWidth):
+            case nameof(MainViewModel.MaxWidgetHeight):
                 PresentationInvalidated?.Invoke(this, EventArgs.Empty);
                 OnPropertyChanged(nameof(ActiveWidgets));
+                OnPropertyChanged(nameof(MaxWidgetWidth));
+                OnPropertyChanged(nameof(MaxWidgetHeight));
                 break;
             case nameof(MainViewModel.HomeHudTimeFormat):
             case nameof(MainViewModel.FirstWorldClockTimeZoneId):

@@ -13,6 +13,8 @@ internal static class HomeHudSettingsJson
     private const string FirstClockProperty = "FirstClock";
     private const string SecondClockProperty = "SecondClock";
     private const string WidgetsProperty = "Widgets";
+    private const string MaxWidgetWidthProperty = "MaxWidgetWidth";
+    private const string MaxWidgetHeightProperty = "MaxWidgetHeight";
     private const string LabelProperty = "Label";
     private const string TimeZoneIdProperty = "TimeZoneId";
     private const string IdProperty = "Id";
@@ -35,7 +37,9 @@ internal static class HomeHudSettingsJson
             ReadEnum(payload, TimeFormatProperty, defaults.TimeFormat),
             ReadClock(payload, FirstClockProperty, defaults.FirstClock),
             ReadClock(payload, SecondClockProperty, defaults.SecondClock),
-            ReadWidgets(payload));
+            ReadWidgets(payload),
+            ReadDouble(payload, MaxWidgetWidthProperty, defaults.MaxWidgetWidth),
+            ReadDouble(payload, MaxWidgetHeightProperty, defaults.MaxWidgetHeight));
     }
 
     internal static void Write(UserSettings settings, HomeHudSettings homeSettings)
@@ -50,6 +54,8 @@ internal static class HomeHudSettingsJson
         root[FirstClockProperty] = CreateClockNode(homeSettings.FirstClock);
         root[SecondClockProperty] = CreateClockNode(homeSettings.SecondClock);
         root[WidgetsProperty] = CreateWidgetsNode(homeSettings.EffectiveWidgets);
+        root[MaxWidgetWidthProperty] = homeSettings.MaxWidgetWidth;
+        root[MaxWidgetHeightProperty] = homeSettings.MaxWidgetHeight;
         settings.Modules[BuiltInHudIds.Home] = JsonSerializer.SerializeToElement(root);
     }
 
@@ -161,5 +167,14 @@ internal static class HomeHudSettingsJson
 
         string? text = property.GetString();
         return string.IsNullOrWhiteSpace(text) ? null : text;
+    }
+
+    private static double ReadDouble(JsonElement payload, string propertyName, double fallback)
+    {
+        return payload.TryGetProperty(propertyName, out JsonElement value)
+            && value.TryGetDouble(out double doubleValue)
+            && doubleValue > 0
+                ? doubleValue
+                : fallback;
     }
 }

@@ -10,7 +10,9 @@ internal sealed record HomeHudSettings(
     HomeHudTimeFormat TimeFormat,
     HomeWorldClockSettings FirstClock,
     HomeWorldClockSettings SecondClock,
-    IReadOnlyList<HomeWidgetConfig>? Widgets = null)
+    IReadOnlyList<HomeWidgetConfig>? Widgets = null,
+    double MaxWidgetWidth = 800,
+    double MaxWidgetHeight = 300)
 {
     private static readonly IReadOnlyList<HomeWidgetConfig> DefaultWidgetsList = new List<HomeWidgetConfig>
     {
@@ -25,5 +27,7 @@ internal sealed record HomeHudSettings(
         HomeHudTimeFormat.System,
         new HomeWorldClockSettings("NYC", "Eastern Standard Time"),
         new HomeWorldClockSettings("LON", "GMT Standard Time"),
-        DefaultWidgetsList);
+        DefaultWidgetsList,
+        800,
+        300);
 }
