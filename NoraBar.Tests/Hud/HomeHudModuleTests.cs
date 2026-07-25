@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Threading;
 using NoraBar.Hud;
 using NoraBar.Hud.Home;
 using NoraBar.Models;
@@ -88,6 +89,163 @@ public sealed class HomeHudModuleTests
         });
     }
 
+    [Fact]
+    public async Task DisposeAsync_WhenViewCreationLosesRace_DisposesRejectedView()
+    {
+        using var creationStarted = new ManualResetEventSlim();
+        using var allowCreation = new ManualResetEventSlim();
+        var source = new FakeHomeHudPresentationSource();
+        DisposableFrameworkElement? view = null;
+        var module = new HomeHudModule(source, _ =>
+        {
+            view = new DisposableFrameworkElement();
+            creationStarted.Set();
+            allowCreation.Wait();
+            return view;
+        });
+        Exception? getViewException = null;
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                module.GetView(new HudViewContext(HudPresentationState.Expanded));
+            }
+            catch (Exception exception)
+            {
+                getViewException = exception;
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        Assert.True(creationStarted.Wait(TimeSpan.FromSeconds(5)));
+
+        await module.DisposeAsync();
+        allowCreation.Set();
+        Assert.True(thread.Join(TimeSpan.FromSeconds(5)));
+
+        Assert.IsType<ObjectDisposedException>(getViewException);
+        Assert.Equal(1, Assert.IsType<DisposableFrameworkElement>(view).DisposeCount);
+        Assert.Throws<ObjectDisposedException>(
+            () => module.GetView(new HudViewContext(HudPresentationState.Expanded)));
+    }
+
+    [Fact]
+    public void GetView_WhenCreationLosesCacheRace_DisposesUnusedView()
+    {
+        RunInSta(() =>
+        {
+            var source = new FakeHomeHudPresentationSource();
+            var unusedView = new DisposableFrameworkElement();
+            var acceptedView = new DisposableFrameworkElement();
+            HomeHudModule? module = null;
+            int creationCount = 0;
+            module = new HomeHudModule(source, _ =>
+            {
+                creationCount++;
+                if (creationCount == 1)
+                {
+                    module!.GetView(new HudViewContext(HudPresentationState.Expanded));
+                    return unusedView;
+                }
+
+                return acceptedView;
+            });
+
+            FrameworkElement result = module.GetView(
+                new HudViewContext(HudPresentationState.Expanded));
+
+            Assert.Same(acceptedView, result);
+            Assert.Equal(1, unusedView.DisposeCount);
+            Assert.Equal(0, acceptedView.DisposeCount);
+            module.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            Assert.Equal(1, acceptedView.DisposeCount);
+        });
+    }
+
+    [Fact]
+    public void DisposeAsync_WhenCleanupOperationsFail_AttemptsAllAndAggregatesFailures()
+    {
+        RunInSta(() =>
+        {
+            var source = new FakeHomeHudPresentationSource
+            {
+                StopException = new InvalidOperationException("stop"),
+                UnsubscribeException = new InvalidOperationException("unsubscribe"),
+                DisposeException = new InvalidOperationException("source")
+            };
+            var throwingView = new DisposableFrameworkElement
+            {
+                DisposeException = new InvalidOperationException("view")
+            };
+            var otherView = new DisposableFrameworkElement();
+            var module = new HomeHudModule(
+                source,
+                variant => variant == HomeHudDesignVariant.FusionBalanced
+                    ? throwingView
+                    : otherView);
+            module.InitializeAsync(CancellationToken.None).AsTask().GetAwaiter().GetResult();
+            module.ActivateAsync(CancellationToken.None).AsTask().GetAwaiter().GetResult();
+            module.GetView(new HudViewContext(HudPresentationState.Expanded));
+            source.DesignVariant = HomeHudDesignVariant.FusionExpressive;
+            module.GetView(new HudViewContext(HudPresentationState.Expanded));
+
+            AggregateException exception = Assert.Throws<AggregateException>(
+                () => module.DisposeAsync().AsTask().GetAwaiter().GetResult());
+
+            Assert.Equal(4, exception.InnerExceptions.Count);
+            Assert.Equal(1, throwingView.DisposeCount);
+            Assert.Equal(1, otherView.DisposeCount);
+            Assert.Equal(1, source.DisposeCount);
+            Assert.Throws<ObjectDisposedException>(
+                () => module.GetPreferredSize(
+                    new HudViewContext(HudPresentationState.Expanded)));
+        });
+    }
+
+    [Fact]
+    public async Task DisposeAsync_DisposesViewsOnOwningDispatcher()
+    {
+        var source = new FakeHomeHudPresentationSource();
+        var ready = new TaskCompletionSource<(HomeHudModule Module, Dispatcher Dispatcher, DispatcherAwareView View)>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var thread = new Thread(() =>
+        {
+            Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
+            var view = new DispatcherAwareView();
+            var module = new HomeHudModule(source, _ => view);
+            module.GetView(new HudViewContext(HudPresentationState.Expanded));
+            ready.SetResult((module, dispatcher, view));
+            Dispatcher.Run();
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        var state = await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        await state.Module.DisposeAsync();
+
+        Assert.Equal(thread.ManagedThreadId, state.View.DisposeThreadId);
+        state.Dispatcher.BeginInvokeShutdown(DispatcherPriority.Send);
+        Assert.True(thread.Join(TimeSpan.FromSeconds(5)));
+    }
+
+    [Fact]
+    public async Task LifecycleMethods_AfterDisposalStarts_DoNotReuseModule()
+    {
+        var source = new FakeHomeHudPresentationSource();
+        var module = new HomeHudModule(source, _ => new FrameworkElement());
+
+        ValueTask dispose = module.DisposeAsync();
+        await module.InitializeAsync(CancellationToken.None);
+        await module.ActivateAsync(CancellationToken.None);
+        await dispose;
+
+        Assert.Equal(0, source.InitializeCount);
+        Assert.Equal(0, source.StartCount);
+        Assert.Throws<ObjectDisposedException>(
+            () => module.GetPreferredSize(
+                new HudViewContext(HudPresentationState.Expanded)));
+    }
+
     private static void RunInSta(Action action)
     {
         Exception? exception = null;
@@ -113,6 +271,8 @@ public sealed class HomeHudModuleTests
 
     private sealed class FakeHomeHudPresentationSource : IHomeHudPresentationSource
     {
+        private EventHandler? _presentationInvalidated;
+
         public HomeHudDesignVariant DesignVariant { get; set; } =
             HomeHudDesignVariant.FusionBalanced;
 
@@ -126,25 +286,72 @@ public sealed class HomeHudModuleTests
         public int StartCount { get; private set; }
         public int StopCount { get; private set; }
         public int DisposeCount { get; private set; }
+        public Exception? StopException { get; init; }
+        public Exception? UnsubscribeException { get; init; }
+        public Exception? DisposeException { get; init; }
 
-        public event EventHandler? PresentationInvalidated;
+        public event EventHandler? PresentationInvalidated
+        {
+            add => _presentationInvalidated += value;
+            remove
+            {
+                _presentationInvalidated -= value;
+                if (UnsubscribeException is not null)
+                {
+                    throw UnsubscribeException;
+                }
+            }
+        }
 
         public void Initialize() => InitializeCount++;
 
         public void Start() => StartCount++;
 
-        public void Stop() => StopCount++;
+        public void Stop()
+        {
+            StopCount++;
+            if (StopException is not null)
+            {
+                throw StopException;
+            }
+        }
 
-        public void Dispose() => DisposeCount++;
+        public void Dispose()
+        {
+            DisposeCount++;
+            if (DisposeException is not null)
+            {
+                throw DisposeException;
+            }
+        }
 
         public void RaisePresentationInvalidated() =>
-            PresentationInvalidated?.Invoke(this, EventArgs.Empty);
+            _presentationInvalidated?.Invoke(this, EventArgs.Empty);
     }
 
     private sealed class DisposableFrameworkElement : FrameworkElement, IDisposable
     {
         public int DisposeCount { get; private set; }
+        public Exception? DisposeException { get; init; }
 
-        public void Dispose() => DisposeCount++;
+        public void Dispose()
+        {
+            DisposeCount++;
+            if (DisposeException is not null)
+            {
+                throw DisposeException;
+            }
+        }
+    }
+
+    private sealed class DispatcherAwareView : FrameworkElement, IDisposable
+    {
+        internal int DisposeThreadId { get; private set; }
+
+        public void Dispose()
+        {
+            Assert.True(Dispatcher.CheckAccess());
+            DisposeThreadId = Environment.CurrentManagedThreadId;
+        }
     }
 }

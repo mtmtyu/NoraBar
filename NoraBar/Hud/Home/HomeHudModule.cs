@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using System.Windows;
 using System.Windows.Threading;
 using NoraBar.Models;
@@ -13,8 +14,10 @@ internal sealed class HomeHudModule : IHudModule
     private readonly Func<HomeHudDesignVariant, FrameworkElement> _createView;
     private readonly Dictionary<HomeHudDesignVariant, FrameworkElement> _views = [];
     private Dispatcher? _viewDispatcher;
+    private Task? _disposeTask;
     private bool _isInitialized;
     private bool _isActive;
+    private bool _isDisposing;
     private bool _isDisposed;
 
     internal HomeHudModule(MainViewModel viewModel)
@@ -43,7 +46,7 @@ internal sealed class HomeHudModule : IHudModule
         await _lifecycleGate.WaitAsync(cancellationToken);
         try
         {
-            if (_isInitialized || _isDisposed)
+            if (_isInitialized || IsUnavailable())
             {
                 return;
             }
@@ -63,7 +66,7 @@ internal sealed class HomeHudModule : IHudModule
         await _lifecycleGate.WaitAsync(cancellationToken);
         try
         {
-            if (_isDisposed || _isActive)
+            if (_isActive || IsUnavailable())
             {
                 return;
             }
@@ -82,7 +85,7 @@ internal sealed class HomeHudModule : IHudModule
         await _lifecycleGate.WaitAsync(cancellationToken);
         try
         {
-            if (_isDisposed || !_isActive)
+            if (!_isActive || IsUnavailable())
             {
                 return;
             }
@@ -102,12 +105,8 @@ internal sealed class HomeHudModule : IHudModule
         HomeHudDesignVariant variant;
         lock (_syncRoot)
         {
-            ObjectDisposedException.ThrowIf(_isDisposed, this);
-            if (_viewDispatcher is not null && _viewDispatcher != dispatcher)
-            {
-                throw new InvalidOperationException(
-                    "ホームHUDのViewは生成元のDispatcherから取得してください。");
-            }
+            ThrowIfUnavailable();
+            EnsureViewDispatcher(dispatcher);
 
             variant = ResolveVariant(_source.DesignVariant);
             if (_views.TryGetValue(variant, out FrameworkElement? cached))
@@ -124,26 +123,50 @@ internal sealed class HomeHudModule : IHudModule
                 "ホームHUDのViewは現在のDispatcherで生成する必要があります。");
         }
 
+        FrameworkElement? selected = null;
+        Exception? rejectionException = null;
         lock (_syncRoot)
         {
-            ObjectDisposedException.ThrowIf(_isDisposed, this);
-            if (!_views.TryGetValue(variant, out FrameworkElement? view))
+            if (_isDisposing || _isDisposed)
+            {
+                rejectionException = new ObjectDisposedException(nameof(HomeHudModule));
+            }
+            else if (_viewDispatcher is not null && _viewDispatcher != dispatcher)
+            {
+                rejectionException = new InvalidOperationException(
+                    "ホームHUDのViewは生成元のDispatcherから取得してください。");
+            }
+            else if (_views.TryGetValue(variant, out FrameworkElement? cached))
+            {
+                selected = cached;
+            }
+            else
             {
                 _viewDispatcher = dispatcher;
-                view = created;
-                _views.Add(variant, view);
+                _views.Add(variant, created);
+                selected = created;
             }
-
-            view.DataContext = _source.ViewDataContext;
-            return view;
         }
+
+        if (!ReferenceEquals(selected, created))
+        {
+            (created as IDisposable)?.Dispose();
+        }
+
+        if (rejectionException is not null)
+        {
+            ExceptionDispatchInfo.Capture(rejectionException).Throw();
+        }
+
+        selected!.DataContext = _source.ViewDataContext;
+        return selected;
     }
 
     public HudSize GetPreferredSize(HudViewContext context)
     {
         lock (_syncRoot)
         {
-            ObjectDisposedException.ThrowIf(_isDisposed, this);
+            ThrowIfUnavailable();
             return HomeHudLayout.Calculate(
                 ResolveVariant(_source.DesignVariant),
                 _source.ActiveWidgets,
@@ -152,46 +175,201 @@ internal sealed class HomeHudModule : IHudModule
         }
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
+        TaskCompletionSource<object?> completionSource;
+        FrameworkElement[] views;
+        Dispatcher? dispatcher;
+
+        lock (_syncRoot)
+        {
+            if (_disposeTask is not null)
+            {
+                return new ValueTask(_disposeTask);
+            }
+
+            _isDisposing = true;
+            views = _views.Values.ToArray();
+            _views.Clear();
+            dispatcher = _viewDispatcher;
+            _viewDispatcher = null;
+            completionSource = new TaskCompletionSource<object?>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            _disposeTask = completionSource.Task;
+        }
+
+        _ = DisposeAndSignalCompletionAsync(views, dispatcher, completionSource);
+        return new ValueTask(completionSource.Task);
+    }
+
+    private async Task DisposeAndSignalCompletionAsync(
+        IReadOnlyList<FrameworkElement> views,
+        Dispatcher? dispatcher,
+        TaskCompletionSource<object?> completionSource)
+    {
+        try
+        {
+            await DisposeCoreAsync(views, dispatcher);
+            completionSource.SetResult(null);
+        }
+        catch (Exception exception)
+        {
+            completionSource.SetException(exception);
+        }
+    }
+
+    private async Task DisposeCoreAsync(
+        IReadOnlyList<FrameworkElement> views,
+        Dispatcher? dispatcher)
+    {
+        List<Exception> exceptions = [];
         await _lifecycleGate.WaitAsync();
         try
         {
-            if (_isDisposed)
-            {
-                return;
-            }
-
             if (_isActive)
             {
-                _source.Stop();
-                _isActive = false;
+                try
+                {
+                    _source.Stop();
+                }
+                catch (Exception exception)
+                {
+                    exceptions.Add(exception);
+                }
+                finally
+                {
+                    _isActive = false;
+                }
             }
 
             if (_isInitialized)
             {
-                _source.PresentationInvalidated -= Source_PresentationInvalidated;
-                _isInitialized = false;
+                try
+                {
+                    _source.PresentationInvalidated -= Source_PresentationInvalidated;
+                }
+                catch (Exception exception)
+                {
+                    exceptions.Add(exception);
+                }
+                finally
+                {
+                    _isInitialized = false;
+                }
             }
 
-            foreach (IDisposable view in _views.Values.OfType<IDisposable>())
+            await DisposeViewsAsync(views, dispatcher, exceptions);
+
+            try
             {
-                view.Dispose();
+                _source.Dispose();
             }
-
-            _views.Clear();
-            _viewDispatcher = null;
-            _source.Dispose();
-            _isDisposed = true;
+            catch (Exception exception)
+            {
+                exceptions.Add(exception);
+            }
         }
         finally
         {
+            lock (_syncRoot)
+            {
+                _isDisposed = true;
+            }
+
             _lifecycleGate.Release();
+        }
+
+        if (exceptions.Count == 1)
+        {
+            ExceptionDispatchInfo.Capture(exceptions[0]).Throw();
+        }
+
+        if (exceptions.Count > 1)
+        {
+            throw new AggregateException(
+                "Multiple Home HUD cleanup operations failed.",
+                exceptions);
         }
     }
 
-    private void Source_PresentationInvalidated(object? sender, EventArgs e) =>
+    private static async Task DisposeViewsAsync(
+        IReadOnlyList<FrameworkElement> views,
+        Dispatcher? dispatcher,
+        ICollection<Exception> exceptions)
+    {
+        if (views.Count == 0 || dispatcher is null)
+        {
+            return;
+        }
+
+        void DisposeViews()
+        {
+            foreach (IDisposable view in views.OfType<IDisposable>())
+            {
+                try
+                {
+                    view.Dispose();
+                }
+                catch (Exception exception)
+                {
+                    exceptions.Add(exception);
+                }
+            }
+        }
+
+        if (dispatcher.CheckAccess())
+        {
+            DisposeViews();
+            return;
+        }
+
+        if (dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
+        {
+            return;
+        }
+
+        try
+        {
+            await dispatcher.InvokeAsync(DisposeViews, DispatcherPriority.Send).Task;
+        }
+        catch (Exception exception)
+        {
+            exceptions.Add(exception);
+        }
+    }
+
+    private bool IsUnavailable()
+    {
+        lock (_syncRoot)
+        {
+            return _isDisposing || _isDisposed;
+        }
+    }
+
+    private void ThrowIfUnavailable() =>
+        ObjectDisposedException.ThrowIf(_isDisposing || _isDisposed, this);
+
+    private void EnsureViewDispatcher(Dispatcher dispatcher)
+    {
+        if (_viewDispatcher is not null && _viewDispatcher != dispatcher)
+        {
+            throw new InvalidOperationException(
+                "ホームHUDのViewは生成元のDispatcherから取得してください。");
+        }
+    }
+
+    private void Source_PresentationInvalidated(object? sender, EventArgs e)
+    {
+        lock (_syncRoot)
+        {
+            if (_isDisposing || _isDisposed)
+            {
+                return;
+            }
+        }
+
         PresentationInvalidated?.Invoke(this, EventArgs.Empty);
+    }
 
     private static HomeHudDesignVariant ResolveVariant(HomeHudDesignVariant variant) =>
         Enum.IsDefined(variant) ? variant : HomeHudDesignVariant.FusionBalanced;
