@@ -11,10 +11,12 @@ namespace NoraBar.Tests.ViewModels;
 
 public sealed class MusicViewModelTests
 {
+    private static readonly TimeSpan StaTimeout = TimeSpan.FromSeconds(10);
+
     [Fact]
     public void UpdateCurrentLyric_WhenLyricsClearedBeforeDispatcherExecution_DoesNotThrowNullReferenceException()
     {
-        StaTestRunner.Run(() =>
+        StaTestRunner.Run(cancellationToken =>
         {
             if (System.Windows.Application.Current == null)
             {
@@ -44,20 +46,14 @@ public sealed class MusicViewModelTests
             currentLyricsField.SetValue(viewModel, null);
 
             // Process Dispatcher queue frame to execute the queued action
-            DispatcherFrame frame = new DispatcherFrame();
-            Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Background, new DispatcherOperationCallback(_ =>
-            {
-                frame.Continue = false;
-                return null;
-            }), null);
-            Dispatcher.PushFrame(frame);
-        });
+            DrainDispatcher(cancellationToken);
+        }, StaTimeout);
     }
 
     [Fact]
     public void UpdateCurrentLyric_WhenLyricsListShrinksBeforeDispatcherExecution_DoesNotThrowArgumentOutOfRangeExceptionOrNullReference()
     {
-        StaTestRunner.Run(() =>
+        StaTestRunner.Run(cancellationToken =>
         {
             if (System.Windows.Application.Current == null)
             {
@@ -91,13 +87,21 @@ public sealed class MusicViewModelTests
             };
             currentLyricsField.SetValue(viewModel, shorterLyricsList);
 
-            DispatcherFrame frame = new DispatcherFrame();
-            Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Background, new DispatcherOperationCallback(_ =>
-            {
-                frame.Continue = false;
-                return null;
-            }), null);
-            Dispatcher.PushFrame(frame);
-        });
+            DrainDispatcher(cancellationToken);
+        }, StaTimeout);
+    }
+
+    private static void DrainDispatcher(CancellationToken cancellationToken)
+    {
+        Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
+        var frame = new DispatcherFrame();
+        using CancellationTokenRegistration cancellationRegistration =
+            cancellationToken.Register(() => dispatcher.BeginInvoke(
+                DispatcherPriority.Send,
+                new Action(() => frame.Continue = false)));
+        dispatcher.BeginInvoke(
+            DispatcherPriority.Background,
+            new Action(() => frame.Continue = false));
+        Dispatcher.PushFrame(frame);
     }
 }
