@@ -326,6 +326,127 @@ public sealed class HomeWidgetViewLifecycleTests
     }
 
     [Fact]
+    public void DisposeChildViews_ReleasesManagedOnlyChild()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var container = new Grid();
+            var child = new ManagedOnlyWidget();
+            container.Children.Add(child);
+
+            DynamicWidgetHomeView.DisposeChildViews(container);
+
+            Assert.Equal(1, child.ManagedReleaseCount);
+        });
+    }
+
+    [Fact]
+    public void DisposeChildViews_WhenDisposeSucceeds_DoesNotDuplicateManagedRelease()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var container = new Grid();
+            var child = new ManagedDisposableWidget();
+            container.Children.Add(child);
+
+            DynamicWidgetHomeView.DisposeChildViews(container);
+
+            Assert.Equal(1, child.DisposeCount);
+            Assert.Equal(0, child.ManagedReleaseCount);
+        });
+    }
+
+    [Fact]
+    public void DisposeChildViews_WhenDisposeFails_ReleasesManagedResourcesAndPreservesFailure()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var disposeFailure = new InvalidOperationException("dispose");
+            var container = new Grid();
+            var child = new ManagedDisposableWidget
+            {
+                DisposeException = disposeFailure
+            };
+            container.Children.Add(child);
+
+            AggregateException exception = Assert.Throws<AggregateException>(
+                () => DynamicWidgetHomeView.DisposeChildViews(container));
+
+            Assert.Contains(disposeFailure, exception.Flatten().InnerExceptions);
+            Assert.Equal(1, child.DisposeCount);
+            Assert.Equal(1, child.ManagedReleaseCount);
+        });
+    }
+
+    [Fact]
+    public void DisposeChildViews_WhenDisposeAndManagedReleaseFail_PreservesBothFailures()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var disposeFailure = new InvalidOperationException("dispose");
+            var releaseFailure = new InvalidOperationException("release");
+            var container = new Grid();
+            var child = new ManagedDisposableWidget
+            {
+                DisposeException = disposeFailure,
+                ManagedReleaseException = releaseFailure
+            };
+            container.Children.Add(child);
+
+            AggregateException exception = Assert.Throws<AggregateException>(
+                () => DynamicWidgetHomeView.DisposeChildViews(container));
+
+            Assert.Equal(
+                new Exception[] { disposeFailure, releaseFailure },
+                exception.Flatten().InnerExceptions);
+            Assert.Equal(1, child.DisposeCount);
+            Assert.Equal(1, child.ManagedReleaseCount);
+        });
+    }
+
+    [Fact]
+    public void DisposeChildViews_ReleasesNestedManagedChild()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var container = new Grid();
+            var wrapper = new Grid();
+            var child = new ManagedOnlyWidget();
+            wrapper.Children.Add(child);
+            container.Children.Add(wrapper);
+
+            DynamicWidgetHomeView.DisposeChildViews(container);
+
+            Assert.Equal(1, child.ManagedReleaseCount);
+        });
+    }
+
+    [Fact]
+    public void DisposeChildViews_WhenOneChildFails_AttemptsAllChildren()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var disposeFailure = new InvalidOperationException("dispose");
+            var container = new Grid();
+            var failingChild = new ManagedDisposableWidget
+            {
+                DisposeException = disposeFailure
+            };
+            var succeedingChild = new DisposableWidget();
+            container.Children.Add(failingChild);
+            container.Children.Add(succeedingChild);
+
+            AggregateException exception = Assert.Throws<AggregateException>(
+                () => DynamicWidgetHomeView.DisposeChildViews(container));
+
+            Assert.Contains(disposeFailure, exception.Flatten().InnerExceptions);
+            Assert.Equal(1, failingChild.DisposeCount);
+            Assert.Equal(1, failingChild.ManagedReleaseCount);
+            Assert.Equal(1, succeedingChild.DisposeCount);
+        });
+    }
+
+    [Fact]
     public void MediaControlsWidgetView_LyricScrollSucceedsWhenContainerAppearsLater()
     {
         StaTestRunner.Run(() =>
@@ -874,6 +995,40 @@ public sealed class HomeWidgetViewLifecycleTests
             if (DisposeException is not null)
             {
                 throw DisposeException;
+            }
+        }
+    }
+
+    private sealed class ManagedOnlyWidget : FrameworkElement, IHomeHudManagedResource
+    {
+        internal int ManagedReleaseCount { get; private set; }
+
+        public void ReleaseManagedResources() => ManagedReleaseCount++;
+    }
+
+    private sealed class ManagedDisposableWidget : FrameworkElement, IDisposable,
+        IHomeHudManagedResource
+    {
+        internal int DisposeCount { get; private set; }
+        internal int ManagedReleaseCount { get; private set; }
+        internal Exception? DisposeException { get; init; }
+        internal Exception? ManagedReleaseException { get; init; }
+
+        public void Dispose()
+        {
+            DisposeCount++;
+            if (DisposeException is not null)
+            {
+                throw DisposeException;
+            }
+        }
+
+        public void ReleaseManagedResources()
+        {
+            ManagedReleaseCount++;
+            if (ManagedReleaseException is not null)
+            {
+                throw ManagedReleaseException;
             }
         }
     }

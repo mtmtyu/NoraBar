@@ -254,7 +254,9 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable, IHomeHudM
     {
         var resourcesRequiringRelease = new HashSet<IHomeHudManagedResource>(
             ReferenceEqualityComparer.Instance);
-        DisposeChildViews(container, resourcesRequiringRelease);
+        BestEffortResourceReleaser.ReleaseAll(
+            () => DisposeChildViews(container, resourcesRequiringRelease),
+            () => ReleaseManagedResources(resourcesRequiringRelease));
     }
 
     private static void DisposeChildViews(
