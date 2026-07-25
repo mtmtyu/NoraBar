@@ -65,7 +65,7 @@ public sealed class HomeWidgetViewLifecycleTests
         StaTestRunner.Run(() =>
         {
             var view = new DisposableWidget();
-            var viewModel = new HomeHudViewModel(new MainViewModel());
+            var viewModel = new TrackingDisposable();
             var preview = new HomeHudPreview(
                 view,
                 new HudSize(100, 100),
@@ -75,9 +75,94 @@ public sealed class HomeWidgetViewLifecycleTests
             preview.Dispose();
 
             Assert.Equal(1, view.DisposeCount);
+            Assert.Equal(1, viewModel.DisposeCount);
         });
     }
 
+    [Fact]
+    public void HomeHudPreview_WhenViewDisposalThrows_StillDisposesViewModel()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var view = new DisposableWidget
+            {
+                DisposeException = new InvalidOperationException("view")
+            };
+            var viewModel = new TrackingDisposable();
+            var preview = new HomeHudPreview(
+                view,
+                new HudSize(100, 100),
+                viewModel);
+
+            AggregateException exception = Assert.Throws<AggregateException>(preview.Dispose);
+            preview.Dispose();
+
+            Assert.Single(exception.InnerExceptions);
+            Assert.Equal(1, view.DisposeCount);
+            Assert.Equal(1, viewModel.DisposeCount);
+        });
+    }
+
+    [Fact]
+    public void CustomizerCleanup_UnsubscribesPreviewAndIsIdempotent()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new HomeWidgetCustomizerWindow();
+            var viewModel = new HomeWidgetCustomizerViewModel([]);
+            window.DataContext = viewModel;
+
+            Assert.Contains(
+                GetEventHandlers(
+                    viewModel,
+                    typeof(HomeWidgetCustomizerViewModel),
+                    nameof(HomeWidgetCustomizerViewModel.PreviewInvalidated)),
+                handler => ReferenceEquals(handler.Target, window));
+
+            window.CleanupPreviewResources();
+            window.CleanupPreviewResources();
+
+            Assert.DoesNotContain(
+                GetEventHandlers(
+                    viewModel,
+                    typeof(HomeWidgetCustomizerViewModel),
+                    nameof(HomeWidgetCustomizerViewModel.PreviewInvalidated)),
+                handler => ReferenceEquals(handler.Target, window));
+        });
+    }
+
+    [Fact]
+    public void SettingsPreviewCleanup_DisposesAndClearsOwnedPreview()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var view = new DisposableWidget
+            {
+                DisposeException = new InvalidOperationException("view")
+            };
+            var viewModel = new TrackingDisposable();
+            var preview = new HomeHudPreview(
+                view,
+                new HudSize(100, 100),
+                viewModel);
+            HomeHudPreview? ownedPreview = preview;
+            object? content = view;
+
+            Assert.Throws<AggregateException>(() => HomePreviewLifecycle.Cleanup(
+                ownedPreview,
+                () => ownedPreview = null,
+                () => content = null));
+            HomePreviewLifecycle.Cleanup(
+                ownedPreview,
+                () => ownedPreview = null,
+                () => content = null);
+
+            Assert.Null(content);
+            Assert.Null(ownedPreview);
+            Assert.Equal(1, view.DisposeCount);
+            Assert.Equal(1, viewModel.DisposeCount);
+        });
+    }
     private static IReadOnlyList<Delegate> GetPropertyChangedHandlers(
         MusicViewModel viewModel)
     {
@@ -89,7 +174,34 @@ public sealed class HomeWidgetViewLifecycleTests
         return handlers?.GetInvocationList() ?? [];
     }
 
+    private static IReadOnlyList<Delegate> GetEventHandlers(
+        object publisher,
+        Type declaringType,
+        string eventName)
+    {
+        FieldInfo eventField = Assert.IsAssignableFrom<FieldInfo>(
+            declaringType.GetField(
+                eventName,
+                BindingFlags.Instance | BindingFlags.NonPublic));
+        var handlers = eventField.GetValue(publisher) as MulticastDelegate;
+        return handlers?.GetInvocationList() ?? [];
+    }
     private sealed class DisposableWidget : FrameworkElement, IDisposable
+    {
+        internal int DisposeCount { get; private set; }
+        internal Exception? DisposeException { get; init; }
+
+        public void Dispose()
+        {
+            DisposeCount++;
+            if (DisposeException is not null)
+            {
+                throw DisposeException;
+            }
+        }
+    }
+
+    private sealed class TrackingDisposable : IDisposable
     {
         internal int DisposeCount { get; private set; }
 

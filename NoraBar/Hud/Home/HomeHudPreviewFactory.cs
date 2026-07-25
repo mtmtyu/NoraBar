@@ -1,17 +1,18 @@
 using System.Windows;
+using NoraBar.Services;
 using NoraBar.ViewModels;
 
 namespace NoraBar.Hud.Home;
 
 internal sealed class HomeHudPreview : IDisposable
 {
-    private readonly HomeHudViewModel _viewModel;
+    private readonly IDisposable _viewModel;
     private bool _isDisposed;
 
     internal HomeHudPreview(
         FrameworkElement view,
         HudSize preferredSize,
-        HomeHudViewModel viewModel)
+        IDisposable viewModel)
     {
         View = view;
         PreferredSize = preferredSize;
@@ -30,17 +31,27 @@ internal sealed class HomeHudPreview : IDisposable
         }
 
         _isDisposed = true;
-        try
-        {
-            (View as IDisposable)?.Dispose();
-        }
-        finally
-        {
-            _viewModel.Dispose();
-        }
+        BestEffortResourceReleaser.ReleaseAll(
+            () => (View as IDisposable)?.Dispose(),
+            _viewModel.Dispose);
     }
 }
 
+internal static class HomePreviewLifecycle
+{
+    internal static void Cleanup(
+        IDisposable? preview,
+        Action clearOwnership,
+        Action clearContent)
+    {
+        ArgumentNullException.ThrowIfNull(clearOwnership);
+        ArgumentNullException.ThrowIfNull(clearContent);
+        BestEffortResourceReleaser.ReleaseAll(
+            () => preview?.Dispose(),
+            clearOwnership,
+            clearContent);
+    }
+}
 internal static class HomeHudPreviewFactory
 {
     internal static HomeHudPreview Create(MainViewModel mainViewModel)

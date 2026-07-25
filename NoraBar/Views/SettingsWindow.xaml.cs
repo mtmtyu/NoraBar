@@ -5,6 +5,7 @@ using System.Windows.Input;
 using NoraBar.Hud.Music;
 using NoraBar.Hud;
 using NoraBar.Hud.Home;
+using NoraBar.Services;
 using NoraBar.Views.Home;
 using NoraBar.ViewModels;
 using NoraBar.Views.Helpers;
@@ -28,6 +29,7 @@ namespace NoraBar.Views
         public void ShowWindow()
         {
             this.Show();
+            UpdatePreview();
             this.Activate();
             if (this.WindowState == WindowState.Minimized)
             {
@@ -68,8 +70,7 @@ namespace NoraBar.Views
                         _viewModel.HudNavigation.PropertyChanged -= HudNavigation_PropertyChanged;
                     }
                 }
-                _homePreview?.Dispose();
-                _homePreview = null;
+                SuspendPreview();
             };
         }
 
@@ -126,13 +127,13 @@ namespace NoraBar.Views
                     sb = sb.Clone();
                     sb.Completed += (s, ev) =>
                     {
-                        this.Hide();
+                        SuspendPreviewAndHide();
                     };
                     sb.Begin(this);
                 }
                 else
                 {
-                    this.Hide();
+                    SuspendPreviewAndHide();
                 }
             }
         }
@@ -273,12 +274,28 @@ namespace NoraBar.Views
             }
         }
 
+        private void SuspendPreviewAndHide() =>
+            BestEffortResourceReleaser.ReleaseAll(
+                SuspendPreview,
+                Hide);
+        internal void SuspendPreview()
+        {
+            HomeHudPreview? preview = _homePreview;
+            HomePreviewLifecycle.Cleanup(
+                preview,
+                () => _homePreview = null,
+                () => PreviewHost.Content = null);
+        }
+
         private void UpdatePreview()
         {
             if (_viewModel == null) return;
 
-            _homePreview?.Dispose();
-            _homePreview = null;
+            SuspendPreview();
+            if (!IsVisible)
+            {
+                return;
+            }
 
             if (string.Equals(
                     _viewModel.HudNavigation?.SelectedSettingsHudId,

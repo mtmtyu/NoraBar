@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using NoraBar.Hud.Home;
+using NoraBar.Services;
 using NoraBar.ViewModels;
 using NoraBar.Views.Helpers;
 
@@ -27,14 +28,33 @@ public partial class HomeWidgetCustomizerWindow : Window
         });
 
         DataContextChanged += HomeWidgetCustomizerWindow_DataContextChanged;
-        Closed += (s, e) =>
-        {
-            _previewView?.Dispose();
-            _previewView = null;
-            LivePreviewHost.Content = null;
-            _previewHomeViewModel?.Dispose();
-            _previewHomeViewModel = null;
-        };
+        Closed += HomeWidgetCustomizerWindow_Closed;
+    }
+
+    private void HomeWidgetCustomizerWindow_Closed(object? sender, EventArgs e) =>
+        CleanupPreviewResources();
+
+    internal void CleanupPreviewResources()
+    {
+        HomeWidgetCustomizerViewModel? customizerViewModel =
+            DataContext as HomeWidgetCustomizerViewModel;
+        DynamicWidgetHomeView? previewView = _previewView;
+        HomeHudViewModel? previewHomeViewModel = _previewHomeViewModel;
+
+        BestEffortResourceReleaser.ReleaseAll(
+            () =>
+            {
+                if (customizerViewModel is not null)
+                {
+                    customizerViewModel.PreviewInvalidated -= CustomizerVm_PreviewInvalidated;
+                }
+            },
+            () => DataContextChanged -= HomeWidgetCustomizerWindow_DataContextChanged,
+            () => previewView?.Dispose(),
+            () => _previewView = null,
+            () => LivePreviewHost.Content = null,
+            () => previewHomeViewModel?.Dispose(),
+            () => _previewHomeViewModel = null);
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
