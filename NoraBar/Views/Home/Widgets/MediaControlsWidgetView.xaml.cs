@@ -43,6 +43,8 @@ public partial class MediaControlsWidgetView : UserControl, IDisposable
     internal bool HasPendingLyricScroll =>
         _pendingLyricScroll is not null || _lyricScrollCancellation is not null;
 
+    internal bool IsDisposed => _isDisposed;
+
     public void SetStyle(HomeWidgetStyle style)
     {
         if (_isDisposed)

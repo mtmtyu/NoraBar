@@ -7,7 +7,7 @@
              Drop="DynamicWidgetHomeView_Drop">
     <Grid>
         <Border x:Name="RootIslandBorder"
-                Style="{StaticResource IslandBorderStyle}"
+                Style="{DynamicResource IslandBorderStyle}"
                 Padding="12,8">
             <ScrollViewer x:Name="WidgetsScrollViewer"
                           VerticalScrollBarVisibility="Auto"

@@ -6,7 +6,7 @@ using NoraBar.ViewModels;
 
 namespace NoraBar.Hud.Home;
 
-internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSource
+internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSource, IHomeWidgetPresentationSource
 {
     private static readonly TimeSpan ClockInterval = TimeSpan.FromSeconds(1);
 

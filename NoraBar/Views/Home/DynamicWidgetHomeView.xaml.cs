@@ -3,9 +3,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using NoraBar.Hud.Home;
 using NoraBar.Hud.Home.Widgets;
-using NoraBar.ViewModels;
 using NoraBar.Views.Helpers;
 using NoraBar.Views.Home.Widgets;
 
@@ -16,7 +16,10 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable
     private Point _dragStartPoint;
     private int _draggedWidgetIndex = -1;
     private WrapPanelAnimatedReorderHelper? _reorderHelper;
+    private DispatcherOperation? _pendingRebuild;
     private bool _isDisposed;
+
+    internal int RebuildCount { get; private set; }
 
     public DynamicWidgetHomeView()
     {
@@ -26,12 +29,12 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable
 
     private void DynamicWidgetHomeView_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        if (e.OldValue is INotifyPropertyChanged oldVm)
+        if (e.OldValue is IHomeWidgetPresentationSource oldVm)
         {
             oldVm.PropertyChanged -= ViewModel_PropertyChanged;
         }
 
-        if (e.NewValue is INotifyPropertyChanged newVm)
+        if (e.NewValue is IHomeWidgetPresentationSource newVm)
         {
             newVm.PropertyChanged += ViewModel_PropertyChanged;
         }
@@ -41,27 +44,55 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(HomeHudViewModel.ActiveWidgets)
-            or nameof(HomeHudViewModel.MaxWidgetWidth)
-            or nameof(HomeHudViewModel.MaxWidgetHeight)
-            or nameof(HomeHudViewModel.IsWidgetEditMode))
+        if (e.PropertyName is nameof(IHomeWidgetPresentationSource.ActiveWidgets)
+            or nameof(IHomeWidgetPresentationSource.MaxWidgetWidth)
+            or nameof(IHomeWidgetPresentationSource.MaxWidgetHeight)
+            or nameof(IHomeWidgetPresentationSource.IsWidgetEditMode))
         {
-            RebuildWidgets();
+            ScheduleRebuild();
         }
+    }
+
+    private void ScheduleRebuild()
+    {
+        if (_isDisposed || _pendingRebuild is not null)
+        {
+            return;
+        }
+
+        _pendingRebuild = Dispatcher.InvokeAsync(
+            () =>
+            {
+                _pendingRebuild = null;
+                RebuildWidgets();
+            },
+            DispatcherPriority.DataBind);
+    }
+
+    private void CancelPendingRebuild()
+    {
+        if (_pendingRebuild?.Status == DispatcherOperationStatus.Pending)
+        {
+            _pendingRebuild.Abort();
+        }
+
+        _pendingRebuild = null;
     }
 
     public void RebuildWidgets()
     {
+        CancelPendingRebuild();
         if (_isDisposed)
         {
             return;
         }
 
+        RebuildCount++;
         _reorderHelper = null;
         DisposeChildViews(WidgetsContainer);
         WidgetsContainer.Children.Clear();
 
-        if (DataContext is not HomeHudViewModel vm || vm.ActiveWidgets is null)
+        if (DataContext is not IHomeWidgetPresentationSource vm)
         {
             return;
         }
@@ -104,8 +135,9 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable
         }
 
         _isDisposed = true;
+        CancelPendingRebuild();
         DataContextChanged -= DynamicWidgetHomeView_DataContextChanged;
-        if (DataContext is INotifyPropertyChanged viewModel)
+        if (DataContext is IHomeWidgetPresentationSource viewModel)
         {
             viewModel.PropertyChanged -= ViewModel_PropertyChanged;
         }
@@ -145,7 +177,7 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable
         UIElement innerWidget,
         HomeWidgetConfig widgetConfig,
         int index,
-        HomeHudViewModel vm)
+        IHomeWidgetPresentationSource vm)
     {
         HomeWidgetLayoutSize size = HomeWidgetLayoutMetrics.GetSize(widgetConfig.Style);
         var container = new Grid
@@ -263,7 +295,7 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable
         return container;
     }
 
-    private void EnsureReorderHelper(HomeHudViewModel vm)
+    private void EnsureReorderHelper(IHomeWidgetPresentationSource vm)
     {
         _reorderHelper ??= new WrapPanelAnimatedReorderHelper(WidgetsContainer, (fromIndex, toIndex) =>
         {
@@ -299,7 +331,7 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable
         return false;
     }
 
-    private static void RemoveWidgetAt(int index, HomeHudViewModel vm)
+    private static void RemoveWidgetAt(int index, IHomeWidgetPresentationSource vm)
     {
         List<HomeWidgetConfig> current = vm.ActiveWidgets.ToList();
         if (index < 0 || index >= current.Count)
@@ -311,14 +343,14 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable
         UpdateWidgets(vm, current);
     }
 
-    private static void UpdateWidgets(HomeHudViewModel vm, List<HomeWidgetConfig> newList)
+    private static void UpdateWidgets(IHomeWidgetPresentationSource vm, List<HomeWidgetConfig> newList)
     {
         vm.UpdateActiveWidgets(newList.AsReadOnly());
     }
 
     private void DynamicWidgetHomeView_DragOver(object sender, DragEventArgs e)
     {
-        if (DataContext is not HomeHudViewModel vm || !vm.IsWidgetEditMode)
+        if (DataContext is not IHomeWidgetPresentationSource vm || !vm.IsWidgetEditMode)
         {
             e.Effects = DragDropEffects.None;
             e.Handled = true;
@@ -342,7 +374,7 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable
 
     private void DynamicWidgetHomeView_Drop(object sender, DragEventArgs e)
     {
-        if (DataContext is not HomeHudViewModel vm || !vm.IsWidgetEditMode)
+        if (DataContext is not IHomeWidgetPresentationSource vm || !vm.IsWidgetEditMode)
         {
             return;
         }
@@ -402,7 +434,7 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable
         return WidgetsContainer.Children.Count;
     }
 
-    private static UIElement? CreateWidgetElement(HomeWidgetConfig widget, HomeHudViewModel vm)
+    private static UIElement? CreateWidgetElement(HomeWidgetConfig widget, IHomeWidgetPresentationSource vm)
     {
         switch (widget.Type)
         {

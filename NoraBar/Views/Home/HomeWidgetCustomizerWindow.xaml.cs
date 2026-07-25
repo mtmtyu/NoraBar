@@ -106,10 +106,6 @@ public partial class HomeWidgetCustomizerWindow : Window
                 _previewView = new DynamicWidgetHomeView();
                 _previewView.DataContext = _previewHomeViewModel;
             }
-            else
-            {
-                _previewView.RebuildWidgets();
-            }
 
             LivePreviewHost.Content = _previewView;
         }

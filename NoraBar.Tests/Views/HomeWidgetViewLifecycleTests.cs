@@ -1,9 +1,12 @@
 using System.ComponentModel;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using NoraBar.Hud;
 using NoraBar.Hud.Home;
+using NoraBar.Hud.Home.Widgets;
 using NoraBar.ViewModels;
 using NoraBar.Views.Home;
 using NoraBar.Views.Home.Widgets;
@@ -262,6 +265,159 @@ public sealed class HomeWidgetViewLifecycleTests
         });
     }
 
+    [Fact]
+    public void RebuildWidgets_ReplacesNestedWidgetAndRemovesItsSubscription()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var source = new FakeHomeWidgetSource(
+                [new HomeWidgetConfig("media", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact)]);
+            var view = new DynamicWidgetHomeView { DataContext = source };
+            FrameworkElement oldWrapper = Assert.IsAssignableFrom<FrameworkElement>(
+                Assert.Single(view.WidgetsContainer.Children));
+            MediaControlsWidgetView oldWidget = Assert.IsType<MediaControlsWidgetView>(
+                FindDescendant<MediaControlsWidgetView>(oldWrapper));
+            oldWidget.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+            Assert.Equal(1, source.SubscriptionCountFor(oldWidget));
+
+            source.ActiveWidgets =
+                [new HomeWidgetConfig("clock", HomeWidgetType.DigitalClock, HomeWidgetStyle.ClockMinimal)];
+            source.RaisePropertyChanged(nameof(IHomeWidgetPresentationSource.ActiveWidgets));
+            Dispatcher.CurrentDispatcher.Invoke(
+                () => { },
+                DispatcherPriority.ContextIdle);
+            FrameworkElement newWrapper = Assert.IsAssignableFrom<FrameworkElement>(
+                Assert.Single(view.WidgetsContainer.Children));
+
+            Assert.NotSame(oldWrapper, newWrapper);
+            Assert.Null(FindDescendant<MediaControlsWidgetView>(newWrapper));
+            Assert.True(oldWidget.IsDisposed);
+            Assert.Equal(0, source.SubscriptionCountFor(oldWidget));
+            view.Dispose();
+        });
+    }
+
+    [Fact]
+    public void RebuildWidgets_RepeatedRequestsCreateOnlyOneNewTree()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var source = new FakeHomeWidgetSource(
+                [new HomeWidgetConfig("media", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact)]);
+            var view = new DynamicWidgetHomeView { DataContext = source };
+            int initialRebuildCount = view.RebuildCount;
+
+            source.RaisePropertyChanged(nameof(IHomeWidgetPresentationSource.ActiveWidgets));
+            source.RaisePropertyChanged(nameof(IHomeWidgetPresentationSource.MaxWidgetWidth));
+            source.RaisePropertyChanged(nameof(IHomeWidgetPresentationSource.MaxWidgetHeight));
+            Dispatcher.CurrentDispatcher.Invoke(
+                () => { },
+                DispatcherPriority.ContextIdle);
+
+            Assert.Equal(initialRebuildCount + 1, view.RebuildCount);
+            Assert.Single(view.WidgetsContainer.Children);
+            view.Dispose();
+        });
+    }
+
+    [Fact]
+    public void RebuildWidgets_RepeatedRebuildsDoNotAccumulateWidgetSubscriptions()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var source = new FakeHomeWidgetSource(
+                [new HomeWidgetConfig("media", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact)]);
+            var view = new DynamicWidgetHomeView { DataContext = source };
+            MediaControlsWidgetView currentWidget = Assert.IsType<MediaControlsWidgetView>(
+                FindDescendant<MediaControlsWidgetView>(
+                    Assert.IsAssignableFrom<FrameworkElement>(
+                        Assert.Single(view.WidgetsContainer.Children))));
+            currentWidget.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+
+            for (int rebuild = 0; rebuild < 3; rebuild++)
+            {
+                MediaControlsWidgetView oldWidget = currentWidget;
+                source.RaisePropertyChanged(nameof(IHomeWidgetPresentationSource.ActiveWidgets));
+                Dispatcher.CurrentDispatcher.Invoke(
+                    () => { },
+                    DispatcherPriority.ContextIdle);
+                currentWidget = Assert.IsType<MediaControlsWidgetView>(
+                    FindDescendant<MediaControlsWidgetView>(
+                        Assert.IsAssignableFrom<FrameworkElement>(
+                            Assert.Single(view.WidgetsContainer.Children))));
+                currentWidget.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+
+                Assert.True(oldWidget.IsDisposed);
+                Assert.Equal(0, source.SubscriptionCountFor(oldWidget));
+                Assert.Equal(1, source.SubscriptionCountFor(currentWidget));
+            }
+
+            view.Dispose();
+            Assert.Equal(0, source.SubscriptionCountFor(currentWidget));
+        });
+    }
+
+    [Fact]
+    public void RebuildWidgets_RemovedMediaWidgetCanBeCollected()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var source = new FakeHomeWidgetSource(
+                [new HomeWidgetConfig("media", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact)]);
+            var view = new DynamicWidgetHomeView { DataContext = source };
+
+            WeakReference oldWidget = RebuildAndReleaseOldMediaWidget(view, source);
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+
+            Assert.False(oldWidget.IsAlive);
+            view.Dispose();
+        });
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static WeakReference RebuildAndReleaseOldMediaWidget(
+        DynamicWidgetHomeView view,
+        FakeHomeWidgetSource source)
+    {
+        FrameworkElement wrapper = Assert.IsAssignableFrom<FrameworkElement>(
+            Assert.Single(view.WidgetsContainer.Children));
+        MediaControlsWidgetView widget = Assert.IsType<MediaControlsWidgetView>(
+            FindDescendant<MediaControlsWidgetView>(wrapper));
+        widget.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+        var weakReference = new WeakReference(widget);
+
+        source.ActiveWidgets =
+            [new HomeWidgetConfig("clock", HomeWidgetType.DigitalClock, HomeWidgetStyle.ClockMinimal)];
+        source.RaisePropertyChanged(nameof(IHomeWidgetPresentationSource.ActiveWidgets));
+        Dispatcher.CurrentDispatcher.Invoke(
+            () => { },
+            DispatcherPriority.ContextIdle);
+        return weakReference;
+    }
+
+    private static T? FindDescendant<T>(DependencyObject root)
+        where T : DependencyObject
+    {
+        for (int index = 0; index < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            DependencyObject child = System.Windows.Media.VisualTreeHelper.GetChild(root, index);
+            if (child is T match)
+            {
+                return match;
+            }
+
+            T? descendant = FindDescendant<T>(child);
+            if (descendant is not null)
+            {
+                return descendant;
+            }
+        }
+
+        return null;
+    }
+
     private static IReadOnlyList<Delegate> GetEventHandlers(
         object publisher,
         Type declaringType,
@@ -273,6 +429,59 @@ public sealed class HomeWidgetViewLifecycleTests
                 BindingFlags.Instance | BindingFlags.NonPublic));
         var handlers = eventField.GetValue(publisher) as MulticastDelegate;
         return handlers?.GetInvocationList() ?? [];
+    }
+
+    private sealed class FakeHomeWidgetSource : IHomeWidgetPresentationSource, IMusicChangeSource
+    {
+        private readonly HashSet<PropertyChangedEventHandler> _handlers = [];
+
+        internal FakeHomeWidgetSource(IReadOnlyList<HomeWidgetConfig> activeWidgets)
+        {
+            ActiveWidgets = activeWidgets;
+        }
+
+        public IReadOnlyList<HomeWidgetConfig> ActiveWidgets { get; set; }
+
+        public double MaxWidgetWidth { get; set; } = 800;
+
+        public double MaxWidgetHeight { get; set; } = 300;
+
+        public bool IsWidgetEditMode { get; set; }
+
+        public int CurrentLyricIndex { get; set; }
+
+        public event PropertyChangedEventHandler? PropertyChanged
+        {
+            add
+            {
+                if (value is not null)
+                {
+                    _handlers.Add(value);
+                }
+            }
+            remove
+            {
+                if (value is not null)
+                {
+                    _handlers.Remove(value);
+                }
+            }
+        }
+
+        public void UpdateActiveWidgets(IReadOnlyList<HomeWidgetConfig> widgets) =>
+            ActiveWidgets = widgets;
+
+        internal int SubscriptionCountFor(object target) =>
+            _handlers.Count(handler => ReferenceEquals(handler.Target, target));
+
+        internal void RaisePropertyChanged(string propertyName)
+        {
+            var eventArgs = new PropertyChangedEventArgs(propertyName);
+            foreach (PropertyChangedEventHandler handler in _handlers.ToArray())
+            {
+                handler(this, eventArgs);
+            }
+        }
     }
 
     private sealed class FakeMusicChangeSource : IMusicChangeSource
