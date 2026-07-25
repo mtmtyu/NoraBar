@@ -14,7 +14,7 @@ using NoraBar.ViewModels;
 
 namespace NoraBar.Views.Home.Widgets;
 
-public partial class MediaControlsWidgetView : UserControl, IDisposable
+public partial class MediaControlsWidgetView : UserControl, IDisposable, IHomeHudManagedResource
 {
     private const int MaxLyricContainerAttempts = 5;
 
@@ -88,6 +88,8 @@ public partial class MediaControlsWidgetView : UserControl, IDisposable
         CancelPendingLyricScroll();
         DataContext = null;
     }
+
+    public void ReleaseManagedResources() => DetachMusicSource();
 
     private void MediaControlsWidgetView_Loaded(object sender, RoutedEventArgs e)
     {

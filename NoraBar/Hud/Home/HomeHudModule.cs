@@ -8,10 +8,14 @@ namespace NoraBar.Hud.Home;
 
 internal sealed class HomeHudModule : IHudModule
 {
+    private static readonly TimeSpan DefaultViewDisposalTimeout =
+        TimeSpan.FromSeconds(5);
+
     private readonly object _syncRoot = new();
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
     private readonly IHomeHudPresentationSource _source;
     private readonly Func<HomeHudDesignVariant, FrameworkElement> _createView;
+    private readonly TimeSpan _viewDisposalTimeout;
     private readonly Dictionary<HomeHudDesignVariant, FrameworkElement> _views = [];
     private Dispatcher? _viewDispatcher;
     private Task? _disposeTask;
@@ -27,12 +31,18 @@ internal sealed class HomeHudModule : IHudModule
 
     internal HomeHudModule(
         IHomeHudPresentationSource source,
-        Func<HomeHudDesignVariant, FrameworkElement> createView)
+        Func<HomeHudDesignVariant, FrameworkElement> createView,
+        TimeSpan? viewDisposalTimeout = null)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(createView);
         _source = source;
         _createView = createView;
+        _viewDisposalTimeout = viewDisposalTimeout ?? DefaultViewDisposalTimeout;
+        if (_viewDisposalTimeout <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(viewDisposalTimeout));
+        }
     }
 
     public string Id => BuiltInHudIds.Home;
@@ -119,8 +129,10 @@ internal sealed class HomeHudModule : IHudModule
         FrameworkElement created = _createView(variant);
         if (created.Dispatcher != dispatcher)
         {
-            throw new InvalidOperationException(
-                "ホームHUDのViewは現在のDispatcherで生成する必要があります。");
+            ThrowAfterRejectedViewCleanup(
+                created,
+                new InvalidOperationException(
+                    "ホームHUDのViewは現在のDispatcherで生成する必要があります。"));
         }
 
         FrameworkElement? selected = null;
@@ -148,14 +160,14 @@ internal sealed class HomeHudModule : IHudModule
             }
         }
 
-        if (!ReferenceEquals(selected, created))
-        {
-            (created as IDisposable)?.Dispose();
-        }
-
         if (rejectionException is not null)
         {
-            ExceptionDispatchInfo.Capture(rejectionException).Throw();
+            ThrowAfterRejectedViewCleanup(created, rejectionException);
+        }
+
+        if (!ReferenceEquals(selected, created))
+        {
+            DisposeView(created);
         }
 
         selected!.DataContext = _source.ViewDataContext;
@@ -258,7 +270,11 @@ internal sealed class HomeHudModule : IHudModule
                 }
             }
 
-            await DisposeViewsAsync(views, dispatcher, exceptions);
+            await DisposeViewsAsync(
+                views,
+                dispatcher,
+                _viewDisposalTimeout,
+                exceptions);
 
             try
             {
@@ -295,9 +311,15 @@ internal sealed class HomeHudModule : IHudModule
     private static async Task DisposeViewsAsync(
         IReadOnlyList<FrameworkElement> views,
         Dispatcher? dispatcher,
+        TimeSpan timeout,
         ICollection<Exception> exceptions)
     {
         if (views.Count == 0 || dispatcher is null)
+        {
+            return;
+        }
+
+        if (!views.Any(view => view is IDisposable or IHomeHudManagedResource))
         {
             return;
         }
@@ -325,16 +347,125 @@ internal sealed class HomeHudModule : IHudModule
 
         if (dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
         {
+            ReleaseManagedResources(views, exceptions);
+            exceptions.Add(new InvalidOperationException(
+                "Home HUD views could not be disposed because their Dispatcher is shutting down."));
             return;
         }
 
+        DispatcherOperation operation = dispatcher.InvokeAsync(
+            DisposeViews,
+            DispatcherPriority.Send);
         try
         {
-            await dispatcher.InvokeAsync(DisposeViews, DispatcherPriority.Send).Task;
+            await operation.Task.WaitAsync(timeout);
+        }
+        catch (TimeoutException)
+        {
+            operation.Abort();
+            ReleaseManagedResources(views, exceptions);
+            exceptions.Add(new TimeoutException(
+                $"Home HUD view disposal did not complete within {timeout}."));
         }
         catch (Exception exception)
         {
+            ReleaseManagedResources(views, exceptions);
             exceptions.Add(exception);
+        }
+    }
+
+    private void ThrowAfterRejectedViewCleanup(
+        FrameworkElement view,
+        Exception rejectionException)
+    {
+        List<Exception> cleanupExceptions = [];
+        DisposeViewOnOwningDispatcher(view, _viewDisposalTimeout, cleanupExceptions);
+        if (cleanupExceptions.Count > 0)
+        {
+            throw new AggregateException(
+                "Home HUD view rejection and cleanup failed.",
+                [rejectionException, .. cleanupExceptions]);
+        }
+
+        ExceptionDispatchInfo.Capture(rejectionException).Throw();
+    }
+
+    private static void DisposeView(FrameworkElement view)
+    {
+        if (view is IDisposable disposable)
+        {
+            disposable.Dispose();
+        }
+    }
+
+    private static void DisposeViewOnOwningDispatcher(
+        FrameworkElement view,
+        TimeSpan timeout,
+        ICollection<Exception> exceptions)
+    {
+        if (view is not IDisposable && view is not IHomeHudManagedResource)
+        {
+            return;
+        }
+
+        Dispatcher dispatcher = view.Dispatcher;
+        if (dispatcher.CheckAccess())
+        {
+            try
+            {
+                DisposeView(view);
+            }
+            catch (Exception exception)
+            {
+                exceptions.Add(exception);
+            }
+
+            return;
+        }
+
+        if (dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
+        {
+            ReleaseManagedResources([view], exceptions);
+            exceptions.Add(new InvalidOperationException(
+                "A rejected Home HUD view could not be disposed because its Dispatcher is shutting down."));
+            return;
+        }
+
+        DispatcherOperation operation = dispatcher.InvokeAsync(
+            () => DisposeView(view),
+            DispatcherPriority.Send);
+        try
+        {
+            operation.Task.WaitAsync(timeout).GetAwaiter().GetResult();
+        }
+        catch (TimeoutException)
+        {
+            operation.Abort();
+            ReleaseManagedResources([view], exceptions);
+            exceptions.Add(new TimeoutException(
+                $"Rejected Home HUD view disposal did not complete within {timeout}."));
+        }
+        catch (Exception exception)
+        {
+            ReleaseManagedResources([view], exceptions);
+            exceptions.Add(exception);
+        }
+    }
+
+    private static void ReleaseManagedResources(
+        IEnumerable<FrameworkElement> views,
+        ICollection<Exception> exceptions)
+    {
+        foreach (IHomeHudManagedResource view in views.OfType<IHomeHudManagedResource>())
+        {
+            try
+            {
+                view.ReleaseManagedResources();
+            }
+            catch (Exception exception)
+            {
+                exceptions.Add(exception);
+            }
         }
     }
 

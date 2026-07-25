@@ -6,17 +6,21 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using NoraBar.Hud.Home;
 using NoraBar.Hud.Home.Widgets;
+using NoraBar.Services;
 using NoraBar.Views.Helpers;
 using NoraBar.Views.Home.Widgets;
 
 namespace NoraBar.Views.Home;
 
-public partial class DynamicWidgetHomeView : UserControl, IDisposable
+public partial class DynamicWidgetHomeView : UserControl, IDisposable, IHomeHudManagedResource
 {
+    private readonly object _managedResourcesLock = new();
+    private readonly List<IHomeHudManagedResource> _managedChildResources = [];
     private Point _dragStartPoint;
     private int _draggedWidgetIndex = -1;
     private WrapPanelAnimatedReorderHelper? _reorderHelper;
     private DispatcherOperation? _pendingRebuild;
+    private IHomeWidgetPresentationSource? _subscribedSource;
     private bool _isDisposed;
 
     internal int RebuildCount { get; private set; }
@@ -32,11 +36,16 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable
         if (e.OldValue is IHomeWidgetPresentationSource oldVm)
         {
             oldVm.PropertyChanged -= ViewModel_PropertyChanged;
+            if (ReferenceEquals(_subscribedSource, oldVm))
+            {
+                _subscribedSource = null;
+            }
         }
 
         if (e.NewValue is IHomeWidgetPresentationSource newVm)
         {
             newVm.PropertyChanged += ViewModel_PropertyChanged;
+            _subscribedSource = newVm;
         }
 
         RebuildWidgets();
@@ -91,6 +100,7 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable
         _reorderHelper = null;
         DisposeChildViews(WidgetsContainer);
         WidgetsContainer.Children.Clear();
+        ClearManagedChildResources();
 
         if (DataContext is not IHomeWidgetPresentationSource vm)
         {
@@ -124,6 +134,13 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable
 
             FrameworkElement wrapped = WrapWidgetContainer(element, widget, i, vm);
             WidgetsContainer.Children.Add(wrapped);
+            if (element is IHomeHudManagedResource managedResource)
+            {
+                lock (_managedResourcesLock)
+                {
+                    _managedChildResources.Add(managedResource);
+                }
+            }
         }
     }
 
@@ -142,10 +159,47 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable
             viewModel.PropertyChanged -= ViewModel_PropertyChanged;
         }
 
+        _subscribedSource = null;
+
         _reorderHelper = null;
         DisposeChildViews(WidgetsContainer);
         WidgetsContainer.Children.Clear();
+        ClearManagedChildResources();
         DataContext = null;
+    }
+
+    public void ReleaseManagedResources()
+    {
+        IHomeWidgetPresentationSource? source = Interlocked.Exchange(
+            ref _subscribedSource,
+            null);
+        IHomeHudManagedResource[] children;
+        lock (_managedResourcesLock)
+        {
+            children = _managedChildResources.ToArray();
+            _managedChildResources.Clear();
+        }
+
+        BestEffortResourceReleaser.ReleaseAll(
+            [
+                () =>
+                {
+                    if (source is not null)
+                    {
+                        source.PropertyChanged -= ViewModel_PropertyChanged;
+                    }
+                },
+                .. children.Select<IHomeHudManagedResource, Action>(child =>
+                    child.ReleaseManagedResources)
+            ]);
+    }
+
+    private void ClearManagedChildResources()
+    {
+        lock (_managedResourcesLock)
+        {
+            _managedChildResources.Clear();
+        }
     }
 
     internal static void DisposeChildViews(Panel container)

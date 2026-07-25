@@ -298,6 +298,28 @@ public sealed class HomeWidgetViewLifecycleTests
     }
 
     [Fact]
+    public void ReleaseManagedResources_RemovesHomeAndMediaSubscriptions()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var source = new FakeHomeWidgetSource(
+                [new HomeWidgetConfig("media", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact)]);
+            var view = new DynamicWidgetHomeView { DataContext = source };
+            MediaControlsWidgetView mediaWidget = Assert.IsType<MediaControlsWidgetView>(
+                FindDescendant<MediaControlsWidgetView>(
+                    Assert.IsAssignableFrom<FrameworkElement>(
+                        Assert.Single(view.WidgetsContainer.Children))));
+            mediaWidget.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+            Assert.Equal(2, source.SubscriptionCount);
+
+            view.ReleaseManagedResources();
+
+            Assert.Equal(0, source.SubscriptionCount);
+            view.Dispose();
+        });
+    }
+
+    [Fact]
     public void RebuildWidgets_RepeatedRequestsCreateOnlyOneNewTree()
     {
         StaTestRunner.Run(() =>
@@ -473,6 +495,8 @@ public sealed class HomeWidgetViewLifecycleTests
 
         internal int SubscriptionCountFor(object target) =>
             _handlers.Count(handler => ReferenceEquals(handler.Target, target));
+
+        internal int SubscriptionCount => _handlers.Count;
 
         internal void RaisePropertyChanged(string propertyName)
         {
