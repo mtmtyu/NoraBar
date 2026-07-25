@@ -12,7 +12,7 @@ public sealed class HomeHudModuleTests
     [Fact]
     public void GetView_CachesOneViewPerDesign()
     {
-        RunInSta(() =>
+        StaTestRunner.Run(() =>
         {
             var source = new FakeHomeHudPresentationSource();
             var created = new List<HomeHudDesignVariant>();
@@ -76,7 +76,7 @@ public sealed class HomeHudModuleTests
     [Fact]
     public void DisposeAsync_DisposesCachedViews()
     {
-        RunInSta(() =>
+        StaTestRunner.Run(() =>
         {
             var source = new FakeHomeHudPresentationSource();
             var view = new DisposableFrameworkElement();
@@ -100,7 +100,10 @@ public sealed class HomeHudModuleTests
         {
             view = new DisposableFrameworkElement();
             creationStarted.Set();
-            allowCreation.Wait();
+            if (!allowCreation.Wait(TimeSpan.FromSeconds(5)))
+            {
+                throw new TimeoutException("View creation was not released in time.");
+            }
             return view;
         });
         Exception? getViewException = null;
@@ -114,14 +117,24 @@ public sealed class HomeHudModuleTests
             {
                 getViewException = exception;
             }
-        });
+        })
+        {
+            IsBackground = true
+        };
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
-        Assert.True(creationStarted.Wait(TimeSpan.FromSeconds(5)));
+        try
+        {
+            Assert.True(creationStarted.Wait(TimeSpan.FromSeconds(5)));
+            await module.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        finally
+        {
+            allowCreation.Set();
+            thread.Join(TimeSpan.FromSeconds(5));
+        }
 
-        await module.DisposeAsync();
-        allowCreation.Set();
-        Assert.True(thread.Join(TimeSpan.FromSeconds(5)));
+        Assert.False(thread.IsAlive);
 
         Assert.IsType<ObjectDisposedException>(getViewException);
         Assert.Equal(1, Assert.IsType<DisposableFrameworkElement>(view).DisposeCount);
@@ -132,7 +145,7 @@ public sealed class HomeHudModuleTests
     [Fact]
     public void GetView_WhenCreationLosesCacheRace_DisposesUnusedView()
     {
-        RunInSta(() =>
+        StaTestRunner.Run(() =>
         {
             var source = new FakeHomeHudPresentationSource();
             var unusedView = new DisposableFrameworkElement();
@@ -165,7 +178,7 @@ public sealed class HomeHudModuleTests
     [Fact]
     public void DisposeAsync_WhenCleanupOperationsFail_AttemptsAllAndAggregatesFailures()
     {
-        RunInSta(() =>
+        StaTestRunner.Run(() =>
         {
             var source = new FakeHomeHudPresentationSource
             {
@@ -210,22 +223,40 @@ public sealed class HomeHudModuleTests
             TaskCreationOptions.RunContinuationsAsynchronously);
         var thread = new Thread(() =>
         {
-            Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
-            var view = new DispatcherAwareView();
-            var module = new HomeHudModule(source, _ => view);
-            module.GetView(new HudViewContext(HudPresentationState.Expanded));
-            ready.SetResult((module, dispatcher, view));
-            Dispatcher.Run();
-        });
+            try
+            {
+                Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
+                var view = new DispatcherAwareView();
+                var module = new HomeHudModule(source, _ => view);
+                module.GetView(new HudViewContext(HudPresentationState.Expanded));
+                ready.SetResult((module, dispatcher, view));
+                Dispatcher.Run();
+            }
+            catch (Exception exception)
+            {
+                ready.TrySetException(exception);
+            }
+        })
+        {
+            IsBackground = true
+        };
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
-        var state = await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        (HomeHudModule Module, Dispatcher Dispatcher, DispatcherAwareView View)? state = null;
+        try
+        {
+            state = await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await state.Value.Module.DisposeAsync().AsTask()
+                .WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(thread.ManagedThreadId, state.Value.View.DisposeThreadId);
+        }
+        finally
+        {
+            state?.Dispatcher.BeginInvokeShutdown(DispatcherPriority.Send);
+            thread.Join(TimeSpan.FromSeconds(5));
+        }
 
-        await state.Module.DisposeAsync();
-
-        Assert.Equal(thread.ManagedThreadId, state.View.DisposeThreadId);
-        state.Dispatcher.BeginInvokeShutdown(DispatcherPriority.Send);
-        Assert.True(thread.Join(TimeSpan.FromSeconds(5)));
+        Assert.False(thread.IsAlive);
     }
 
     [Fact]
@@ -264,8 +295,10 @@ public sealed class HomeHudModuleTests
                 (await ready.Task).Dispatcher.BeginInvokeShutdown(DispatcherPriority.Send);
             }
 
-            Assert.True(thread.Join(TimeSpan.FromSeconds(5)));
+            thread.Join(TimeSpan.FromSeconds(5));
         }
+
+        Assert.False(thread.IsAlive);
     }
 
     [Fact]
@@ -304,8 +337,10 @@ public sealed class HomeHudModuleTests
         }
         finally
         {
-            Assert.True(thread.Join(TimeSpan.FromSeconds(5)));
+            thread.Join(TimeSpan.FromSeconds(5));
         }
+
+        Assert.False(thread.IsAlive);
     }
 
     [Fact]
@@ -349,8 +384,10 @@ public sealed class HomeHudModuleTests
         finally
         {
             releaseThread.Set();
-            Assert.True(thread.Join(TimeSpan.FromSeconds(5)));
+            thread.Join(TimeSpan.FromSeconds(5));
         }
+
+        Assert.False(thread.IsAlive);
     }
 
     [Fact]
@@ -397,8 +434,10 @@ public sealed class HomeHudModuleTests
                 (await ready.Task).Dispatcher.BeginInvokeShutdown(DispatcherPriority.Send);
             }
 
-            Assert.True(thread.Join(TimeSpan.FromSeconds(5)));
+            thread.Join(TimeSpan.FromSeconds(5));
         }
+
+        Assert.False(thread.IsAlive);
     }
 
     [Fact]
@@ -417,29 +456,6 @@ public sealed class HomeHudModuleTests
         Assert.Throws<ObjectDisposedException>(
             () => module.GetPreferredSize(
                 new HudViewContext(HudPresentationState.Expanded)));
-    }
-
-    private static void RunInSta(Action action)
-    {
-        Exception? exception = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception caught)
-            {
-                exception = caught;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-        if (exception is not null)
-        {
-            throw exception;
-        }
     }
 
     private sealed class FakeHomeHudPresentationSource : IHomeHudPresentationSource

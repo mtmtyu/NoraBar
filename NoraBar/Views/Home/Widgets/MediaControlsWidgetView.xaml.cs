@@ -16,9 +16,10 @@ namespace NoraBar.Views.Home.Widgets;
 
 public partial class MediaControlsWidgetView : UserControl, IDisposable, IHomeHudManagedResource
 {
-    private const int MaxLyricContainerAttempts = 5;
+    internal const int MaxLyricContainerAttempts = 5;
 
     private readonly Func<bool> _isLoaded;
+    private readonly Func<CancellationToken, bool>? _tryScrollToCurrentLyric;
     private IMusicChangeSource? _musicSource;
     private DispatcherOperation? _pendingLyricScroll;
     private CancellationTokenSource? _lyricScrollCancellation;
@@ -30,9 +31,12 @@ public partial class MediaControlsWidgetView : UserControl, IDisposable, IHomeHu
     {
     }
 
-    internal MediaControlsWidgetView(Func<bool>? isLoaded)
+    internal MediaControlsWidgetView(
+        Func<bool>? isLoaded,
+        Func<CancellationToken, bool>? tryScrollToCurrentLyric = null)
     {
         _isLoaded = isLoaded ?? (() => IsLoaded);
+        _tryScrollToCurrentLyric = tryScrollToCurrentLyric;
         InitializeComponent();
         MediaContentControl.ContentTemplate = Resources["MediaCompactTemplate"] as DataTemplate;
         DataContextChanged += MediaControlsWidgetView_DataContextChanged;
@@ -42,6 +46,9 @@ public partial class MediaControlsWidgetView : UserControl, IDisposable, IHomeHu
 
     internal bool HasPendingLyricScroll =>
         _pendingLyricScroll is not null || _lyricScrollCancellation is not null;
+
+    internal CancellationToken? PendingLyricScrollToken =>
+        _lyricScrollCancellation?.Token;
 
     internal bool IsDisposed => _isDisposed;
 
@@ -207,7 +214,9 @@ public partial class MediaControlsWidgetView : UserControl, IDisposable, IHomeHu
         _pendingLyricScroll = null;
         try
         {
-            if (!TryScrollToCurrentLyric(cancellationToken)
+            bool completed = _tryScrollToCurrentLyric?.Invoke(cancellationToken)
+                ?? TryScrollToCurrentLyric(cancellationToken);
+            if (!completed
                 && attempt < MaxLyricContainerAttempts)
             {
                 QueueLyricScrollAttempt(cancellationToken, attempt + 1);

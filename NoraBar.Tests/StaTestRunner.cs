@@ -4,6 +4,8 @@ namespace NoraBar.Tests;
 
 internal static class StaTestRunner
 {
+    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(10);
+
     internal static void Run(Action action)
     {
         ArgumentNullException.ThrowIfNull(action);
@@ -19,10 +21,17 @@ internal static class StaTestRunner
             {
                 exception = caughtException;
             }
-        });
+        })
+        {
+            IsBackground = true
+        };
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
-        thread.Join();
+        if (!thread.Join(DefaultTimeout))
+        {
+            throw new TimeoutException(
+                $"STA test action did not complete within {DefaultTimeout}.");
+        }
 
         if (exception is not null)
         {

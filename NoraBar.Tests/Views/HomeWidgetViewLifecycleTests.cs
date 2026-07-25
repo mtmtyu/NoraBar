@@ -298,6 +298,111 @@ public sealed class HomeWidgetViewLifecycleTests
     }
 
     [Fact]
+    public void MediaControlsWidgetView_LyricScrollStopsAtMaximumAttempts()
+    {
+        StaTestRunner.Run(() =>
+        {
+            int attempts = 0;
+            var source = new FakeMusicChangeSource();
+            var view = new MediaControlsWidgetView(
+                () => true,
+                _ =>
+                {
+                    attempts++;
+                    return false;
+                })
+            {
+                DataContext = source
+            };
+            view.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+
+            view.SetStyle(HomeWidgetStyle.MediaBlurLyrics);
+            DrainDispatcher(MediaControlsWidgetView.MaxLyricContainerAttempts);
+
+            Assert.Equal(MediaControlsWidgetView.MaxLyricContainerAttempts, attempts);
+            Assert.False(view.HasPendingLyricScroll);
+            view.Dispose();
+        });
+    }
+
+    [Fact]
+    public void MediaControlsWidgetView_LyricScrollSucceedsWhenContainerAppearsLater()
+    {
+        StaTestRunner.Run(() =>
+        {
+            int attempts = 0;
+            var source = new FakeMusicChangeSource();
+            var view = new MediaControlsWidgetView(
+                () => true,
+                _ => ++attempts == 3)
+            {
+                DataContext = source
+            };
+            view.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+
+            view.SetStyle(HomeWidgetStyle.MediaBlurLyrics);
+            DrainDispatcher(3);
+
+            Assert.Equal(3, attempts);
+            Assert.False(view.HasPendingLyricScroll);
+            view.Dispose();
+        });
+    }
+
+    [Fact]
+    public void MediaControlsWidgetView_NewerLyricRequestCancelsOlderRequest()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var source = new FakeMusicChangeSource();
+            var view = new MediaControlsWidgetView(() => true, _ => true)
+            {
+                DataContext = source
+            };
+            view.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+            view.SetStyle(HomeWidgetStyle.MediaBlurLyrics);
+            CancellationToken oldToken = Assert.IsType<CancellationToken>(
+                view.PendingLyricScrollToken);
+
+            source.RaisePropertyChanged(nameof(IMusicChangeSource.CurrentLyricIndex));
+            CancellationToken newToken = Assert.IsType<CancellationToken>(
+                view.PendingLyricScrollToken);
+
+            Assert.True(oldToken.IsCancellationRequested);
+            Assert.NotEqual(oldToken, newToken);
+            Dispatcher.CurrentDispatcher.Invoke(
+                () => { },
+                DispatcherPriority.ContextIdle);
+            Assert.False(view.HasPendingLyricScroll);
+            view.Dispose();
+        });
+    }
+
+    [Fact]
+    public void MediaControlsWidgetView_LyricScrollExceptionClearsPendingState()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var source = new FakeMusicChangeSource();
+            var view = new MediaControlsWidgetView(
+                () => true,
+                _ => throw new InvalidOperationException("scroll"))
+            {
+                DataContext = source
+            };
+            view.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+
+            view.SetStyle(HomeWidgetStyle.MediaBlurLyrics);
+            Dispatcher.CurrentDispatcher.Invoke(
+                () => { },
+                DispatcherPriority.ContextIdle);
+
+            Assert.False(view.HasPendingLyricScroll);
+            view.Dispose();
+        });
+    }
+
+    [Fact]
     public void ScheduledRebuild_WhenWidgetDisposalFails_DisposesAllClearsTreeAndReportsFailure()
     {
         StaTestRunner.Run(() =>
@@ -462,7 +567,7 @@ public sealed class HomeWidgetViewLifecycleTests
                         Assert.Single(view.WidgetsContainer.Children))));
             currentWidget.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
 
-            for (int rebuild = 0; rebuild < 3; rebuild++)
+            for (int rebuild = 0; rebuild < 100; rebuild++)
             {
                 MediaControlsWidgetView oldWidget = currentWidget;
                 source.RaisePropertyChanged(nameof(IHomeWidgetPresentationSource.ActiveWidgets));
@@ -482,6 +587,7 @@ public sealed class HomeWidgetViewLifecycleTests
 
             view.Dispose();
             Assert.Equal(0, source.SubscriptionCountFor(currentWidget));
+            Assert.Equal(0, source.SubscriptionCount);
         });
     }
 
@@ -544,6 +650,16 @@ public sealed class HomeWidgetViewLifecycleTests
         }
 
         return null;
+    }
+
+    private static void DrainDispatcher(int passes)
+    {
+        for (int pass = 0; pass < passes; pass++)
+        {
+            Dispatcher.CurrentDispatcher.Invoke(
+                () => { },
+                DispatcherPriority.ContextIdle);
+        }
     }
 
     private static IReadOnlyList<Delegate> GetEventHandlers(
@@ -637,6 +753,15 @@ public sealed class HomeWidgetViewLifecycleTests
                 {
                     _handlers.Remove(value);
                 }
+            }
+        }
+
+        internal void RaisePropertyChanged(string propertyName)
+        {
+            var eventArgs = new PropertyChangedEventArgs(propertyName);
+            foreach (PropertyChangedEventHandler handler in _handlers.ToArray())
+            {
+                handler(this, eventArgs);
             }
         }
     }
