@@ -14,81 +14,86 @@ public sealed class MusicViewModelTests
     private static readonly TimeSpan StaTimeout = TimeSpan.FromSeconds(10);
 
     [Fact]
-    public void UpdateCurrentLyric_WhenLyricsClearedBeforeDispatcherExecution_DoesNotThrowNullReferenceException()
+    public void UpdateCurrentLyric_WhenLyricsChangeBeforeDispatcherExecution_RemainsSafe()
     {
         StaTestRunner.Run(cancellationToken =>
         {
-            if (System.Windows.Application.Current == null)
+            RunWithApplication(() =>
             {
-                _ = new System.Windows.Application();
-            }
-
-            var viewModel = new MusicViewModel();
-
-            FieldInfo? currentLyricsField = typeof(MusicViewModel).GetField("_currentLyrics", BindingFlags.NonPublic | BindingFlags.Instance);
-            MethodInfo? updateCurrentLyricMethod = typeof(MusicViewModel).GetMethod("UpdateCurrentLyric", BindingFlags.NonPublic | BindingFlags.Instance);
-
-            Assert.NotNull(currentLyricsField);
-            Assert.NotNull(updateCurrentLyricMethod);
-
-            var lyricsList = new List<LyricLine>
-            {
-                new LyricLine { StartTime = TimeSpan.FromSeconds(1), Text = "Line 1" },
-                new LyricLine { StartTime = TimeSpan.FromSeconds(5), Text = "Line 2" }
-            };
-
-            currentLyricsField.SetValue(viewModel, lyricsList);
-
-            // Trigger UpdateCurrentLyric which queues Dispatcher.InvokeAsync
-            updateCurrentLyricMethod.Invoke(viewModel, [TimeSpan.FromSeconds(2)]);
-
-            // Clear _currentLyrics to null before the queued Dispatcher action runs
-            currentLyricsField.SetValue(viewModel, null);
-
-            // Process Dispatcher queue frame to execute the queued action
-            DrainDispatcher(cancellationToken);
+                VerifyClearedLyricsRemainSafe(cancellationToken);
+                VerifyShrunkLyricsRemainSafe(cancellationToken);
+            });
         }, StaTimeout);
     }
 
-    [Fact]
-    public void UpdateCurrentLyric_WhenLyricsListShrinksBeforeDispatcherExecution_DoesNotThrowArgumentOutOfRangeExceptionOrNullReference()
+    private static void VerifyClearedLyricsRemainSafe(
+        CancellationToken cancellationToken)
     {
-        StaTestRunner.Run(cancellationToken =>
+        var viewModel = new MusicViewModel();
+        (FieldInfo lyricsField, MethodInfo updateMethod) = GetLyricsMembers();
+        lyricsField.SetValue(
+            viewModel,
+            new List<LyricLine>
+            {
+                new() { StartTime = TimeSpan.FromSeconds(1), Text = "Line 1" },
+                new() { StartTime = TimeSpan.FromSeconds(5), Text = "Line 2" }
+            });
+
+        updateMethod.Invoke(viewModel, [TimeSpan.FromSeconds(2)]);
+        lyricsField.SetValue(viewModel, null);
+
+        DrainDispatcher(cancellationToken);
+    }
+
+    private static void VerifyShrunkLyricsRemainSafe(
+        CancellationToken cancellationToken)
+    {
+        var viewModel = new MusicViewModel();
+        (FieldInfo lyricsField, MethodInfo updateMethod) = GetLyricsMembers();
+        lyricsField.SetValue(
+            viewModel,
+            new List<LyricLine>
+            {
+                new() { StartTime = TimeSpan.FromSeconds(1), Text = "Line 1" },
+                new() { StartTime = TimeSpan.FromSeconds(5), Text = "Line 2" },
+                new() { StartTime = TimeSpan.FromSeconds(10), Text = "Line 3" }
+            });
+
+        updateMethod.Invoke(viewModel, [TimeSpan.FromSeconds(12)]);
+        lyricsField.SetValue(
+            viewModel,
+            new List<LyricLine>
+            {
+                new() { StartTime = TimeSpan.FromSeconds(1), Text = "Short Line 1" }
+            });
+
+        DrainDispatcher(cancellationToken);
+    }
+
+    private static (FieldInfo LyricsField, MethodInfo UpdateMethod) GetLyricsMembers()
+    {
+        FieldInfo lyricsField = Assert.IsAssignableFrom<FieldInfo>(
+            typeof(MusicViewModel).GetField(
+                "_currentLyrics",
+                BindingFlags.NonPublic | BindingFlags.Instance));
+        MethodInfo updateMethod = Assert.IsAssignableFrom<MethodInfo>(
+            typeof(MusicViewModel).GetMethod(
+                "UpdateCurrentLyric",
+                BindingFlags.NonPublic | BindingFlags.Instance));
+        return (lyricsField, updateMethod);
+    }
+
+    private static void RunWithApplication(Action action)
+    {
+        var application = new System.Windows.Application();
+        try
         {
-            if (System.Windows.Application.Current == null)
-            {
-                _ = new System.Windows.Application();
-            }
-
-            var viewModel = new MusicViewModel();
-
-            FieldInfo? currentLyricsField = typeof(MusicViewModel).GetField("_currentLyrics", BindingFlags.NonPublic | BindingFlags.Instance);
-            MethodInfo? updateCurrentLyricMethod = typeof(MusicViewModel).GetMethod("UpdateCurrentLyric", BindingFlags.NonPublic | BindingFlags.Instance);
-
-            Assert.NotNull(currentLyricsField);
-            Assert.NotNull(updateCurrentLyricMethod);
-
-            var initialLyricsList = new List<LyricLine>
-            {
-                new LyricLine { StartTime = TimeSpan.FromSeconds(1), Text = "Line 1" },
-                new LyricLine { StartTime = TimeSpan.FromSeconds(5), Text = "Line 2" },
-                new LyricLine { StartTime = TimeSpan.FromSeconds(10), Text = "Line 3" }
-            };
-
-            currentLyricsField.SetValue(viewModel, initialLyricsList);
-
-            // Trigger UpdateCurrentLyric for position 12s -> newIndex = 2
-            updateCurrentLyricMethod.Invoke(viewModel, [TimeSpan.FromSeconds(12)]);
-
-            // Replace _currentLyrics with a shorter list (count = 1) before Dispatcher runs
-            var shorterLyricsList = new List<LyricLine>
-            {
-                new LyricLine { StartTime = TimeSpan.FromSeconds(1), Text = "Short Line 1" }
-            };
-            currentLyricsField.SetValue(viewModel, shorterLyricsList);
-
-            DrainDispatcher(cancellationToken);
-        }, StaTimeout);
+            action();
+        }
+        finally
+        {
+            application.Shutdown();
+        }
     }
 
     private static void DrainDispatcher(CancellationToken cancellationToken)
