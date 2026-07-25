@@ -186,9 +186,14 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable, IHomeHudM
 
     private void DisposeAndClearChildViews()
     {
+        IHomeHudManagedResource[] managedResources = SnapshotManagedChildResources();
+        var resourcesRequiringRelease = new HashSet<IHomeHudManagedResource>(
+            managedResources.Where(resource => resource is not IDisposable),
+            ReferenceEqualityComparer.Instance);
         BestEffortResourceReleaser.ReleaseAllAndReport(
             _reportCleanupFailure,
-            () => DisposeChildViews(WidgetsContainer),
+            () => DisposeChildViews(WidgetsContainer, resourcesRequiringRelease),
+            () => ReleaseManagedResources(resourcesRequiringRelease),
             WidgetsContainer.Children.Clear,
             ClearManagedChildResources);
     }
@@ -227,29 +232,79 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable, IHomeHudM
         }
     }
 
+    private IHomeHudManagedResource[] SnapshotManagedChildResources()
+    {
+        lock (_managedResourcesLock)
+        {
+            return _managedChildResources.ToArray();
+        }
+    }
+
+    private static void ReleaseManagedResources(
+        IEnumerable<IHomeHudManagedResource> resources)
+    {
+        BestEffortResourceReleaser.ReleaseAll(
+            resources
+                .Select<IHomeHudManagedResource, Action>(resource =>
+                    resource.ReleaseManagedResources)
+                .ToArray());
+    }
+
     internal static void DisposeChildViews(Panel container)
+    {
+        var resourcesRequiringRelease = new HashSet<IHomeHudManagedResource>(
+            ReferenceEqualityComparer.Instance);
+        DisposeChildViews(container, resourcesRequiringRelease);
+    }
+
+    private static void DisposeChildViews(
+        Panel container,
+        ISet<IHomeHudManagedResource> resourcesRequiringRelease)
     {
         ArgumentNullException.ThrowIfNull(container);
 
         BestEffortResourceReleaser.ReleaseAll(
             container.Children
                 .Cast<UIElement>()
-                .Select<UIElement, Action>(child => () => DisposeElement(child))
+                .Select<UIElement, Action>(child =>
+                    () => DisposeElement(child, resourcesRequiringRelease))
                 .ToArray());
     }
 
-    private static void DisposeElement(DependencyObject element)
+    private static void DisposeElement(
+        DependencyObject element,
+        ISet<IHomeHudManagedResource> resourcesRequiringRelease)
     {
         if (element is IDisposable disposable)
         {
-            disposable.Dispose();
+            try
+            {
+                disposable.Dispose();
+            }
+            catch
+            {
+                if (element is IHomeHudManagedResource managedResource)
+                {
+                    resourcesRequiringRelease.Add(managedResource);
+                }
+
+                throw;
+            }
+
             return;
+        }
+
+        if (element is IHomeHudManagedResource managedOnlyResource)
+        {
+            resourcesRequiringRelease.Add(managedOnlyResource);
         }
 
         int childCount = VisualTreeHelper.GetChildrenCount(element);
         for (int index = 0; index < childCount; index++)
         {
-            DisposeElement(VisualTreeHelper.GetChild(element, index));
+            DisposeElement(
+                VisualTreeHelper.GetChild(element, index),
+                resourcesRequiringRelease);
         }
     }
 

@@ -436,6 +436,42 @@ public sealed class HomeWidgetViewLifecycleTests
     }
 
     [Fact]
+    public void ScheduledRebuild_WhenManagedWidgetDisposalFails_ReleasesManagedSubscription()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var failures = new List<Exception>();
+            var source = new FakeHomeWidgetSource([]);
+            var subscriptionSource = new FakeLongLivedSource();
+            var view = new DynamicWidgetHomeView(failures.Add)
+            {
+                DataContext = source
+            };
+            var throwingWidget = new ThrowingManagedWidget(subscriptionSource);
+            var normalWidget = new DisposableWidget();
+            view.WidgetsContainer.Children.Add(throwingWidget);
+            view.WidgetsContainer.Children.Add(normalWidget);
+            List<IHomeHudManagedResource> managedResources =
+                GetManagedChildResources(view);
+            managedResources.Add(throwingWidget);
+
+            source.RaisePropertyChanged(nameof(IHomeWidgetPresentationSource.ActiveWidgets));
+            Dispatcher.CurrentDispatcher.Invoke(
+                () => { },
+                DispatcherPriority.ContextIdle);
+
+            Assert.Equal(1, throwingWidget.DisposeCount);
+            Assert.Equal(1, throwingWidget.ManagedReleaseCount);
+            Assert.Equal(1, normalWidget.DisposeCount);
+            Assert.Equal(0, subscriptionSource.SubscriptionCount);
+            Assert.Empty(view.WidgetsContainer.Children);
+            Assert.Empty(managedResources);
+            Assert.Single(failures);
+            view.Dispose();
+        });
+    }
+
+    [Fact]
     public void HomePreviewSession_HideAndShowAgain_RecreatesDisposedPreview()
     {
         StaTestRunner.Run(() =>
@@ -675,6 +711,16 @@ public sealed class HomeWidgetViewLifecycleTests
         return handlers?.GetInvocationList() ?? [];
     }
 
+    private static List<IHomeHudManagedResource> GetManagedChildResources(
+        DynamicWidgetHomeView view)
+    {
+        FieldInfo field = Assert.IsAssignableFrom<FieldInfo>(
+            typeof(DynamicWidgetHomeView).GetField(
+                "_managedChildResources",
+                BindingFlags.Instance | BindingFlags.NonPublic));
+        return Assert.IsType<List<IHomeHudManagedResource>>(field.GetValue(view));
+    }
+
     private sealed class FakeHomeWidgetSource : IHomeWidgetPresentationSource, IMusicChangeSource
     {
         private readonly HashSet<PropertyChangedEventHandler> _handlers = [];
@@ -778,6 +824,47 @@ public sealed class HomeWidgetViewLifecycleTests
             {
                 throw DisposeException;
             }
+        }
+    }
+
+    private sealed class FakeLongLivedSource
+    {
+        internal int SubscriptionCount { get; private set; }
+
+        internal void Subscribe() => SubscriptionCount++;
+        internal void Unsubscribe() => SubscriptionCount--;
+    }
+
+    private sealed class ThrowingManagedWidget : FrameworkElement, IDisposable, IHomeHudManagedResource
+    {
+        private readonly FakeLongLivedSource _source;
+        private bool _isReleased;
+
+        internal ThrowingManagedWidget(FakeLongLivedSource source)
+        {
+            _source = source;
+            _source.Subscribe();
+        }
+
+        internal int DisposeCount { get; private set; }
+        internal int ManagedReleaseCount { get; private set; }
+
+        public void Dispose()
+        {
+            DisposeCount++;
+            throw new InvalidOperationException("widget");
+        }
+
+        public void ReleaseManagedResources()
+        {
+            if (_isReleased)
+            {
+                return;
+            }
+
+            _isReleased = true;
+            ManagedReleaseCount++;
+            _source.Unsubscribe();
         }
     }
 
