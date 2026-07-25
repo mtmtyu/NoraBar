@@ -497,6 +497,7 @@ public sealed class HomeWidgetViewLifecycleTests
             session.Show(
                 () => firstPreview,
                 preview => content = preview.View,
+                () => content = null,
                 failures.Add);
             session.Suspend(
                 () => content = null,
@@ -504,6 +505,7 @@ public sealed class HomeWidgetViewLifecycleTests
             session.Show(
                 () => secondPreview,
                 preview => content = preview.View,
+                () => content = null,
                 failures.Add);
 
             Assert.Equal(1, firstView.DisposeCount);
@@ -531,16 +533,65 @@ public sealed class HomeWidgetViewLifecycleTests
                 owner);
             var session = new HomePreviewSession();
             var hostingFailure = new InvalidOperationException("host");
+            object? content = null;
 
             Exception exception = Assert.Throws<InvalidOperationException>(() =>
                 session.Show(
                     () => preview,
-                    _ => throw hostingFailure,
+                    hostedPreview =>
+                    {
+                        content = hostedPreview.View;
+                        throw hostingFailure;
+                    },
+                    () => content = null,
                     _ => { }));
 
             Assert.Same(hostingFailure, exception);
             Assert.Null(session.Current);
+            Assert.Null(content);
+            Assert.Equal(1, Assert.IsType<DisposableWidget>(preview.View).DisposeCount);
             Assert.Equal(1, owner.DisposeCount);
+        });
+    }
+
+    [Fact]
+    public void HomePreviewSession_WhenHostingAndCleanupFail_PreservesHostingFailure()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var cleanupFailure = new InvalidOperationException("cleanup");
+            var view = new DisposableWidget { DisposeException = cleanupFailure };
+            var owner = new TrackingDisposable();
+            var preview = new HomeHudPreview(
+                view,
+                new HudSize(100, 100),
+                owner);
+            var session = new HomePreviewSession();
+            var hostingFailure = new InvalidOperationException("host");
+            object? content = null;
+            var reportedFailures = new List<Exception>();
+
+            Exception exception = Assert.Throws<InvalidOperationException>(() =>
+                session.Show(
+                    () => preview,
+                    hostedPreview =>
+                    {
+                        content = hostedPreview.View;
+                        throw hostingFailure;
+                    },
+                    () => content = null,
+                    reportedFailures.Add));
+
+            Assert.Same(hostingFailure, exception);
+            Assert.Null(session.Current);
+            Assert.Null(content);
+            Assert.Equal(1, view.DisposeCount);
+            Assert.Equal(1, owner.DisposeCount);
+            AggregateException reported = Assert.IsType<AggregateException>(
+                Assert.Single(reportedFailures));
+            AggregateException previewFailure = Assert.IsType<AggregateException>(
+                Assert.Single(reported.InnerExceptions));
+            Assert.Same(cleanupFailure, Assert.Single(previewFailure.InnerExceptions));
         });
     }
 

@@ -310,6 +310,7 @@ namespace NoraBar.Views
                         PreviewHost.Width = preview.PreferredSize.Width;
                         PreviewHost.Height = preview.PreferredSize.Height;
                     },
+                    () => PreviewHost.Content = null,
                     ReportCleanupFailure);
                 return;
             }

@@ -63,10 +63,12 @@ internal sealed class HomePreviewSession
     internal HomeHudPreview Show(
         Func<HomeHudPreview> createPreview,
         Action<HomeHudPreview> showPreview,
+        Action clearContent,
         Action<Exception> reportCleanupFailure)
     {
         ArgumentNullException.ThrowIfNull(createPreview);
         ArgumentNullException.ThrowIfNull(showPreview);
+        ArgumentNullException.ThrowIfNull(clearContent);
         ArgumentNullException.ThrowIfNull(reportCleanupFailure);
         if (_preview is not null)
         {
@@ -82,7 +84,12 @@ internal sealed class HomePreviewSession
         }
         catch
         {
-            Suspend(static () => { }, reportCleanupFailure);
+            HomeHudPreview failedPreview = preview;
+            BestEffortResourceReleaser.ReleaseAllAndReport(
+                reportCleanupFailure,
+                clearContent,
+                () => _preview = null,
+                failedPreview.Dispose);
             throw;
         }
     }
