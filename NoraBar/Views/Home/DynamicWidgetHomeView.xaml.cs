@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -16,6 +17,7 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable, IHomeHudM
 {
     private readonly object _managedResourcesLock = new();
     private readonly List<IHomeHudManagedResource> _managedChildResources = [];
+    private readonly Action<Exception> _reportCleanupFailure;
     private Point _dragStartPoint;
     private int _draggedWidgetIndex = -1;
     private WrapPanelAnimatedReorderHelper? _reorderHelper;
@@ -24,9 +26,18 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable, IHomeHudM
     private bool _isDisposed;
 
     internal int RebuildCount { get; private set; }
+    internal bool HasPendingRebuild => _pendingRebuild is not null;
 
     public DynamicWidgetHomeView()
+        : this(static exception => Trace.TraceError(
+            $"Home widget rebuild cleanup failed: {exception}"))
     {
+    }
+
+    internal DynamicWidgetHomeView(Action<Exception> reportCleanupFailure)
+    {
+        ArgumentNullException.ThrowIfNull(reportCleanupFailure);
+        _reportCleanupFailure = reportCleanupFailure;
         InitializeComponent();
         DataContextChanged += DynamicWidgetHomeView_DataContextChanged;
     }
@@ -73,7 +84,16 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable, IHomeHudM
             () =>
             {
                 _pendingRebuild = null;
-                RebuildWidgets();
+                try
+                {
+                    RebuildWidgets();
+                }
+                catch (Exception exception)
+                {
+                    BestEffortResourceReleaser.ReleaseAllAndReport(
+                        _reportCleanupFailure,
+                        () => throw exception);
+                }
             },
             DispatcherPriority.DataBind);
     }
@@ -98,9 +118,7 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable, IHomeHudM
 
         RebuildCount++;
         _reorderHelper = null;
-        DisposeChildViews(WidgetsContainer);
-        WidgetsContainer.Children.Clear();
-        ClearManagedChildResources();
+        DisposeAndClearChildViews();
 
         if (DataContext is not IHomeWidgetPresentationSource vm)
         {
@@ -162,10 +180,17 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable, IHomeHudM
         _subscribedSource = null;
 
         _reorderHelper = null;
-        DisposeChildViews(WidgetsContainer);
-        WidgetsContainer.Children.Clear();
-        ClearManagedChildResources();
+        DisposeAndClearChildViews();
         DataContext = null;
+    }
+
+    private void DisposeAndClearChildViews()
+    {
+        BestEffortResourceReleaser.ReleaseAllAndReport(
+            _reportCleanupFailure,
+            () => DisposeChildViews(WidgetsContainer),
+            WidgetsContainer.Children.Clear,
+            ClearManagedChildResources);
     }
 
     public void ReleaseManagedResources()
@@ -206,10 +231,11 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable, IHomeHudM
     {
         ArgumentNullException.ThrowIfNull(container);
 
-        foreach (UIElement child in container.Children)
-        {
-            DisposeElement(child);
-        }
+        BestEffortResourceReleaser.ReleaseAll(
+            container.Children
+                .Cast<UIElement>()
+                .Select<UIElement, Action>(child => () => DisposeElement(child))
+                .ToArray());
     }
 
     private static void DisposeElement(DependencyObject element)

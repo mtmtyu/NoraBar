@@ -298,6 +298,39 @@ public sealed class HomeWidgetViewLifecycleTests
     }
 
     [Fact]
+    public void ScheduledRebuild_WhenWidgetDisposalFails_DisposesAllClearsTreeAndReportsFailure()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var failures = new List<Exception>();
+            var source = new FakeHomeWidgetSource([]);
+            var view = new DynamicWidgetHomeView(failures.Add)
+            {
+                DataContext = source
+            };
+            var throwingWidget = new DisposableWidget
+            {
+                DisposeException = new InvalidOperationException("widget")
+            };
+            var normalWidget = new DisposableWidget();
+            view.WidgetsContainer.Children.Add(throwingWidget);
+            view.WidgetsContainer.Children.Add(normalWidget);
+
+            source.RaisePropertyChanged(nameof(IHomeWidgetPresentationSource.ActiveWidgets));
+            Dispatcher.CurrentDispatcher.Invoke(
+                () => { },
+                DispatcherPriority.ContextIdle);
+
+            Assert.Equal(1, throwingWidget.DisposeCount);
+            Assert.Equal(1, normalWidget.DisposeCount);
+            Assert.Empty(view.WidgetsContainer.Children);
+            Assert.False(view.HasPendingRebuild);
+            Assert.Single(failures);
+            view.Dispose();
+        });
+    }
+
+    [Fact]
     public void HomePreviewSession_HideAndShowAgain_RecreatesDisposedPreview()
     {
         StaTestRunner.Run(() =>
