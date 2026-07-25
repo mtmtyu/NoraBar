@@ -15,6 +15,8 @@ namespace NoraBar;
 public partial class App : Application
 {
     private const string AppMutexName = "NoraBar.AppMutex";
+    private static readonly TimeSpan HomeHudFinalCleanupTimeout =
+        TimeSpan.FromSeconds(5);
 
     private readonly ApplicationExitCoordinator _exitCoordinator;
     private Mutex? _appMutex;
@@ -159,6 +161,16 @@ public partial class App : Application
         {
             await CaptureAsync(
                 async () => await _hudRegistry.DisposeAsync(),
+                exceptions);
+        }
+
+        if (_homeHudModule is not null)
+        {
+            using var finalCleanupCancellation = new CancellationTokenSource(
+                HomeHudFinalCleanupTimeout);
+            await CaptureAsync(
+                () => _homeHudModule.WaitForFinalCleanupAsync(
+                    finalCleanupCancellation.Token),
                 exceptions);
         }
 

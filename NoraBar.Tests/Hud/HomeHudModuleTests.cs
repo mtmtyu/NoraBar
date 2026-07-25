@@ -57,6 +57,21 @@ public sealed class HomeHudModuleTests
     }
 
     [Fact]
+    public async Task DisposeAsync_WhenCleanupCompletesSynchronously_FinalCleanupIsAlreadyComplete()
+    {
+        var source = new FakeHomeHudPresentationSource();
+        var module = new HomeHudModule(source, _ => new FrameworkElement());
+
+        await module.DisposeAsync();
+        Task firstWait = module.WaitForFinalCleanupAsync(CancellationToken.None);
+        Task secondWait = module.WaitForFinalCleanupAsync(CancellationToken.None);
+
+        Assert.Same(firstWait, secondWait);
+        Assert.True(firstWait.IsCompletedSuccessfully);
+        Assert.Equal(1, source.DisposeCount);
+    }
+
+    [Fact]
     public async Task SourceInvalidation_IsForwardedOnlyAfterInitialization()
     {
         var source = new FakeHomeHudPresentationSource();
@@ -489,6 +504,9 @@ public sealed class HomeHudModuleTests
             Assert.Equal(1, state.View.ManagedReleaseCount);
             Assert.Equal(0, state.View.DisposeCount);
             Assert.Equal(1, source.DisposeCount);
+            Assert.True(
+                state.Module.WaitForFinalCleanupAsync(CancellationToken.None)
+                    .IsCompletedSuccessfully);
         }
         finally
         {
@@ -555,6 +573,7 @@ public sealed class HomeHudModuleTests
             TaskCreationOptions.RunContinuationsAsynchronously);
         var lateFailureReported = new TaskCompletionSource<Exception>(
             TaskCreationOptions.RunContinuationsAsynchronously);
+        int lateFailureReportCount = 0;
         var ready = new TaskCompletionSource<(HomeHudModule Module, BlockingManagedView View)>(
             TaskCreationOptions.RunContinuationsAsynchronously);
         var source = new FakeHomeHudPresentationSource();
@@ -571,7 +590,11 @@ public sealed class HomeHudModuleTests
                 source,
                 _ => view,
                 TimeSpan.FromMilliseconds(100),
-                exception => lateFailureReported.TrySetResult(exception));
+                exception =>
+                {
+                    Interlocked.Increment(ref lateFailureReportCount);
+                    lateFailureReported.TrySetResult(exception);
+                });
             module.GetView(new HudViewContext(HudPresentationState.Expanded));
             ready.SetResult((module, view));
             Dispatcher.Run();
@@ -594,18 +617,29 @@ public sealed class HomeHudModuleTests
 
             Assert.Equal(0, state.Value.View.ManagedReleaseCount);
             Assert.Equal(0, source.DisposeCount);
+            Task firstFinalCleanup =
+                state.Value.Module.WaitForFinalCleanupAsync(CancellationToken.None);
+            Task secondFinalCleanup =
+                state.Value.Module.WaitForFinalCleanupAsync(CancellationToken.None);
+            Assert.Same(firstFinalCleanup, secondFinalCleanup);
+            Assert.False(firstFinalCleanup.IsCompleted);
 
             allowDisposeToFinish.Set();
             await disposeFinished.Task.WaitAsync(TimeSpan.FromSeconds(5));
             Exception lateFailure =
                 await lateFailureReported.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            AggregateException finalCleanupFailure =
+                await Assert.ThrowsAsync<AggregateException>(
+                    async () => await firstFinalCleanup.WaitAsync(TimeSpan.FromSeconds(5)));
 
             Assert.Contains(
                 disposeFailure,
                 Assert.IsType<AggregateException>(lateFailure).InnerExceptions);
+            Assert.Contains(disposeFailure, finalCleanupFailure.InnerExceptions);
             Assert.Equal(1, state.Value.View.DisposeCount);
             Assert.Equal(1, state.Value.View.ManagedReleaseCount);
             Assert.Equal(1, source.DisposeCount);
+            Assert.Equal(1, Volatile.Read(ref lateFailureReportCount));
         }
         finally
         {
@@ -666,6 +700,70 @@ public sealed class HomeHudModuleTests
                 (await ready.Task).Dispatcher.BeginInvokeShutdown(DispatcherPriority.Send);
             }
 
+            thread.Join(TimeSpan.FromSeconds(5));
+        }
+
+        Assert.False(thread.IsAlive);
+    }
+
+    [Fact]
+    public async Task WaitForFinalCleanupAsync_WhenDispatcherCleanupRemainsBlocked_CanBeCanceledAndRetried()
+    {
+        using var allowDisposeToFinish = new ManualResetEventSlim();
+        var disposeStarted = new TaskCompletionSource<object?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var disposeFinished = new TaskCompletionSource<object?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var ready = new TaskCompletionSource<(HomeHudModule Module, Dispatcher Dispatcher)>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var source = new FakeHomeHudPresentationSource();
+        var thread = new Thread(() =>
+        {
+            Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
+            var view = new BlockingManagedView(
+                disposeStarted,
+                disposeFinished,
+                allowDisposeToFinish,
+                disposeException: null);
+            var module = new HomeHudModule(
+                source,
+                _ => view,
+                TimeSpan.FromMilliseconds(100));
+            module.GetView(new HudViewContext(HudPresentationState.Expanded));
+            ready.SetResult((module, dispatcher));
+            Dispatcher.Run();
+        })
+        {
+            IsBackground = true
+        };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+
+        (HomeHudModule Module, Dispatcher Dispatcher)? state = null;
+        try
+        {
+            state = await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Task disposal = state.Value.Module.DisposeAsync().AsTask();
+            await disposeStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await Assert.ThrowsAsync<TimeoutException>(
+                async () => await disposal.WaitAsync(TimeSpan.FromSeconds(2)));
+
+            using var cancellation = new CancellationTokenSource(
+                TimeSpan.FromMilliseconds(100));
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(
+                async () => await state.Value.Module.WaitForFinalCleanupAsync(
+                    cancellation.Token));
+            Assert.Equal(0, source.DisposeCount);
+
+            allowDisposeToFinish.Set();
+            await state.Value.Module.WaitForFinalCleanupAsync(CancellationToken.None)
+                .WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(1, source.DisposeCount);
+        }
+        finally
+        {
+            allowDisposeToFinish.Set();
+            state?.Dispatcher.BeginInvokeShutdown(DispatcherPriority.Send);
             thread.Join(TimeSpan.FromSeconds(5));
         }
 
@@ -851,14 +949,14 @@ public sealed class HomeHudModuleTests
         private readonly TaskCompletionSource<object?> _disposeStarted;
         private readonly TaskCompletionSource<object?> _disposeFinished;
         private readonly ManualResetEventSlim _allowDisposeToFinish;
-        private readonly Exception _disposeException;
+        private readonly Exception? _disposeException;
         private int _managedReleaseCount;
 
         internal BlockingManagedView(
             TaskCompletionSource<object?> disposeStarted,
             TaskCompletionSource<object?> disposeFinished,
             ManualResetEventSlim allowDisposeToFinish,
-            Exception disposeException)
+            Exception? disposeException)
         {
             _disposeStarted = disposeStarted;
             _disposeFinished = disposeFinished;
@@ -880,7 +978,10 @@ public sealed class HomeHudModuleTests
                     throw new TimeoutException("Blocked view disposal was not released.");
                 }
 
-                throw _disposeException;
+                if (_disposeException is not null)
+                {
+                    throw _disposeException;
+                }
             }
             finally
             {

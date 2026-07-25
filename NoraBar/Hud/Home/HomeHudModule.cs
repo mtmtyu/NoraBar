@@ -21,6 +21,7 @@ internal sealed class HomeHudModule : IHudModule
     private readonly Dictionary<HomeHudDesignVariant, FrameworkElement> _views = [];
     private Dispatcher? _viewDispatcher;
     private Task? _disposeTask;
+    private Task? _finalCleanupTask;
     private bool _isInitialized;
     private bool _isActive;
     private bool _isDisposing;
@@ -196,6 +197,7 @@ internal sealed class HomeHudModule : IHudModule
     public ValueTask DisposeAsync()
     {
         TaskCompletionSource<object?> completionSource;
+        TaskCompletionSource<object?> finalCleanupCompletionSource;
         FrameworkElement[] views;
         Dispatcher? dispatcher;
 
@@ -213,32 +215,65 @@ internal sealed class HomeHudModule : IHudModule
             _viewDispatcher = null;
             completionSource = new TaskCompletionSource<object?>(
                 TaskCreationOptions.RunContinuationsAsynchronously);
+            finalCleanupCompletionSource = new TaskCompletionSource<object?>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
             _disposeTask = completionSource.Task;
+            _finalCleanupTask = finalCleanupCompletionSource.Task;
         }
 
-        _ = DisposeAndSignalCompletionAsync(views, dispatcher, completionSource);
+        _ = DisposeAndSignalCompletionAsync(
+            views,
+            dispatcher,
+            completionSource,
+            finalCleanupCompletionSource);
         return new ValueTask(completionSource.Task);
+    }
+
+    internal Task WaitForFinalCleanupAsync(CancellationToken cancellationToken)
+    {
+        Task finalCleanupTask;
+        lock (_syncRoot)
+        {
+            finalCleanupTask = _finalCleanupTask ?? Task.CompletedTask;
+        }
+
+        return cancellationToken.CanBeCanceled
+            ? finalCleanupTask.WaitAsync(cancellationToken)
+            : finalCleanupTask;
     }
 
     private async Task DisposeAndSignalCompletionAsync(
         IReadOnlyList<FrameworkElement> views,
         Dispatcher? dispatcher,
-        TaskCompletionSource<object?> completionSource)
+        TaskCompletionSource<object?> completionSource,
+        TaskCompletionSource<object?> finalCleanupCompletionSource)
     {
         try
         {
-            await DisposeCoreAsync(views, dispatcher);
-            completionSource.SetResult(null);
+            Exception? failure = await DisposeCoreAsync(
+                views,
+                dispatcher,
+                finalCleanupCompletionSource);
+            if (failure is null)
+            {
+                completionSource.SetResult(null);
+            }
+            else
+            {
+                completionSource.SetException(failure);
+            }
         }
         catch (Exception exception)
         {
             completionSource.SetException(exception);
+            finalCleanupCompletionSource.TrySetException(exception);
         }
     }
 
-    private async Task DisposeCoreAsync(
+    private async Task<Exception?> DisposeCoreAsync(
         IReadOnlyList<FrameworkElement> views,
-        Dispatcher? dispatcher)
+        Dispatcher? dispatcher,
+        TaskCompletionSource<object?> finalCleanupCompletionSource)
     {
         List<Exception> exceptions = [];
         await _lifecycleGate.WaitAsync();
@@ -284,11 +319,14 @@ internal sealed class HomeHudModule : IHudModule
 
             if (viewDisposal.LateCompletion is not null)
             {
-                _ = CompleteDeferredCleanupAsync(viewDisposal.LateCompletion);
+                _ = CompleteDeferredCleanupAndSignalAsync(
+                    viewDisposal.LateCompletion,
+                    finalCleanupCompletionSource);
             }
             else
             {
                 DisposeSource(exceptions);
+                finalCleanupCompletionSource.TrySetResult(null);
             }
         }
         finally
@@ -303,30 +341,48 @@ internal sealed class HomeHudModule : IHudModule
 
         if (exceptions.Count == 1)
         {
-            ExceptionDispatchInfo.Capture(exceptions[0]).Throw();
+            return exceptions[0];
         }
 
         if (exceptions.Count > 1)
         {
-            throw new AggregateException(
+            return new AggregateException(
                 "Multiple Home HUD cleanup operations failed.",
                 exceptions);
         }
+
+        return null;
     }
 
-    private async Task CompleteDeferredCleanupAsync(
-        Task<IReadOnlyList<Exception>> lateViewCleanup)
+    private async Task CompleteDeferredCleanupAndSignalAsync(
+        Task<IReadOnlyList<Exception>> lateViewCleanup,
+        TaskCompletionSource<object?> finalCleanupCompletionSource)
     {
-        List<Exception> exceptions = [.. await lateViewCleanup];
-        DisposeSource(exceptions);
-        if (exceptions.Count == 0)
+        try
         {
-            return;
-        }
+            List<Exception> exceptions = [.. await lateViewCleanup];
+            DisposeSource(exceptions);
+            if (exceptions.Count == 0)
+            {
+                finalCleanupCompletionSource.TrySetResult(null);
+                return;
+            }
 
-        var failure = new AggregateException(
-            "Late Home HUD cleanup operations failed.",
-            exceptions);
+            var failure = new AggregateException(
+                "Late Home HUD cleanup operations failed.",
+                exceptions);
+            finalCleanupCompletionSource.TrySetException(failure);
+            ReportLateCleanupFailure(failure);
+        }
+        catch (Exception exception)
+        {
+            finalCleanupCompletionSource.TrySetException(exception);
+            ReportLateCleanupFailure(exception);
+        }
+    }
+
+    private void ReportLateCleanupFailure(Exception failure)
+    {
         try
         {
             _reportLateCleanupFailure(failure);
