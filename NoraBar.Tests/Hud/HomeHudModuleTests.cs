@@ -176,6 +176,92 @@ public sealed class HomeHudModuleTests
     }
 
     [Fact]
+    public void DisposeAsync_ReleasesManagedOnlyCachedView()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var source = new FakeHomeHudPresentationSource();
+            var view = new ManagedOnlyView();
+            var module = new HomeHudModule(source, _ => view);
+            module.GetView(new HudViewContext(HudPresentationState.Expanded));
+
+            module.DisposeAsync().AsTask().GetAwaiter().GetResult();
+
+            Assert.Equal(1, view.ManagedReleaseCount);
+        });
+    }
+
+    [Fact]
+    public void DisposeAsync_WhenViewDisposeSucceeds_DoesNotDuplicateManagedRelease()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var view = new ManagedCleanupView();
+            var module = new HomeHudModule(
+                new FakeHomeHudPresentationSource(),
+                _ => view);
+            module.GetView(new HudViewContext(HudPresentationState.Expanded));
+
+            module.DisposeAsync().AsTask().GetAwaiter().GetResult();
+
+            Assert.Equal(1, view.DisposeCount);
+            Assert.Equal(0, view.ManagedReleaseCount);
+        });
+    }
+
+    [Fact]
+    public void DisposeAsync_WhenViewDisposeFails_AttemptsManagedRelease()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var disposeFailure = new InvalidOperationException("dispose");
+            var view = new ManagedCleanupView
+            {
+                DisposeException = disposeFailure
+            };
+            var module = new HomeHudModule(
+                new FakeHomeHudPresentationSource(),
+                _ => view);
+            module.GetView(new HudViewContext(HudPresentationState.Expanded));
+
+            Exception exception = Assert.Throws<InvalidOperationException>(
+                () => module.DisposeAsync().AsTask().GetAwaiter().GetResult());
+
+            Assert.Same(disposeFailure, exception);
+            Assert.Equal(1, view.DisposeCount);
+            Assert.Equal(1, view.ManagedReleaseCount);
+        });
+    }
+
+    [Fact]
+    public void DisposeAsync_WhenViewDisposeAndManagedReleaseFail_AggregatesBothFailures()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var disposeFailure = new InvalidOperationException("dispose");
+            var releaseFailure = new InvalidOperationException("release");
+            var view = new ManagedCleanupView
+            {
+                DisposeException = disposeFailure,
+                ManagedReleaseException = releaseFailure
+            };
+            var module = new HomeHudModule(
+                new FakeHomeHudPresentationSource(),
+                _ => view);
+            module.GetView(new HudViewContext(HudPresentationState.Expanded));
+
+            AggregateException exception = Assert.Throws<AggregateException>(
+                () => module.DisposeAsync().AsTask().GetAwaiter().GetResult());
+
+            Assert.Equal(
+                new Exception[] { disposeFailure, releaseFailure },
+                exception.InnerExceptions);
+            Assert.Equal(1, view.DisposeCount);
+            Assert.Equal(1, view.ManagedReleaseCount);
+        });
+    }
+
+    [Fact]
     public void DisposeAsync_WhenCleanupOperationsFail_AttemptsAllAndAggregatesFailures()
     {
         StaTestRunner.Run(() =>
@@ -302,6 +388,75 @@ public sealed class HomeHudModuleTests
     }
 
     [Fact]
+    public async Task GetView_WhenRejectedViewIsManagedOnly_ReleasesManagedResources()
+    {
+        await RunWithForeignDispatcherViewAsync(
+            () => new ManagedOnlyView(),
+            view =>
+            {
+                var module = new HomeHudModule(
+                    new FakeHomeHudPresentationSource(),
+                    _ => view);
+
+                StaTestRunner.Run(() => Assert.Throws<InvalidOperationException>(() =>
+                    module.GetView(new HudViewContext(HudPresentationState.Expanded))));
+
+                Assert.Equal(1, view.ManagedReleaseCount);
+                return module.DisposeAsync().AsTask();
+            });
+    }
+
+    [Fact]
+    public async Task GetView_WhenRejectedViewDisposeSucceeds_DoesNotDuplicateManagedRelease()
+    {
+        await RunWithForeignDispatcherViewAsync(
+            () => new ManagedCleanupView(),
+            view =>
+            {
+                var module = new HomeHudModule(
+                    new FakeHomeHudPresentationSource(),
+                    _ => view);
+
+                StaTestRunner.Run(() => Assert.Throws<InvalidOperationException>(() =>
+                    module.GetView(new HudViewContext(HudPresentationState.Expanded))));
+
+                Assert.Equal(1, view.DisposeCount);
+                Assert.Equal(0, view.ManagedReleaseCount);
+                return module.DisposeAsync().AsTask();
+            });
+    }
+
+    [Fact]
+    public async Task GetView_WhenRejectedViewDisposeAndManagedReleaseFail_PreservesAllFailures()
+    {
+        var disposeFailure = new InvalidOperationException("dispose");
+        var releaseFailure = new InvalidOperationException("release");
+        await RunWithForeignDispatcherViewAsync(
+            () => new ManagedCleanupView
+            {
+                DisposeException = disposeFailure,
+                ManagedReleaseException = releaseFailure
+            },
+            view =>
+            {
+                var module = new HomeHudModule(
+                    new FakeHomeHudPresentationSource(),
+                    _ => view);
+
+                StaTestRunner.Run(() =>
+                {
+                    AggregateException exception = Assert.Throws<AggregateException>(() =>
+                        module.GetView(new HudViewContext(HudPresentationState.Expanded)));
+
+                    Assert.IsType<InvalidOperationException>(exception.InnerExceptions[0]);
+                    Assert.Same(disposeFailure, exception.InnerExceptions[1]);
+                    Assert.Same(releaseFailure, exception.InnerExceptions[2]);
+                });
+                return module.DisposeAsync().AsTask();
+            });
+    }
+
+    [Fact]
     public async Task DisposeAsync_WhenDispatcherShutdownStarted_ReleasesManagedReferencesAndReportsFailure()
     {
         var ready = new TaskCompletionSource<(HomeHudModule Module, ManagedCleanupView View)>(
@@ -391,6 +546,82 @@ public sealed class HomeHudModuleTests
     }
 
     [Fact]
+    public async Task DisposeAsync_WhenDispatcherDisposalIsExecuting_TimesOutWithoutConcurrentFallback()
+    {
+        using var allowDisposeToFinish = new ManualResetEventSlim();
+        var disposeStarted = new TaskCompletionSource<object?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var disposeFinished = new TaskCompletionSource<object?>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var lateFailureReported = new TaskCompletionSource<Exception>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var ready = new TaskCompletionSource<(HomeHudModule Module, BlockingManagedView View)>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var source = new FakeHomeHudPresentationSource();
+        var disposeFailure = new InvalidOperationException("late dispose");
+        var thread = new Thread(() =>
+        {
+            Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
+            var view = new BlockingManagedView(
+                disposeStarted,
+                disposeFinished,
+                allowDisposeToFinish,
+                disposeFailure);
+            var module = new HomeHudModule(
+                source,
+                _ => view,
+                TimeSpan.FromMilliseconds(100),
+                exception => lateFailureReported.TrySetResult(exception));
+            module.GetView(new HudViewContext(HudPresentationState.Expanded));
+            ready.SetResult((module, view));
+            Dispatcher.Run();
+        })
+        {
+            IsBackground = true
+        };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+
+        (HomeHudModule Module, BlockingManagedView View)? state = null;
+        try
+        {
+            state = await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Task disposal = state.Value.Module.DisposeAsync().AsTask();
+            await disposeStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+            await Assert.ThrowsAsync<TimeoutException>(
+                async () => await disposal.WaitAsync(TimeSpan.FromSeconds(2)));
+
+            Assert.Equal(0, state.Value.View.ManagedReleaseCount);
+            Assert.Equal(0, source.DisposeCount);
+
+            allowDisposeToFinish.Set();
+            await disposeFinished.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Exception lateFailure =
+                await lateFailureReported.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+            Assert.Contains(
+                disposeFailure,
+                Assert.IsType<AggregateException>(lateFailure).InnerExceptions);
+            Assert.Equal(1, state.Value.View.DisposeCount);
+            Assert.Equal(1, state.Value.View.ManagedReleaseCount);
+            Assert.Equal(1, source.DisposeCount);
+        }
+        finally
+        {
+            allowDisposeToFinish.Set();
+            if (state is not null)
+            {
+                state.Value.View.Dispatcher.BeginInvokeShutdown(DispatcherPriority.Send);
+            }
+
+            thread.Join(TimeSpan.FromSeconds(5));
+        }
+
+        Assert.False(thread.IsAlive);
+    }
+
+    [Fact]
     public async Task GetView_WhenForeignViewCleanupFails_PreservesRejectionFailure()
     {
         var ready = new TaskCompletionSource<(Dispatcher Dispatcher, ManagedCleanupView View)>(
@@ -424,6 +655,7 @@ public sealed class HomeHudModuleTests
 
                 Assert.IsType<InvalidOperationException>(exception.InnerExceptions[0]);
                 Assert.Same(state.View.DisposeException, exception.InnerExceptions[1]);
+                Assert.Equal(1, state.View.ManagedReleaseCount);
             });
             await module.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
         }
@@ -456,6 +688,42 @@ public sealed class HomeHudModuleTests
         Assert.Throws<ObjectDisposedException>(
             () => module.GetPreferredSize(
                 new HudViewContext(HudPresentationState.Expanded)));
+    }
+
+    private static async Task RunWithForeignDispatcherViewAsync<TView>(
+        Func<TView> createView,
+        Func<TView, Task> runScenario)
+        where TView : FrameworkElement
+    {
+        var ready = new TaskCompletionSource<(Dispatcher Dispatcher, TView View)>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var thread = new Thread(() =>
+        {
+            ready.SetResult((Dispatcher.CurrentDispatcher, createView()));
+            Dispatcher.Run();
+        })
+        {
+            IsBackground = true
+        };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+
+        try
+        {
+            var state = await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await runScenario(state.View).WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        finally
+        {
+            if (ready.Task.IsCompletedSuccessfully)
+            {
+                (await ready.Task).Dispatcher.BeginInvokeShutdown(DispatcherPriority.Send);
+            }
+
+            thread.Join(TimeSpan.FromSeconds(5));
+        }
+
+        Assert.False(thread.IsAlive);
     }
 
     private sealed class FakeHomeHudPresentationSource : IHomeHudPresentationSource
@@ -549,6 +817,7 @@ public sealed class HomeHudModuleTests
         internal int DisposeCount { get; private set; }
         internal int ManagedReleaseCount { get; private set; }
         internal Exception? DisposeException { get; init; }
+        internal Exception? ManagedReleaseException { get; init; }
 
         public void Dispose()
         {
@@ -560,6 +829,66 @@ public sealed class HomeHudModuleTests
             }
         }
 
+        public void ReleaseManagedResources()
+        {
+            ManagedReleaseCount++;
+            if (ManagedReleaseException is not null)
+            {
+                throw ManagedReleaseException;
+            }
+        }
+    }
+
+    private sealed class ManagedOnlyView : FrameworkElement, IHomeHudManagedResource
+    {
+        internal int ManagedReleaseCount { get; private set; }
+
         public void ReleaseManagedResources() => ManagedReleaseCount++;
+    }
+
+    private sealed class BlockingManagedView : FrameworkElement, IDisposable, IHomeHudManagedResource
+    {
+        private readonly TaskCompletionSource<object?> _disposeStarted;
+        private readonly TaskCompletionSource<object?> _disposeFinished;
+        private readonly ManualResetEventSlim _allowDisposeToFinish;
+        private readonly Exception _disposeException;
+        private int _managedReleaseCount;
+
+        internal BlockingManagedView(
+            TaskCompletionSource<object?> disposeStarted,
+            TaskCompletionSource<object?> disposeFinished,
+            ManualResetEventSlim allowDisposeToFinish,
+            Exception disposeException)
+        {
+            _disposeStarted = disposeStarted;
+            _disposeFinished = disposeFinished;
+            _allowDisposeToFinish = allowDisposeToFinish;
+            _disposeException = disposeException;
+        }
+
+        internal int DisposeCount { get; private set; }
+        internal int ManagedReleaseCount => Volatile.Read(ref _managedReleaseCount);
+
+        public void Dispose()
+        {
+            DisposeCount++;
+            _disposeStarted.TrySetResult(null);
+            try
+            {
+                if (!_allowDisposeToFinish.Wait(TimeSpan.FromSeconds(5)))
+                {
+                    throw new TimeoutException("Blocked view disposal was not released.");
+                }
+
+                throw _disposeException;
+            }
+            finally
+            {
+                _disposeFinished.TrySetResult(null);
+            }
+        }
+
+        public void ReleaseManagedResources() =>
+            Interlocked.Increment(ref _managedReleaseCount);
     }
 }

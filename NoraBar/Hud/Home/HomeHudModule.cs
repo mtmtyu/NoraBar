@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 using System.Windows;
 using System.Windows.Threading;
@@ -16,6 +17,7 @@ internal sealed class HomeHudModule : IHudModule
     private readonly IHomeHudPresentationSource _source;
     private readonly Func<HomeHudDesignVariant, FrameworkElement> _createView;
     private readonly TimeSpan _viewDisposalTimeout;
+    private readonly Action<Exception> _reportLateCleanupFailure;
     private readonly Dictionary<HomeHudDesignVariant, FrameworkElement> _views = [];
     private Dispatcher? _viewDispatcher;
     private Task? _disposeTask;
@@ -32,13 +34,17 @@ internal sealed class HomeHudModule : IHudModule
     internal HomeHudModule(
         IHomeHudPresentationSource source,
         Func<HomeHudDesignVariant, FrameworkElement> createView,
-        TimeSpan? viewDisposalTimeout = null)
+        TimeSpan? viewDisposalTimeout = null,
+        Action<Exception>? reportLateCleanupFailure = null)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(createView);
         _source = source;
         _createView = createView;
         _viewDisposalTimeout = viewDisposalTimeout ?? DefaultViewDisposalTimeout;
+        _reportLateCleanupFailure = reportLateCleanupFailure
+            ?? (exception => Trace.TraceError(
+                $"Late Home HUD cleanup failed: {exception}"));
         if (_viewDisposalTimeout <= TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(viewDisposalTimeout));
@@ -167,7 +173,7 @@ internal sealed class HomeHudModule : IHudModule
 
         if (!ReferenceEquals(selected, created))
         {
-            DisposeView(created);
+            ThrowIfCleanupFailed(CleanupViews([created]));
         }
 
         selected!.DataContext = _source.ViewDataContext;
@@ -270,19 +276,19 @@ internal sealed class HomeHudModule : IHudModule
                 }
             }
 
-            await DisposeViewsAsync(
+            ViewDisposalOutcome viewDisposal = await DisposeViewsAsync(
                 views,
                 dispatcher,
-                _viewDisposalTimeout,
-                exceptions);
+                _viewDisposalTimeout);
+            exceptions.AddRange(viewDisposal.Exceptions);
 
-            try
+            if (viewDisposal.LateCompletion is not null)
             {
-                _source.Dispose();
+                _ = CompleteDeferredCleanupAsync(viewDisposal.LateCompletion);
             }
-            catch (Exception exception)
+            else
             {
-                exceptions.Add(exception);
+                DisposeSource(exceptions);
             }
         }
         finally
@@ -308,69 +314,100 @@ internal sealed class HomeHudModule : IHudModule
         }
     }
 
-    private static async Task DisposeViewsAsync(
+    private async Task CompleteDeferredCleanupAsync(
+        Task<IReadOnlyList<Exception>> lateViewCleanup)
+    {
+        List<Exception> exceptions = [.. await lateViewCleanup];
+        DisposeSource(exceptions);
+        if (exceptions.Count == 0)
+        {
+            return;
+        }
+
+        var failure = new AggregateException(
+            "Late Home HUD cleanup operations failed.",
+            exceptions);
+        try
+        {
+            _reportLateCleanupFailure(failure);
+        }
+        catch (Exception reportingException)
+        {
+            Trace.TraceError(
+                $"Late Home HUD cleanup failure reporting failed: {reportingException}");
+        }
+    }
+
+    private void DisposeSource(ICollection<Exception> exceptions)
+    {
+        try
+        {
+            _source.Dispose();
+        }
+        catch (Exception exception)
+        {
+            exceptions.Add(exception);
+        }
+    }
+
+    private static async Task<ViewDisposalOutcome> DisposeViewsAsync(
         IReadOnlyList<FrameworkElement> views,
         Dispatcher? dispatcher,
-        TimeSpan timeout,
-        ICollection<Exception> exceptions)
+        TimeSpan timeout)
     {
         if (views.Count == 0 || dispatcher is null)
         {
-            return;
+            return ViewDisposalOutcome.Completed([]);
         }
 
         if (!views.Any(view => view is IDisposable or IHomeHudManagedResource))
         {
-            return;
-        }
-
-        void DisposeViews()
-        {
-            foreach (IDisposable view in views.OfType<IDisposable>())
-            {
-                try
-                {
-                    view.Dispose();
-                }
-                catch (Exception exception)
-                {
-                    exceptions.Add(exception);
-                }
-            }
+            return ViewDisposalOutcome.Completed([]);
         }
 
         if (dispatcher.CheckAccess())
         {
-            DisposeViews();
-            return;
+            return ViewDisposalOutcome.Completed(CleanupViews(views));
         }
 
         if (dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
         {
-            ReleaseManagedResources(views, exceptions);
+            List<Exception> exceptions = [.. ReleaseManagedResources(views)];
             exceptions.Add(new InvalidOperationException(
                 "Home HUD views could not be disposed because their Dispatcher is shutting down."));
-            return;
+            return ViewDisposalOutcome.Completed(exceptions);
         }
 
+        var callbackCompletion = new TaskCompletionSource<IReadOnlyList<Exception>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
         DispatcherOperation operation = dispatcher.InvokeAsync(
-            DisposeViews,
+            () => callbackCompletion.TrySetResult(CleanupViews(views)),
             DispatcherPriority.Send);
         try
         {
             await operation.Task.WaitAsync(timeout);
+            return ViewDisposalOutcome.Completed(await callbackCompletion.Task);
         }
         catch (TimeoutException)
         {
-            operation.Abort();
-            ReleaseManagedResources(views, exceptions);
-            exceptions.Add(new TimeoutException(
-                $"Home HUD view disposal did not complete within {timeout}."));
+            var timeoutException = new TimeoutException(
+                $"Home HUD view disposal did not complete within {timeout}.");
+            if (operation.Abort())
+            {
+                await ObserveAbortedOperationAsync(operation.Task);
+                List<Exception> exceptions = [.. ReleaseManagedResources(views)];
+                exceptions.Add(timeoutException);
+                return ViewDisposalOutcome.Completed(exceptions);
+            }
+
+            return ViewDisposalOutcome.Executing(
+                timeoutException,
+                ObserveLateOperationAsync(operation.Task, callbackCompletion.Task));
         }
         catch (Exception exception)
         {
-            ReleaseManagedResources(views, exceptions);
-            exceptions.Add(exception);
+            List<Exception> exceptions = [exception, .. ReleaseManagedResources(views)];
+            return ViewDisposalOutcome.Completed(exceptions);
         }
     }
 
@@ -378,8 +415,15 @@ internal sealed class HomeHudModule : IHudModule
         FrameworkElement view,
         Exception rejectionException)
     {
-        List<Exception> cleanupExceptions = [];
-        DisposeViewOnOwningDispatcher(view, _viewDisposalTimeout, cleanupExceptions);
+        ViewDisposalOutcome outcome = DisposeViewOnOwningDispatcher(
+            view,
+            _viewDisposalTimeout);
+        IReadOnlyList<Exception> cleanupExceptions = outcome.Exceptions;
+        if (outcome.LateCompletion is not null)
+        {
+            _ = ReportLateRejectedViewCleanupAsync(outcome.LateCompletion);
+        }
+
         if (cleanupExceptions.Count > 0)
         {
             throw new AggregateException(
@@ -390,83 +434,193 @@ internal sealed class HomeHudModule : IHudModule
         ExceptionDispatchInfo.Capture(rejectionException).Throw();
     }
 
-    private static void DisposeView(FrameworkElement view)
+    private async Task ReportLateRejectedViewCleanupAsync(
+        Task<IReadOnlyList<Exception>> lateCompletion)
     {
-        if (view is IDisposable disposable)
+        IReadOnlyList<Exception> exceptions = await lateCompletion;
+        if (exceptions.Count == 0)
         {
-            disposable.Dispose();
+            return;
+        }
+
+        try
+        {
+            _reportLateCleanupFailure(new AggregateException(
+                "Late rejected Home HUD view cleanup failed.",
+                exceptions));
+        }
+        catch (Exception reportingException)
+        {
+            Trace.TraceError(
+                $"Late rejected Home HUD cleanup failure reporting failed: {reportingException}");
         }
     }
 
-    private static void DisposeViewOnOwningDispatcher(
+    private static ViewDisposalOutcome DisposeViewOnOwningDispatcher(
         FrameworkElement view,
-        TimeSpan timeout,
-        ICollection<Exception> exceptions)
+        TimeSpan timeout)
     {
         if (view is not IDisposable && view is not IHomeHudManagedResource)
         {
-            return;
+            return ViewDisposalOutcome.Completed([]);
         }
 
         Dispatcher dispatcher = view.Dispatcher;
         if (dispatcher.CheckAccess())
         {
-            try
-            {
-                DisposeView(view);
-            }
-            catch (Exception exception)
-            {
-                exceptions.Add(exception);
-            }
-
-            return;
+            return ViewDisposalOutcome.Completed(CleanupViews([view]));
         }
 
         if (dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
         {
-            ReleaseManagedResources([view], exceptions);
+            List<Exception> exceptions = [.. ReleaseManagedResources([view])];
             exceptions.Add(new InvalidOperationException(
                 "A rejected Home HUD view could not be disposed because its Dispatcher is shutting down."));
-            return;
+            return ViewDisposalOutcome.Completed(exceptions);
         }
 
+        var callbackCompletion = new TaskCompletionSource<IReadOnlyList<Exception>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
         DispatcherOperation operation = dispatcher.InvokeAsync(
-            () => DisposeView(view),
+            () => callbackCompletion.TrySetResult(CleanupViews([view])),
             DispatcherPriority.Send);
         try
         {
             operation.Task.WaitAsync(timeout).GetAwaiter().GetResult();
+            return ViewDisposalOutcome.Completed(
+                callbackCompletion.Task.GetAwaiter().GetResult());
         }
         catch (TimeoutException)
         {
-            operation.Abort();
-            ReleaseManagedResources([view], exceptions);
-            exceptions.Add(new TimeoutException(
-                $"Rejected Home HUD view disposal did not complete within {timeout}."));
+            var timeoutException = new TimeoutException(
+                $"Rejected Home HUD view disposal did not complete within {timeout}.");
+            if (operation.Abort())
+            {
+                ObserveAbortedOperationAsync(operation.Task).GetAwaiter().GetResult();
+                List<Exception> exceptions = [.. ReleaseManagedResources([view])];
+                exceptions.Add(timeoutException);
+                return ViewDisposalOutcome.Completed(exceptions);
+            }
+
+            return ViewDisposalOutcome.Executing(
+                timeoutException,
+                ObserveLateOperationAsync(operation.Task, callbackCompletion.Task));
         }
         catch (Exception exception)
         {
-            ReleaseManagedResources([view], exceptions);
+            return ViewDisposalOutcome.Completed(
+                [exception, .. ReleaseManagedResources([view])]);
+        }
+    }
+
+    private static IReadOnlyList<Exception> CleanupViews(
+        IEnumerable<FrameworkElement> views)
+    {
+        List<Exception> exceptions = [];
+        foreach (FrameworkElement view in views)
+        {
+            bool disposeSucceeded = false;
+            if (view is IDisposable disposable)
+            {
+                try
+                {
+                    disposable.Dispose();
+                    disposeSucceeded = true;
+                }
+                catch (Exception exception)
+                {
+                    exceptions.Add(exception);
+                }
+            }
+
+            if (!disposeSucceeded && view is IHomeHudManagedResource managedResource)
+            {
+                TryReleaseManagedResource(managedResource, exceptions);
+            }
+        }
+
+        return exceptions;
+    }
+
+    private static IReadOnlyList<Exception> ReleaseManagedResources(
+        IEnumerable<FrameworkElement> views)
+    {
+        List<Exception> exceptions = [];
+        foreach (IHomeHudManagedResource view in views.OfType<IHomeHudManagedResource>())
+        {
+            TryReleaseManagedResource(view, exceptions);
+        }
+
+        return exceptions;
+    }
+
+    private static void TryReleaseManagedResource(
+        IHomeHudManagedResource resource,
+        ICollection<Exception> exceptions)
+    {
+        try
+        {
+            resource.ReleaseManagedResources();
+        }
+        catch (Exception exception)
+        {
             exceptions.Add(exception);
         }
     }
 
-    private static void ReleaseManagedResources(
-        IEnumerable<FrameworkElement> views,
-        ICollection<Exception> exceptions)
+    private static async Task ObserveAbortedOperationAsync(Task operationTask)
     {
-        foreach (IHomeHudManagedResource view in views.OfType<IHomeHudManagedResource>())
+        try
         {
-            try
-            {
-                view.ReleaseManagedResources();
-            }
-            catch (Exception exception)
-            {
-                exceptions.Add(exception);
-            }
+            await operationTask;
         }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private static async Task<IReadOnlyList<Exception>> ObserveLateOperationAsync(
+        Task operationTask,
+        Task<IReadOnlyList<Exception>> callbackCompletion)
+    {
+        try
+        {
+            await operationTask;
+            return await callbackCompletion;
+        }
+        catch (Exception exception)
+        {
+            return [exception];
+        }
+    }
+
+    private static void ThrowIfCleanupFailed(IReadOnlyList<Exception> exceptions)
+    {
+        if (exceptions.Count == 1)
+        {
+            ExceptionDispatchInfo.Capture(exceptions[0]).Throw();
+        }
+
+        if (exceptions.Count > 1)
+        {
+            throw new AggregateException(
+                "Multiple Home HUD view cleanup operations failed.",
+                exceptions);
+        }
+    }
+
+    private sealed record ViewDisposalOutcome(
+        IReadOnlyList<Exception> Exceptions,
+        Task<IReadOnlyList<Exception>>? LateCompletion)
+    {
+        internal static ViewDisposalOutcome Completed(
+            IReadOnlyList<Exception> exceptions) =>
+            new(exceptions, null);
+
+        internal static ViewDisposalOutcome Executing(
+            Exception timeoutException,
+            Task<IReadOnlyList<Exception>> lateCompletion) =>
+            new([timeoutException], lateCompletion);
     }
 
     private bool IsUnavailable()
