@@ -72,6 +72,22 @@ public sealed class HomeHudModuleTests
         Assert.Equal(1, count);
     }
 
+    [Fact]
+    public void DisposeAsync_DisposesCachedViews()
+    {
+        RunInSta(() =>
+        {
+            var source = new FakeHomeHudPresentationSource();
+            var view = new DisposableFrameworkElement();
+            var module = new HomeHudModule(source, _ => view);
+            module.GetView(new HudViewContext(HudPresentationState.Expanded));
+
+            module.DisposeAsync().AsTask().GetAwaiter().GetResult();
+
+            Assert.Equal(1, view.DisposeCount);
+        });
+    }
+
     private static void RunInSta(Action action)
     {
         Exception? exception = null;
@@ -123,5 +139,12 @@ public sealed class HomeHudModuleTests
 
         public void RaisePresentationInvalidated() =>
             PresentationInvalidated?.Invoke(this, EventArgs.Empty);
+    }
+
+    private sealed class DisposableFrameworkElement : FrameworkElement, IDisposable
+    {
+        public int DisposeCount { get; private set; }
+
+        public void Dispose() => DisposeCount++;
     }
 }

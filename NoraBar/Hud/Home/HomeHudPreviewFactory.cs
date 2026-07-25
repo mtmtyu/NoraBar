@@ -6,6 +6,7 @@ namespace NoraBar.Hud.Home;
 internal sealed class HomeHudPreview : IDisposable
 {
     private readonly HomeHudViewModel _viewModel;
+    private bool _isDisposed;
 
     internal HomeHudPreview(
         FrameworkElement view,
@@ -21,7 +22,23 @@ internal sealed class HomeHudPreview : IDisposable
 
     internal HudSize PreferredSize { get; }
 
-    public void Dispose() => _viewModel.Dispose();
+    public void Dispose()
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        _isDisposed = true;
+        try
+        {
+            (View as IDisposable)?.Dispose();
+        }
+        finally
+        {
+            _viewModel.Dispose();
+        }
+    }
 }
 
 internal static class HomeHudPreviewFactory

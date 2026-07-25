@@ -11,11 +11,12 @@ using NoraBar.Views.Home.Widgets;
 
 namespace NoraBar.Views.Home;
 
-public partial class DynamicWidgetHomeView : UserControl
+public partial class DynamicWidgetHomeView : UserControl, IDisposable
 {
     private Point _dragStartPoint;
     private int _draggedWidgetIndex = -1;
     private WrapPanelAnimatedReorderHelper? _reorderHelper;
+    private bool _isDisposed;
 
     public DynamicWidgetHomeView()
     {
@@ -51,7 +52,13 @@ public partial class DynamicWidgetHomeView : UserControl
 
     public void RebuildWidgets()
     {
+        if (_isDisposed)
+        {
+            return;
+        }
+
         _reorderHelper = null;
+        DisposeChildViews(WidgetsContainer);
         WidgetsContainer.Children.Clear();
 
         if (DataContext is not HomeHudViewModel vm || vm.ActiveWidgets is null)
@@ -86,6 +93,51 @@ public partial class DynamicWidgetHomeView : UserControl
 
             FrameworkElement wrapped = WrapWidgetContainer(element, widget, i, vm);
             WidgetsContainer.Children.Add(wrapped);
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        _isDisposed = true;
+        DataContextChanged -= DynamicWidgetHomeView_DataContextChanged;
+        if (DataContext is INotifyPropertyChanged viewModel)
+        {
+            viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        }
+
+        _reorderHelper = null;
+        DisposeChildViews(WidgetsContainer);
+        WidgetsContainer.Children.Clear();
+        DataContext = null;
+    }
+
+    internal static void DisposeChildViews(Panel container)
+    {
+        ArgumentNullException.ThrowIfNull(container);
+
+        foreach (UIElement child in container.Children)
+        {
+            DisposeElement(child);
+        }
+    }
+
+    private static void DisposeElement(DependencyObject element)
+    {
+        if (element is IDisposable disposable)
+        {
+            disposable.Dispose();
+            return;
+        }
+
+        int childCount = VisualTreeHelper.GetChildrenCount(element);
+        for (int index = 0; index < childCount; index++)
+        {
+            DisposeElement(VisualTreeHelper.GetChild(element, index));
         }
     }
 

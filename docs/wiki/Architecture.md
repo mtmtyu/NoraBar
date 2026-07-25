@@ -83,9 +83,9 @@ It reevaluates cached views and preferred size instead of rebuilding views for e
 
 ## HomeHudModule
 
-`HomeHudModule` is the built-in overview HUD. It owns four cached views—Activity Modules, Classic System Overlay, Fusion Balanced, and Fusion Expressive—and their preferred sizes. `HomeHudViewModel` adapts the existing music state and adds a local clock plus two configurable world clocks. Its one-second clock timer runs only while Home is active, and presentation invalidation is forwarded through Router.
+`HomeHudModule` is the built-in overview HUD. It owns four cached views—Activity Modules, Classic System Overlay, Fusion Balanced, and Fusion Expressive—and their preferred sizes. `HomeHudViewModel` adapts the existing music state and adds a local clock plus two configurable world clocks. Its one-second clock timer runs only while Home is active, and presentation invalidation is forwarded through Router. Module and preview disposal also dispose their owned Home view trees. Dynamic widget rebuilds dispose removed widget views before clearing the visual tree.
 
-Home settings live in the `home` module payload: design, system/12-hour/24-hour time format, and the label and Windows time-zone ID for each world clock. With no media session, the music region keeps its layout, shows the localized no-media state, and disables transport controls. The settings window creates a separate disposable presentation source for live preview, so preview lifetime does not alter the active module.
+Home settings live in the `home` module payload: design, system/12-hour/24-hour time format, and the label and Windows time-zone ID for each world clock. With no media session, the music region keeps its layout, shows the localized no-media state, and disables transport controls. The media widget subscribes to music changes only while loaded, detaches on unload or disposal, and cancels bounded lyric-scroll work when it leaves the visual tree. The settings window creates a separate disposable presentation source for live preview, so preview lifetime does not alter the active module.
 
 ## MainWindow
 

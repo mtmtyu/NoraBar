@@ -174,6 +174,13 @@ internal sealed class HomeHudModule : IHudModule
                 _isInitialized = false;
             }
 
+            foreach (IDisposable view in _views.Values.OfType<IDisposable>())
+            {
+                view.Dispose();
+            }
+
+            _views.Clear();
+            _viewDispatcher = null;
             _source.Dispose();
             _isDisposed = true;
         }

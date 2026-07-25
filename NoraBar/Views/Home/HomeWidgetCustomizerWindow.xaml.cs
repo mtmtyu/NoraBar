@@ -29,6 +29,9 @@ public partial class HomeWidgetCustomizerWindow : Window
         DataContextChanged += HomeWidgetCustomizerWindow_DataContextChanged;
         Closed += (s, e) =>
         {
+            _previewView?.Dispose();
+            _previewView = null;
+            LivePreviewHost.Content = null;
             _previewHomeViewModel?.Dispose();
             _previewHomeViewModel = null;
         };
