@@ -1,7 +1,7 @@
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -16,17 +16,23 @@ namespace NoraBar.Views.Home.Widgets;
 
 public partial class MediaControlsWidgetView : UserControl, IDisposable
 {
-    private const int LyricContainerRetryDelayMilliseconds = 50;
-    private const int MaxLyricContainerRetryCount = 1;
+    private const int MaxLyricContainerAttempts = 5;
 
-    private MusicViewModel? _musicVm;
+    private readonly Func<bool> _isLoaded;
+    private IMusicChangeSource? _musicSource;
     private DispatcherOperation? _pendingLyricScroll;
     private CancellationTokenSource? _lyricScrollCancellation;
     private HomeWidgetStyle _currentStyle = HomeWidgetStyle.MediaCompact;
     private bool _isDisposed;
 
     public MediaControlsWidgetView()
+        : this(null)
     {
+    }
+
+    internal MediaControlsWidgetView(Func<bool>? isLoaded)
+    {
+        _isLoaded = isLoaded ?? (() => IsLoaded);
         InitializeComponent();
         MediaContentControl.ContentTemplate = Resources["MediaCompactTemplate"] as DataTemplate;
         DataContextChanged += MediaControlsWidgetView_DataContextChanged;
@@ -34,8 +40,16 @@ public partial class MediaControlsWidgetView : UserControl, IDisposable
         Unloaded += MediaControlsWidgetView_Unloaded;
     }
 
+    internal bool HasPendingLyricScroll =>
+        _pendingLyricScroll is not null || _lyricScrollCancellation is not null;
+
     public void SetStyle(HomeWidgetStyle style)
     {
+        if (_isDisposed)
+        {
+            return;
+        }
+
         _currentStyle = style;
         MediaContentControl.ContentTemplate = style switch
         {
@@ -51,6 +65,10 @@ public partial class MediaControlsWidgetView : UserControl, IDisposable
         {
             ScheduleLyricScroll();
         }
+        else
+        {
+            CancelPendingLyricScroll();
+        }
     }
 
     public void Dispose()
@@ -64,7 +82,7 @@ public partial class MediaControlsWidgetView : UserControl, IDisposable
         DataContextChanged -= MediaControlsWidgetView_DataContextChanged;
         Loaded -= MediaControlsWidgetView_Loaded;
         Unloaded -= MediaControlsWidgetView_Unloaded;
-        DetachMusicViewModel();
+        DetachMusicSource();
         CancelPendingLyricScroll();
         DataContext = null;
     }
@@ -76,8 +94,8 @@ public partial class MediaControlsWidgetView : UserControl, IDisposable
             return;
         }
 
-        _musicVm = GetMusicViewModel();
-        AttachMusicViewModel();
+        _musicSource = GetMusicSource();
+        AttachMusicSource();
         if (_currentStyle == HomeWidgetStyle.MediaBlurLyrics)
         {
             ScheduleLyricScroll();
@@ -86,18 +104,20 @@ public partial class MediaControlsWidgetView : UserControl, IDisposable
 
     private void MediaControlsWidgetView_Unloaded(object sender, RoutedEventArgs e)
     {
-        DetachMusicViewModel();
+        DetachMusicSource();
         CancelPendingLyricScroll();
     }
 
-    private void MediaControlsWidgetView_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    private void MediaControlsWidgetView_DataContextChanged(
+        object sender,
+        DependencyPropertyChangedEventArgs e)
     {
-        DetachMusicViewModel();
-
-        _musicVm = GetMusicViewModel();
-        if (!_isDisposed && IsLoaded && _musicVm != null)
+        DetachMusicSource();
+        CancelPendingLyricScroll();
+        _musicSource = GetMusicSource();
+        if (!_isDisposed && _isLoaded() && _musicSource is not null)
         {
-            AttachMusicViewModel();
+            AttachMusicSource();
             if (_currentStyle == HomeWidgetStyle.MediaBlurLyrics)
             {
                 ScheduleLyricScroll();
@@ -105,41 +125,44 @@ public partial class MediaControlsWidgetView : UserControl, IDisposable
         }
     }
 
-    private void AttachMusicViewModel()
+    private void AttachMusicSource()
     {
-        if (_musicVm is null)
+        if (_musicSource is null)
         {
             return;
         }
 
-        _musicVm.PropertyChanged -= MusicVm_PropertyChanged;
-        _musicVm.PropertyChanged += MusicVm_PropertyChanged;
+        _musicSource.PropertyChanged -= MusicSource_PropertyChanged;
+        _musicSource.PropertyChanged += MusicSource_PropertyChanged;
     }
 
-    private void DetachMusicViewModel()
+    private void DetachMusicSource()
     {
-        if (_musicVm is not null)
+        if (_musicSource is not null)
         {
-            _musicVm.PropertyChanged -= MusicVm_PropertyChanged;
+            _musicSource.PropertyChanged -= MusicSource_PropertyChanged;
         }
     }
 
-    private MusicViewModel? GetMusicViewModel()
+    private IMusicChangeSource? GetMusicSource()
     {
-        if (DataContext is HomeHudViewModel homeVm)
+        if (DataContext is HomeHudViewModel homeViewModel)
         {
-            return homeVm.Music;
+            return homeViewModel.Music;
         }
-        if (DataContext is MainViewModel mainVm)
+
+        if (DataContext is MainViewModel mainViewModel)
         {
-            return mainVm.Music;
+            return mainViewModel.Music;
         }
-        return null;
+
+        return DataContext as IMusicChangeSource;
     }
 
-    private void MusicVm_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void MusicSource_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (_currentStyle == HomeWidgetStyle.MediaBlurLyrics && e.PropertyName == nameof(MusicViewModel.CurrentLyricIndex))
+        if (_currentStyle == HomeWidgetStyle.MediaBlurLyrics
+            && e.PropertyName == nameof(IMusicChangeSource.CurrentLyricIndex))
         {
             ScheduleLyricScroll();
         }
@@ -148,126 +171,165 @@ public partial class MediaControlsWidgetView : UserControl, IDisposable
     private void ScheduleLyricScroll()
     {
         CancelPendingLyricScroll();
-        if (_isDisposed || !IsLoaded)
+        if (!CanScrollLyrics())
         {
             return;
         }
 
         _lyricScrollCancellation = new CancellationTokenSource();
-        CancellationToken cancellationToken = _lyricScrollCancellation.Token;
+        QueueLyricScrollAttempt(_lyricScrollCancellation.Token, 1);
+    }
+
+    private void QueueLyricScrollAttempt(
+        CancellationToken cancellationToken,
+        int attempt)
+    {
+        if (!CanScrollLyrics() || cancellationToken.IsCancellationRequested)
+        {
+            CompleteLyricScroll(cancellationToken);
+            return;
+        }
+
         _pendingLyricScroll = Dispatcher.InvokeAsync(
-            () =>
-            {
-                _pendingLyricScroll = null;
-                ScrollToCurrentLyric(cancellationToken, 0);
-            },
-            DispatcherPriority.Background,
+            () => ExecuteLyricScrollAttempt(cancellationToken, attempt),
+            DispatcherPriority.ContextIdle,
             cancellationToken);
     }
 
-    private void ScrollToCurrentLyric(
+    private void ExecuteLyricScrollAttempt(
         CancellationToken cancellationToken,
-        int retryCount)
+        int attempt)
     {
-        if (_musicVm == null
-            || _isDisposed
-            || !IsLoaded
-            || cancellationToken.IsCancellationRequested)
+        _pendingLyricScroll = null;
+        try
+        {
+            if (!TryScrollToCurrentLyric(cancellationToken)
+                && attempt < MaxLyricContainerAttempts)
+            {
+                QueueLyricScrollAttempt(cancellationToken, attempt + 1);
+                return;
+            }
+        }
+        catch (Exception exception)
+        {
+            Trace.TraceError($"Home HUD lyric scrolling failed: {exception}");
+        }
+
+        CompleteLyricScroll(cancellationToken);
+    }
+
+    private bool TryScrollToCurrentLyric(CancellationToken cancellationToken)
+    {
+        if (!CanScrollLyrics() || cancellationToken.IsCancellationRequested)
+        {
+            return true;
+        }
+
+        ListBox? lyricsListBox = FindVisualChild<ListBox>(MediaContentControl);
+        if (lyricsListBox is null || lyricsListBox.Name != "LyricsListBoxBlur")
+        {
+            return false;
+        }
+
+        int index = _musicSource!.CurrentLyricIndex;
+        if (index < 0 || index >= lyricsListBox.Items.Count)
+        {
+            return true;
+        }
+
+        object targetItem = lyricsListBox.Items[index];
+        var container = lyricsListBox.ItemContainerGenerator.ContainerFromIndex(index)
+            as FrameworkElement;
+        if (container is null)
+        {
+            lyricsListBox.ScrollIntoView(targetItem);
+            return false;
+        }
+
+        ScrollViewer? scrollViewer = FindVisualChild<ScrollViewer>(lyricsListBox);
+        if (scrollViewer is null)
+        {
+            lyricsListBox.ScrollIntoView(targetItem);
+            return false;
+        }
+
+        GeneralTransform transform = container.TransformToVisual(scrollViewer);
+        Point offset = transform.Transform(new Point(0, 0));
+        double targetOffset = scrollViewer.VerticalOffset
+            + offset.Y
+            - (scrollViewer.ViewportHeight / 2)
+            + (container.ActualHeight / 2);
+        targetOffset = Math.Clamp(targetOffset, 0, scrollViewer.ScrollableHeight);
+
+        if (Math.Abs(scrollViewer.VerticalOffset - targetOffset) <= 1.0)
+        {
+            return true;
+        }
+
+        var animation = new DoubleAnimation
+        {
+            From = scrollViewer.VerticalOffset,
+            To = targetOffset,
+            Duration = TimeSpan.FromMilliseconds(400),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        scrollViewer.BeginAnimation(
+            ScrollViewerBehavior.AnimatedOffsetProperty,
+            animation);
+        return true;
+    }
+
+    private bool CanScrollLyrics() =>
+        !_isDisposed
+        && _isLoaded()
+        && _musicSource is not null
+        && _currentStyle == HomeWidgetStyle.MediaBlurLyrics;
+
+    private void CompleteLyricScroll(CancellationToken cancellationToken)
+    {
+        if (_lyricScrollCancellation is null
+            || _lyricScrollCancellation.Token != cancellationToken)
         {
             return;
         }
 
-        ListBox? lyricsListBox = FindVisualChild<ListBox>(MediaContentControl);
-        if (lyricsListBox == null || lyricsListBox.Name != "LyricsListBoxBlur") return;
-
-        int index = _musicVm.CurrentLyricIndex;
-        if (index >= 0 && index < lyricsListBox.Items.Count)
-        {
-            var targetItem = lyricsListBox.Items[index];
-            var scrollViewer = FindVisualChild<ScrollViewer>(lyricsListBox);
-            if (scrollViewer != null)
-            {
-                var container = lyricsListBox.ItemContainerGenerator.ContainerFromIndex(index) as FrameworkElement;
-                if (container != null)
-                {
-                    var transform = container.TransformToVisual(scrollViewer);
-                    var offset = transform.Transform(new Point(0, 0));
-
-                    double targetOffset = scrollViewer.VerticalOffset + offset.Y - (scrollViewer.ViewportHeight / 2) + (container.ActualHeight / 2);
-
-                    if (targetOffset < 0) targetOffset = 0;
-                    if (targetOffset > scrollViewer.ScrollableHeight) targetOffset = scrollViewer.ScrollableHeight;
-
-                    if (Math.Abs(scrollViewer.VerticalOffset - targetOffset) > 1.0)
-                    {
-                        var animation = new DoubleAnimation
-                        {
-                            From = scrollViewer.VerticalOffset,
-                            To = targetOffset,
-                            Duration = TimeSpan.FromMilliseconds(400),
-                            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-                        };
-
-                        scrollViewer.BeginAnimation(ScrollViewerBehavior.AnimatedOffsetProperty, animation);
-                    }
-                }
-                else
-                {
-                    lyricsListBox.ScrollIntoView(targetItem);
-                    if (retryCount < MaxLyricContainerRetryCount)
-                    {
-                        _ = RetryLyricScrollAsync(cancellationToken, retryCount + 1);
-                    }
-                }
-            }
-            else
-            {
-                lyricsListBox.ScrollIntoView(targetItem);
-            }
-        }
-    }
-
-    private async Task RetryLyricScrollAsync(
-        CancellationToken cancellationToken,
-        int retryCount)
-    {
-        try
-        {
-            await Task.Delay(
-                LyricContainerRetryDelayMilliseconds,
-                cancellationToken);
-            await Dispatcher.InvokeAsync(
-                () => ScrollToCurrentLyric(cancellationToken, retryCount),
-                DispatcherPriority.Background,
-                cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-        }
+        _lyricScrollCancellation.Dispose();
+        _lyricScrollCancellation = null;
     }
 
     private void CancelPendingLyricScroll()
     {
+        CancellationTokenSource? cancellation = _lyricScrollCancellation;
+        _lyricScrollCancellation = null;
+        cancellation?.Cancel();
+
         if (_pendingLyricScroll?.Status == DispatcherOperationStatus.Pending)
         {
             _pendingLyricScroll.Abort();
         }
 
         _pendingLyricScroll = null;
-        _lyricScrollCancellation?.Cancel();
-        _lyricScrollCancellation?.Dispose();
-        _lyricScrollCancellation = null;
+        cancellation?.Dispose();
     }
 
-    private static T? FindVisualChild<T>(DependencyObject obj) where T : DependencyObject
+    private static T? FindVisualChild<T>(DependencyObject obj)
+        where T : DependencyObject
     {
-        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(obj); i++)
+        for (int index = 0; index < VisualTreeHelper.GetChildrenCount(obj); index++)
         {
-            var child = VisualTreeHelper.GetChild(obj, i);
-            if (child is T t) return t;
-            var childOfChild = FindVisualChild<T>(child);
-            if (childOfChild != null) return childOfChild;
+            DependencyObject child = VisualTreeHelper.GetChild(obj, index);
+            if (child is T match)
+            {
+                return match;
+            }
+
+            T? descendant = FindVisualChild<T>(child);
+            if (descendant is not null)
+            {
+                return descendant;
+            }
         }
+
         return null;
     }
 }

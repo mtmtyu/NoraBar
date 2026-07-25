@@ -7,7 +7,7 @@ using NoraBar.Models;
 
 namespace NoraBar.ViewModels
 {
-    public class MusicViewModel : ViewModelBase
+    public class MusicViewModel : ViewModelBase, IMusicChangeSource
     {
         private readonly MediaControlService _mediaService;
         private readonly AudioVisualizerService _audioVisualizerService;

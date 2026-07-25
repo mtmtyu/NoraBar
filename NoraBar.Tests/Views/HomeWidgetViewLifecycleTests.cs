@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
@@ -28,34 +29,131 @@ public sealed class HomeWidgetViewLifecycleTests
     }
 
     [Fact]
-    public void MediaControlsWidgetView_DisposeDetachesMusicViewModel()
+    public void MediaControlsWidgetView_LoadSubscribesOnce()
     {
         StaTestRunner.Run(() =>
         {
-            var mainViewModel = new MainViewModel();
-            var view = new MediaControlsWidgetView
+            bool isLoaded = false;
+            var source = new FakeMusicChangeSource();
+            var view = new MediaControlsWidgetView(() => isLoaded)
             {
-                DataContext = mainViewModel
+                DataContext = source
             };
-            IDisposable disposable = Assert.IsAssignableFrom<IDisposable>(view);
+
+            Assert.Equal(0, source.SubscriptionCount);
+            isLoaded = true;
+            view.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
             view.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
 
-            Assert.Contains(
-                GetPropertyChangedHandlers(mainViewModel.Music),
-                handler => ReferenceEquals(handler.Target, view));
+            Assert.Equal(1, source.SubscriptionCount);
+            view.Dispose();
+        });
+    }
 
+    [Fact]
+    public void MediaControlsWidgetView_UnloadRemovesSubscription()
+    {
+        StaTestRunner.Run(() =>
+        {
+            bool isLoaded = true;
+            var source = new FakeMusicChangeSource();
+            var view = new MediaControlsWidgetView(() => isLoaded)
+            {
+                DataContext = source
+            };
+            view.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+            view.SetStyle(NoraBar.Hud.Home.Widgets.HomeWidgetStyle.MediaBlurLyrics);
+            Assert.True(view.HasPendingLyricScroll);
+
+            isLoaded = false;
             view.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
 
-            Assert.DoesNotContain(
-                GetPropertyChangedHandlers(mainViewModel.Music),
-                handler => ReferenceEquals(handler.Target, view));
+            Assert.Equal(0, source.SubscriptionCount);
+            Assert.False(view.HasPendingLyricScroll);
+            view.Dispose();
+        });
+    }
 
+    [Fact]
+    public void MediaControlsWidgetView_DisposeRemovesSubscription()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var source = new FakeMusicChangeSource();
+            var view = new MediaControlsWidgetView(() => true)
+            {
+                DataContext = source
+            };
             view.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
-            disposable.Dispose();
 
-            Assert.DoesNotContain(
-                GetPropertyChangedHandlers(mainViewModel.Music),
-                handler => ReferenceEquals(handler.Target, view));
+            view.Dispose();
+            view.Dispose();
+            view.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+
+            Assert.Equal(0, source.SubscriptionCount);
+        });
+    }
+
+    [Fact]
+    public void MediaControlsWidgetView_StyleChangeCancelsPendingScroll()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var source = new FakeMusicChangeSource();
+            var view = new MediaControlsWidgetView(() => true)
+            {
+                DataContext = source
+            };
+            view.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+            view.SetStyle(NoraBar.Hud.Home.Widgets.HomeWidgetStyle.MediaBlurLyrics);
+            Assert.True(view.HasPendingLyricScroll);
+
+            view.SetStyle(NoraBar.Hud.Home.Widgets.HomeWidgetStyle.MediaCompact);
+
+            Assert.False(view.HasPendingLyricScroll);
+            view.Dispose();
+        });
+    }
+
+    [Fact]
+    public void MediaControlsWidgetView_DisposeCancelsPendingScroll()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var source = new FakeMusicChangeSource();
+            var view = new MediaControlsWidgetView(() => true)
+            {
+                DataContext = source
+            };
+            view.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+            view.SetStyle(NoraBar.Hud.Home.Widgets.HomeWidgetStyle.MediaBlurLyrics);
+            Assert.True(view.HasPendingLyricScroll);
+
+            view.Dispose();
+
+            Assert.False(view.HasPendingLyricScroll);
+        });
+    }
+
+    [Fact]
+    public void MediaControlsWidgetView_DataContextChangeCancelsPendingScroll()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var source = new FakeMusicChangeSource();
+            var view = new MediaControlsWidgetView(() => true)
+            {
+                DataContext = source
+            };
+            view.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+            view.SetStyle(NoraBar.Hud.Home.Widgets.HomeWidgetStyle.MediaBlurLyrics);
+            Assert.True(view.HasPendingLyricScroll);
+
+            view.DataContext = null;
+
+            Assert.False(view.HasPendingLyricScroll);
+            Assert.Equal(0, source.SubscriptionCount);
+            view.Dispose();
         });
     }
 
@@ -163,16 +261,6 @@ public sealed class HomeWidgetViewLifecycleTests
             Assert.Equal(1, viewModel.DisposeCount);
         });
     }
-    private static IReadOnlyList<Delegate> GetPropertyChangedHandlers(
-        MusicViewModel viewModel)
-    {
-        FieldInfo eventField = Assert.IsAssignableFrom<FieldInfo>(
-            typeof(ViewModelBase).GetField(
-                nameof(ViewModelBase.PropertyChanged),
-                BindingFlags.Instance | BindingFlags.NonPublic));
-        var handlers = eventField.GetValue(viewModel) as MulticastDelegate;
-        return handlers?.GetInvocationList() ?? [];
-    }
 
     private static IReadOnlyList<Delegate> GetEventHandlers(
         object publisher,
@@ -186,6 +274,34 @@ public sealed class HomeWidgetViewLifecycleTests
         var handlers = eventField.GetValue(publisher) as MulticastDelegate;
         return handlers?.GetInvocationList() ?? [];
     }
+
+    private sealed class FakeMusicChangeSource : IMusicChangeSource
+    {
+        private readonly HashSet<PropertyChangedEventHandler> _handlers = [];
+
+        internal int SubscriptionCount => _handlers.Count;
+
+        public int CurrentLyricIndex { get; set; }
+
+        public event PropertyChangedEventHandler? PropertyChanged
+        {
+            add
+            {
+                if (value is not null)
+                {
+                    _handlers.Add(value);
+                }
+            }
+            remove
+            {
+                if (value is not null)
+                {
+                    _handlers.Remove(value);
+                }
+            }
+        }
+    }
+
     private sealed class DisposableWidget : FrameworkElement, IDisposable
     {
         internal int DisposeCount { get; private set; }
