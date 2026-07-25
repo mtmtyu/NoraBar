@@ -53,6 +53,54 @@ internal static class HomePreviewLifecycle
             clearContent);
     }
 }
+
+internal sealed class HomePreviewSession
+{
+    private HomeHudPreview? _preview;
+
+    internal HomeHudPreview? Current => _preview;
+
+    internal HomeHudPreview Show(
+        Func<HomeHudPreview> createPreview,
+        Action<HomeHudPreview> showPreview,
+        Action<Exception> reportCleanupFailure)
+    {
+        ArgumentNullException.ThrowIfNull(createPreview);
+        ArgumentNullException.ThrowIfNull(showPreview);
+        ArgumentNullException.ThrowIfNull(reportCleanupFailure);
+        if (_preview is not null)
+        {
+            throw new InvalidOperationException("A Home HUD preview is already active.");
+        }
+
+        HomeHudPreview preview = createPreview();
+        _preview = preview;
+        try
+        {
+            showPreview(preview);
+            return preview;
+        }
+        catch
+        {
+            Suspend(static () => { }, reportCleanupFailure);
+            throw;
+        }
+    }
+
+    internal void Suspend(
+        Action clearContent,
+        Action<Exception> reportCleanupFailure)
+    {
+        ArgumentNullException.ThrowIfNull(clearContent);
+        ArgumentNullException.ThrowIfNull(reportCleanupFailure);
+        HomeHudPreview? preview = _preview;
+        BestEffortResourceReleaser.ReleaseAllAndReport(
+            reportCleanupFailure,
+            () => preview?.Dispose(),
+            () => _preview = null,
+            clearContent);
+    }
+}
 internal static class HomeHudPreviewFactory
 {
     internal static HomeHudPreview Create(MainViewModel mainViewModel)

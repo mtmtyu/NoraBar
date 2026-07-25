@@ -33,4 +33,29 @@ public sealed class BestEffortResourceReleaserTests
 
         Assert.Equal(2, calls);
     }
+
+    [Fact]
+    public void ReleaseAllAndReport_WhenCleanupFails_CompletesBoundaryActionAndDoesNotThrow()
+    {
+        var failure = new InvalidOperationException("preview");
+        Exception? reported = null;
+        bool hidden = false;
+
+        BestEffortResourceReleaser.ReleaseAllAndReport(
+            exception => reported = exception,
+            () => throw failure,
+            () => hidden = true);
+
+        Assert.True(hidden);
+        AggregateException aggregate = Assert.IsType<AggregateException>(reported);
+        Assert.Same(failure, Assert.Single(aggregate.InnerExceptions));
+    }
+
+    [Fact]
+    public void ReleaseAllAndReport_WhenReporterFails_DoesNotEscapeUiBoundary()
+    {
+        BestEffortResourceReleaser.ReleaseAllAndReport(
+            _ => throw new InvalidOperationException("trace"),
+            () => throw new InvalidOperationException("cleanup"));
+    }
 }

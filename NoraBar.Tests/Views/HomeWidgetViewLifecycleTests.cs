@@ -298,6 +298,79 @@ public sealed class HomeWidgetViewLifecycleTests
     }
 
     [Fact]
+    public void HomePreviewSession_HideAndShowAgain_RecreatesDisposedPreview()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var firstView = new DisposableWidget
+            {
+                DisposeException = new InvalidOperationException("view")
+            };
+            var firstOwner = new TrackingDisposable();
+            var firstPreview = new HomeHudPreview(
+                firstView,
+                new HudSize(100, 100),
+                firstOwner);
+            var secondOwner = new TrackingDisposable();
+            var secondPreview = new HomeHudPreview(
+                new DisposableWidget(),
+                new HudSize(100, 100),
+                secondOwner);
+            var session = new HomePreviewSession();
+            object? content = null;
+            var failures = new List<Exception>();
+
+            session.Show(
+                () => firstPreview,
+                preview => content = preview.View,
+                failures.Add);
+            session.Suspend(
+                () => content = null,
+                failures.Add);
+            session.Show(
+                () => secondPreview,
+                preview => content = preview.View,
+                failures.Add);
+
+            Assert.Equal(1, firstView.DisposeCount);
+            Assert.Equal(1, firstOwner.DisposeCount);
+            Assert.Same(secondPreview, session.Current);
+            Assert.Same(secondPreview.View, content);
+            Assert.Single(failures);
+
+            session.Suspend(() => content = null, failures.Add);
+            Assert.Null(session.Current);
+            Assert.Null(content);
+            Assert.Equal(1, secondOwner.DisposeCount);
+        });
+    }
+
+    [Fact]
+    public void HomePreviewSession_WhenHostingFails_ClearsAndDisposesPreview()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var owner = new TrackingDisposable();
+            var preview = new HomeHudPreview(
+                new DisposableWidget(),
+                new HudSize(100, 100),
+                owner);
+            var session = new HomePreviewSession();
+            var hostingFailure = new InvalidOperationException("host");
+
+            Exception exception = Assert.Throws<InvalidOperationException>(() =>
+                session.Show(
+                    () => preview,
+                    _ => throw hostingFailure,
+                    _ => { }));
+
+            Assert.Same(hostingFailure, exception);
+            Assert.Null(session.Current);
+            Assert.Equal(1, owner.DisposeCount);
+        });
+    }
+
+    [Fact]
     public void ReleaseManagedResources_RemovesHomeAndMediaSubscriptions()
     {
         StaTestRunner.Run(() =>

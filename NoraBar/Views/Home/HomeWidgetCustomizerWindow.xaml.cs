@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Diagnostics;
 using NoraBar.Hud.Home;
 using NoraBar.Services;
 using NoraBar.ViewModels;
@@ -41,7 +42,9 @@ public partial class HomeWidgetCustomizerWindow : Window
         DynamicWidgetHomeView? previewView = _previewView;
         HomeHudViewModel? previewHomeViewModel = _previewHomeViewModel;
 
-        BestEffortResourceReleaser.ReleaseAll(
+        BestEffortResourceReleaser.ReleaseAllAndReport(
+            static exception => Trace.TraceError(
+                $"Home widget preview cleanup failed: {exception}"),
             () =>
             {
                 if (customizerViewModel is not null)

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -15,7 +16,7 @@ namespace NoraBar.Views
     public partial class SettingsWindow : Window
     {
         private MainViewModel? _viewModel;
-        private HomeHudPreview? _homePreview;
+        private readonly HomePreviewSession _homePreviewSession = new();
         private bool _isCloseAnimationCompleted = false;
         private bool _isClosingApp = false;
         private readonly AnimatedReorderHelper _hudModulesReorderHelper;
@@ -275,16 +276,15 @@ namespace NoraBar.Views
         }
 
         private void SuspendPreviewAndHide() =>
-            BestEffortResourceReleaser.ReleaseAll(
+            BestEffortResourceReleaser.ReleaseAllAndReport(
+                ReportCleanupFailure,
                 SuspendPreview,
                 Hide);
         internal void SuspendPreview()
         {
-            HomeHudPreview? preview = _homePreview;
-            HomePreviewLifecycle.Cleanup(
-                preview,
-                () => _homePreview = null,
-                () => PreviewHost.Content = null);
+            _homePreviewSession.Suspend(
+                () => PreviewHost.Content = null,
+                ReportCleanupFailure);
         }
 
         private void UpdatePreview()
@@ -302,10 +302,15 @@ namespace NoraBar.Views
                     BuiltInHudIds.Home,
                     StringComparison.Ordinal))
             {
-                _homePreview = HomeHudPreviewFactory.Create(_viewModel);
-                PreviewHost.Content = _homePreview.View;
-                PreviewHost.Width = _homePreview.PreferredSize.Width;
-                PreviewHost.Height = _homePreview.PreferredSize.Height;
+                _homePreviewSession.Show(
+                    () => HomeHudPreviewFactory.Create(_viewModel),
+                    preview =>
+                    {
+                        PreviewHost.Content = preview.View;
+                        PreviewHost.Width = preview.PreferredSize.Width;
+                        PreviewHost.Height = preview.PreferredSize.Height;
+                    },
+                    ReportCleanupFailure);
                 return;
             }
 
@@ -320,6 +325,9 @@ namespace NoraBar.Views
             PreviewHost.Width = preview.PreferredSize.Width;
             PreviewHost.Height = preview.PreferredSize.Height;
         }
+
+        private static void ReportCleanupFailure(Exception exception) =>
+            Trace.TraceError($"Settings preview cleanup failed: {exception}");
 
         private void OpenWidgetCustomizer_Click(object sender, RoutedEventArgs e)
         {
