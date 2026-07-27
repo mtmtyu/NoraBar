@@ -224,6 +224,25 @@ namespace NoraBar.ViewModels
             }
         }
 
+        public async Task EnterWidgetEditModeAsync()
+        {
+            if (HudNavigation is not null)
+            {
+                HudNavigationItemViewModel? homeItem = HudNavigation.Items.FirstOrDefault(
+                    item => string.Equals(item.Id, BuiltInHudIds.Home, StringComparison.Ordinal));
+                if (homeItem is not null && !homeItem.IsEnabled)
+                {
+                    await HudNavigation.SetEnabledAsync(BuiltInHudIds.Home, true);
+                }
+
+                await HudNavigation.NavigateToAsync(BuiltInHudIds.Home);
+            }
+
+            IsWidgetEditMode = true;
+        }
+
+
+
         public IReadOnlyList<LanguageOption> AvailableLanguages { get; } =
         [
             new LanguageOption(AppLanguage.Japanese, LocalizationService.GetText(AppLanguage.Japanese, LocalizationKey.Japanese)),

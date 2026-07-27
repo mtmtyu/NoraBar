@@ -2,6 +2,7 @@ using System.Text.Json;
 using NoraBar.Hud;
 using NoraBar.Models;
 using NoraBar.Services;
+using NoraBar.Tests.Hud;
 using NoraBar.ViewModels;
 using Xunit;
 
@@ -183,5 +184,77 @@ public class MainViewModelSettingsTests
             Assert.Equal(item1.Id, viewModel.ActiveHomeWidgets[0].Id);
             Assert.Equal(item0.Id, viewModel.ActiveHomeWidgets[1].Id);
         }
+    }
+
+    [Fact]
+    public async Task EnterWidgetEditModeAsync_NavigatesToHomeHudAndEnablesEditMode()
+    {
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var home = new FakeHudModule(BuiltInHudIds.Home);
+        var registry = new HudRegistry();
+        registry.Register(music);
+        registry.Register(home);
+
+        var router = new HudRouter(
+            registry,
+            BuiltInHudIds.Music,
+            [BuiltInHudIds.Music, BuiltInHudIds.Home]);
+        await router.InitializeAsync(CancellationToken.None);
+
+        var settings = new UserSettings();
+        var navigation = new HudNavigationViewModel(
+            router,
+            [music, home],
+            settings,
+            AppLanguage.Japanese,
+            () => { });
+
+        var viewModel = new MainViewModel();
+        viewModel.AttachHudNavigation(navigation);
+
+        Assert.Equal(BuiltInHudIds.Music, router.CurrentHudId);
+        Assert.False(viewModel.IsWidgetEditMode);
+
+        await viewModel.EnterWidgetEditModeAsync();
+
+        Assert.Equal(BuiltInHudIds.Home, router.CurrentHudId);
+        Assert.True(viewModel.IsWidgetEditMode);
+    }
+
+    [Fact]
+    public async Task EnterWidgetEditModeAsync_EnablesHomeHudIfDisabledAndNavigates()
+    {
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var home = new FakeHudModule(BuiltInHudIds.Home);
+        var registry = new HudRegistry();
+        registry.Register(music);
+        registry.Register(home);
+
+        var router = new HudRouter(
+            registry,
+            BuiltInHudIds.Music,
+            [BuiltInHudIds.Music]);
+        await router.InitializeAsync(CancellationToken.None);
+
+        var settings = new UserSettings { EnabledHudModuleIds = [BuiltInHudIds.Music] };
+        var navigation = new HudNavigationViewModel(
+            router,
+            [music, home],
+            settings,
+            AppLanguage.Japanese,
+            () => { });
+
+        var viewModel = new MainViewModel();
+        viewModel.AttachHudNavigation(navigation);
+
+        Assert.Equal(BuiltInHudIds.Music, router.CurrentHudId);
+        HudNavigationItemViewModel homeItem = navigation.Items.Single(item => item.Id == BuiltInHudIds.Home);
+        Assert.False(homeItem.IsEnabled);
+
+        await viewModel.EnterWidgetEditModeAsync();
+
+        Assert.True(homeItem.IsEnabled);
+        Assert.Equal(BuiltInHudIds.Home, router.CurrentHudId);
+        Assert.True(viewModel.IsWidgetEditMode);
     }
 }

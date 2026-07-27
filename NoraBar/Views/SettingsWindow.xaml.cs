@@ -330,11 +330,11 @@ namespace NoraBar.Views
         private static void ReportCleanupFailure(Exception exception) =>
             Trace.TraceError($"Settings preview cleanup failed: {exception}");
 
-        private void OpenWidgetCustomizer_Click(object sender, RoutedEventArgs e)
+        private async void OpenWidgetCustomizer_Click(object sender, RoutedEventArgs e)
         {
             if (_viewModel is null) return;
 
-            _viewModel.IsWidgetEditMode = true;
+            await _viewModel.EnterWidgetEditModeAsync();
             WindowState = WindowState.Minimized;
         }
 
