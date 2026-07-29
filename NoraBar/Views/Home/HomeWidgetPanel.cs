@@ -65,6 +65,7 @@ public sealed class HomeWidgetPanel : Panel
             }
         }
 
+        InvalidateVisual();
         return finalSize;
     }
 
