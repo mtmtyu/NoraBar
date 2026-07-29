@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Windows.Threading;
 using NoraBar.Models;
+using NoraBar.Services;
 using NoraBar.ViewModels;
 
 namespace NoraBar.Hud.Home;
@@ -52,11 +53,23 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
 
     public string MediaTitle => HasMedia
         ? Music.Title
-        : _viewModel.SelectedLanguage == AppLanguage.Japanese
-            ? "再生中のメディアはありません"
-            : "No media playing";
+        : LocalizationService.GetText(
+            _viewModel.SelectedLanguage,
+            LocalizationKey.NoMediaPlaying);
 
     public string MediaArtist => HasMedia ? Music.Artist : string.Empty;
+
+    public string PreviousMediaText => LocalizationService.GetText(
+        _viewModel.SelectedLanguage,
+        LocalizationKey.MediaPrevious);
+
+    public string PlayPauseMediaText => LocalizationService.GetText(
+        _viewModel.SelectedLanguage,
+        Music.IsPlaying ? LocalizationKey.MediaPause : LocalizationKey.MediaPlay);
+
+    public string NextMediaText => LocalizationService.GetText(
+        _viewModel.SelectedLanguage,
+        LocalizationKey.MediaNext);
 
     public string FirstWorldClockLabel => _viewModel.FirstWorldClockLabel.ToUpperInvariant();
 
@@ -252,6 +265,9 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
             case nameof(MainViewModel.SelectedLanguage):
                 RefreshClock();
                 OnPropertyChanged(nameof(MediaTitle));
+                OnPropertyChanged(nameof(PreviousMediaText));
+                OnPropertyChanged(nameof(PlayPauseMediaText));
+                OnPropertyChanged(nameof(NextMediaText));
                 break;
             case nameof(MainViewModel.FirstWorldClockLabel):
                 OnPropertyChanged(nameof(FirstWorldClockLabel));
@@ -267,12 +283,14 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
         if (string.IsNullOrEmpty(e.PropertyName)
             || e.PropertyName is nameof(MusicViewModel.HasActiveSession)
                 or nameof(MusicViewModel.Title)
-                or nameof(MusicViewModel.Artist))
+                or nameof(MusicViewModel.Artist)
+                or nameof(MusicViewModel.IsPlaying))
         {
             OnPropertyChanged(nameof(HasMedia));
             OnPropertyChanged(nameof(HasNoMedia));
             OnPropertyChanged(nameof(MediaTitle));
             OnPropertyChanged(nameof(MediaArtist));
+            OnPropertyChanged(nameof(PlayPauseMediaText));
         }
     }
 }

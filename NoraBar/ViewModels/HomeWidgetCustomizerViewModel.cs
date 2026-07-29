@@ -1,12 +1,14 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using NoraBar.Hud.Home.Widgets;
+using NoraBar.Models;
 using NoraBar.Services;
 
 namespace NoraBar.ViewModels;
 
 public sealed class HomeWidgetCustomizerItemViewModel : ViewModelBase
 {
+    private readonly AppLanguage _language;
     public string Id { get; }
     public HomeWidgetType Type { get; }
 
@@ -25,16 +27,19 @@ public sealed class HomeWidgetCustomizerItemViewModel : ViewModelBase
 
     public string Title => (Type, Style) switch
     {
-        (HomeWidgetType.DigitalClock, _) => LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.WidgetDigitalClock),
-        (HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact) => LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.WidgetMediaCompact),
-        (HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverSmall) => LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.WidgetMediaArtworkSmall),
-        (HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverMedium) => LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.WidgetMediaArtworkMedium),
-        (HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverLarge) => LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.WidgetMediaArtworkLarge),
-        (HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics) => LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.WidgetMediaBlurLyrics),
-        (HomeWidgetType.MediaControls, _) => LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.WidgetMediaControls),
+        (HomeWidgetType.DigitalClock, _) => T(LocalizationKey.WidgetDigitalClock),
+        (HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact) => T(LocalizationKey.WidgetMediaCompact),
+        (HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverSmall) => T(LocalizationKey.WidgetMediaArtworkSmall),
+        (HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverMedium) => T(LocalizationKey.WidgetMediaArtworkMedium),
+        (HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverLarge) => T(LocalizationKey.WidgetMediaArtworkLarge),
+        (HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics) => T(LocalizationKey.WidgetMediaBlurLyrics),
+        (HomeWidgetType.MediaControls, _) => T(LocalizationKey.WidgetMediaControls),
         _ => Type.ToString()
     };
 
+    public string MoveUpText => T(LocalizationKey.MoveUp);
+    public string MoveDownText => T(LocalizationKey.MoveDown);
+    public string RemoveText => T(LocalizationKey.RemoveWidget);
     public string IconText => Type switch
     {
         HomeWidgetType.DigitalClock => "\uE814",
@@ -55,18 +60,26 @@ public sealed class HomeWidgetCustomizerItemViewModel : ViewModelBase
         _ => [Style]
     };
 
-    public HomeWidgetCustomizerItemViewModel(string id, HomeWidgetType type, HomeWidgetStyle style)
+    public HomeWidgetCustomizerItemViewModel(
+        string id,
+        HomeWidgetType type,
+        HomeWidgetStyle style,
+        AppLanguage? language = null)
     {
         Id = id;
         Type = type;
         Style = style;
+        _language = language ?? SettingsService.Load().Language;
     }
+
+    private string T(LocalizationKey key) => LocalizationService.GetText(_language, key);
 
     public HomeWidgetConfig ToConfig() => new HomeWidgetConfig(Id, Type, Style);
 }
 
 public sealed class HomeWidgetCustomizerViewModel : ViewModelBase
 {
+    private readonly AppLanguage _language;
     public ObservableCollection<HomeWidgetCustomizerItemViewModel> ActiveWidgets { get; }
     public ObservableCollection<HomeWidgetCustomizerItemViewModel> CatalogWidgets { get; }
 
@@ -82,8 +95,7 @@ public sealed class HomeWidgetCustomizerViewModel : ViewModelBase
     public string CancelButtonText => T(LocalizationKey.Cancel);
     public string SaveAndApplyButtonText => T(LocalizationKey.SaveAndApply);
 
-    private static string T(LocalizationKey key) =>
-        LocalizationService.GetText(SettingsService.Load().Language, key);
+    private string T(LocalizationKey key) => LocalizationService.GetText(_language, key);
 
     public ICommand AddWidgetCommand { get; }
     public ICommand RemoveWidgetCommand { get; }
@@ -121,13 +133,15 @@ public sealed class HomeWidgetCustomizerViewModel : ViewModelBase
     public HomeWidgetCustomizerViewModel(
         IEnumerable<HomeWidgetConfig> currentWidgets,
         double maxWidgetWidth = 800,
-        double maxWidgetHeight = 300)
+        double maxWidgetHeight = 300,
+        AppLanguage? language = null)
     {
+        _language = language ?? SettingsService.Load().Language;
         _maxWidgetWidth = maxWidgetWidth;
         _maxWidgetHeight = maxWidgetHeight;
 
         ActiveWidgets = new ObservableCollection<HomeWidgetCustomizerItemViewModel>(
-            currentWidgets.Select(w => new HomeWidgetCustomizerItemViewModel(w.Id, w.Type, w.Style)));
+            currentWidgets.Select(w => new HomeWidgetCustomizerItemViewModel(w.Id, w.Type, w.Style, _language)));
 
         foreach (HomeWidgetCustomizerItemViewModel item in ActiveWidgets)
         {
@@ -137,12 +151,12 @@ public sealed class HomeWidgetCustomizerViewModel : ViewModelBase
 
         CatalogWidgets = new ObservableCollection<HomeWidgetCustomizerItemViewModel>
         {
-            new("catalog_clock", HomeWidgetType.DigitalClock, HomeWidgetStyle.ClockMinimal),
-            new("catalog_media", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact),
-            new("catalog_media_artwork_sm", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverSmall),
-            new("catalog_media_artwork_md", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverMedium),
-            new("catalog_media_artwork_lg", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverLarge),
-            new("catalog_media_blur_lyrics", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics)
+            new("catalog_clock", HomeWidgetType.DigitalClock, HomeWidgetStyle.ClockMinimal, _language),
+            new("catalog_media", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact, _language),
+            new("catalog_media_artwork_sm", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverSmall, _language),
+            new("catalog_media_artwork_md", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverMedium, _language),
+            new("catalog_media_artwork_lg", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverLarge, _language),
+            new("catalog_media_blur_lyrics", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaBlurLyrics, _language)
         };
 
         AddWidgetCommand = new RelayCommand(p =>
@@ -150,7 +164,7 @@ public sealed class HomeWidgetCustomizerViewModel : ViewModelBase
             if (p is HomeWidgetCustomizerItemViewModel item)
             {
                 string newId = $"widget_{item.Type.ToString().ToLowerInvariant()}_{Guid.NewGuid():N}";
-                ActiveWidgets.Add(new HomeWidgetCustomizerItemViewModel(newId, item.Type, item.Style));
+                ActiveWidgets.Add(new HomeWidgetCustomizerItemViewModel(newId, item.Type, item.Style, _language));
             }
         });
 

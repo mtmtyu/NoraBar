@@ -97,6 +97,7 @@
     <!-- Horizontal Slider ControlTemplate -->
     <ControlTemplate x:Key="HorizontalSliderTemplate" TargetType="{x:Type Slider}">
         <Grid x:Name="GridRoot" SnapsToDevicePixels="True" VerticalAlignment="Center">
+            <Border x:Name="FocusRing" BorderBrush="#FF60CDFF" BorderThickness="2" CornerRadius="6" Opacity="0"/>
             <!-- Background Track -->
             <Border x:Name="TrackBackground"
                     Height="4"
@@ -118,6 +119,9 @@
             </Track>
         </Grid>
         <ControlTemplate.Triggers>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                <Setter TargetName="FocusRing" Property="Opacity" Value="1"/>
+            </Trigger>
             <Trigger Property="IsEnabled" Value="False">
                 <Setter TargetName="TrackBackground" Property="Background" Value="#15FFFFFF"/>
                 <Setter TargetName="GridRoot" Property="Opacity" Value="0.4"/>
@@ -128,6 +132,7 @@
     <!-- Vertical Slider ControlTemplate -->
     <ControlTemplate x:Key="VerticalSliderTemplate" TargetType="{x:Type Slider}">
         <Grid x:Name="GridRoot" SnapsToDevicePixels="True" HorizontalAlignment="Center">
+            <Border x:Name="FocusRing" BorderBrush="#FF60CDFF" BorderThickness="2" CornerRadius="6" Opacity="0"/>
             <!-- Background Track -->
             <Border x:Name="TrackBackground"
                     Width="4"
@@ -149,6 +154,9 @@
             </Track>
         </Grid>
         <ControlTemplate.Triggers>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                <Setter TargetName="FocusRing" Property="Opacity" Value="1"/>
+            </Trigger>
             <Trigger Property="IsEnabled" Value="False">
                 <Setter TargetName="TrackBackground" Property="Background" Value="#15FFFFFF"/>
                 <Setter TargetName="GridRoot" Property="Opacity" Value="0.4"/>

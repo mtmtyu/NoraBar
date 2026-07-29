@@ -388,6 +388,7 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
         foreach (HudNavigationItemViewModel item in Items)
         {
             item.DisplayName = GetDisplayName(item.Id, _language);
+            item.RefreshLocalizedText();
         }
     }
 
@@ -479,6 +480,9 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(ShowNavigation));
         OnPropertyChanged(nameof(DefaultHudId));
     }
+
+    internal string GetLocalizedText(LocalizationKey key) =>
+        LocalizationService.GetText(_language, key);
 
     private static string GetDisplayName(string hudId, AppLanguage language)
     {

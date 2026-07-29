@@ -132,7 +132,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Button Command="{Binding NavigateCommand}" Margin="3,0" Padding="12,5"
+                            <Button Command="{Binding NavigateCommand}" AutomationProperties.Name="{Binding DisplayName}" Margin="3,0" Padding="12,5"
                                     Background="Transparent" BorderThickness="0" Foreground="#A8FFFFFF"
                                     ToolTip="{Binding DisplayName}">
                                 <Button.Template>

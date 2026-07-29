@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using NoraBar.Services;
 using NoraBar.Hud;
 
 namespace NoraBar.ViewModels;
@@ -61,6 +62,10 @@ public sealed class HudNavigationItemViewModel : ViewModelBase
         internal set => SetProperty(ref _isCurrent, value);
     }
 
+    public string MoveUpText => _owner.GetLocalizedText(LocalizationKey.MoveUp);
+
+    public string MoveDownText => _owner.GetLocalizedText(LocalizationKey.MoveDown);
+
     public ICommand NavigateCommand { get; }
 
     public ICommand MoveUpCommand { get; }
@@ -70,4 +75,10 @@ public sealed class HudNavigationItemViewModel : ViewModelBase
     internal void SetEnabled(bool value) => SetProperty(ref _isEnabled, value, nameof(IsEnabled));
 
     internal void RefreshEnabled() => OnPropertyChanged(nameof(IsEnabled));
+
+    internal void RefreshLocalizedText()
+    {
+        OnPropertyChanged(nameof(MoveUpText));
+        OnPropertyChanged(nameof(MoveDownText));
+    }
 }
