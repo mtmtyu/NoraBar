@@ -130,6 +130,74 @@ public sealed class HudNavigationViewModelTests
         Assert.All(navigation.Items, item => Assert.True(item.IsEnabled));
     }
 
+    [Fact]
+    public async Task MoveAsync_WhenApplyFails_RestoresOrderAndDoesNotSave()
+    {
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var home = new FakeHudModule(BuiltInHudIds.Home);
+        HudRouter router = CreateRouter(music, home);
+        await router.InitializeAsync(CancellationToken.None);
+        var settings = new UserSettings();
+        int saveCount = 0;
+        var navigation = new HudNavigationViewModel(
+            router, [music, home], settings, AppLanguage.English, () => saveCount++);
+        await router.ShutdownAsync(CancellationToken.None);
+
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(() =>
+            navigation.MoveAsync(BuiltInHudIds.Home, -1));
+
+        Assert.Equal([BuiltInHudIds.Music, BuiltInHudIds.Home], navigation.Items.Select(item => item.Id));
+        Assert.Equal([BuiltInHudIds.Music, BuiltInHudIds.Home], settings.EnabledHudModuleIds);
+        Assert.Equal(0, saveCount);
+    }
+
+    [Fact]
+    public async Task ReorderAsync_WhenApplyFails_RestoresOrderAndDoesNotSave()
+    {
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var home = new FakeHudModule(BuiltInHudIds.Home);
+        HudRouter router = CreateRouter(music, home);
+        await router.InitializeAsync(CancellationToken.None);
+        var settings = new UserSettings();
+        int saveCount = 0;
+        var navigation = new HudNavigationViewModel(
+            router, [music, home], settings, AppLanguage.English, () => saveCount++);
+        await router.ShutdownAsync(CancellationToken.None);
+
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(() => navigation.ReorderAsync(0, 1));
+
+        Assert.Equal([BuiltInHudIds.Music, BuiltInHudIds.Home], navigation.Items.Select(item => item.Id));
+        Assert.Equal([BuiltInHudIds.Music, BuiltInHudIds.Home], settings.EnabledHudModuleIds);
+        Assert.Equal(0, saveCount);
+    }
+
+    [Fact]
+    public async Task ResetToDefaultsAsync_WhenApplyFails_RestoresOrderEnabledStateAndDoesNotSave()
+    {
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var home = new FakeHudModule(BuiltInHudIds.Home);
+        HudRouter router = CreateRouter(music, home);
+        await router.InitializeAsync(CancellationToken.None);
+        var settings = new UserSettings();
+        int saveCount = 0;
+        var navigation = new HudNavigationViewModel(
+            router, [music, home], settings, AppLanguage.English, () => saveCount++);
+        await navigation.MoveAsync(BuiltInHudIds.Home, -1);
+        await navigation.SetEnabledAsync(BuiltInHudIds.Music, false);
+        int successfulSaveCount = saveCount;
+        string[] originalOrder = navigation.Items.Select(item => item.Id).ToArray();
+        bool[] originalEnabled = navigation.Items.Select(item => item.IsEnabled).ToArray();
+        string originalDefault = settings.DefaultHudId;
+        await router.ShutdownAsync(CancellationToken.None);
+
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(() => navigation.ResetToDefaultsAsync());
+
+        Assert.Equal(originalOrder, navigation.Items.Select(item => item.Id));
+        Assert.Equal(originalEnabled, navigation.Items.Select(item => item.IsEnabled));
+        Assert.Equal(originalDefault, settings.DefaultHudId);
+        Assert.Equal(successfulSaveCount, saveCount);
+    }
+
     private static HudRouter CreateRouter(params FakeHudModule[] modules)
     {
         var registry = new HudRegistry();

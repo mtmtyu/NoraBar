@@ -42,6 +42,7 @@ public partial class MainWindow : Window
     private int _hudRouterDetached;
     private int _shellResourcesReleased;
     private int _presentationRevision;
+    private int _navigationInFlight;
 
     public MainWindow(
         MainViewModel viewModel,
@@ -532,7 +533,19 @@ public partial class MainWindow : Window
         }
 
         e.Handled = true;
-        await navigation.NavigateRelativeAsync(e.Delta < 0 ? 1 : -1);
+        if (Interlocked.Exchange(ref _navigationInFlight, 1) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await navigation.NavigateRelativeAsync(e.Delta < 0 ? 1 : -1);
+        }
+        finally
+        {
+            Volatile.Write(ref _navigationInFlight, 0);
+        }
     }
 
     private double GetPresentationWidth(double moduleWidth)

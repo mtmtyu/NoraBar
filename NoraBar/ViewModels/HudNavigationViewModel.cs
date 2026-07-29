@@ -213,10 +213,29 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
                 .Where(item => item.IsEnabled)
                 .Select(item => item.Id)
                 .ToArray();
-            await _router.ApplyConfigurationAsync(
-                _defaultHudId,
-                enabledIds,
-                CancellationToken.None);
+            try
+            {
+                await _router.ApplyConfigurationAsync(
+                    _defaultHudId,
+                    enabledIds,
+                    CancellationToken.None);
+            }
+            catch (Exception applyException)
+            {
+                try
+                {
+                    Items.Move(newIndex, oldIndex);
+                }
+                catch (Exception rollbackException)
+                {
+                    throw new AggregateException(
+                        "HUD navigation update and rollback failed.",
+                        applyException,
+                        rollbackException);
+                }
+
+                throw;
+            }
             _settings.EnabledHudModuleIds = [.. enabledIds];
             _saveSettings();
             NotifyConfigurationChanged();
@@ -242,10 +261,29 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
                 .Where(item => item.IsEnabled)
                 .Select(item => item.Id)
                 .ToArray();
-            await _router.ApplyConfigurationAsync(
-                _defaultHudId,
-                enabledIds,
-                CancellationToken.None);
+            try
+            {
+                await _router.ApplyConfigurationAsync(
+                    _defaultHudId,
+                    enabledIds,
+                    CancellationToken.None);
+            }
+            catch (Exception applyException)
+            {
+                try
+                {
+                    Items.Move(newIndex, oldIndex);
+                }
+                catch (Exception rollbackException)
+                {
+                    throw new AggregateException(
+                        "HUD navigation update and rollback failed.",
+                        applyException,
+                        rollbackException);
+                }
+
+                throw;
+            }
             _settings.EnabledHudModuleIds = [.. enabledIds];
             _saveSettings();
             NotifyConfigurationChanged();
@@ -261,6 +299,12 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
         await _configurationGate.WaitAsync();
         try
         {
+            HudNavigationItemViewModel[] originalOrder = [.. Items];
+            Dictionary<string, bool> originalEnabled = Items.ToDictionary(
+                item => item.Id,
+                item => item.IsEnabled,
+                StringComparer.Ordinal);
+            string originalDefaultHudId = _defaultHudId;
             string[] defaultIds = [BuiltInHudIds.Music, BuiltInHudIds.Home];
             for (int targetIndex = 0; targetIndex < defaultIds.Length; targetIndex++)
             {
@@ -279,10 +323,29 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
                 item.SetEnabled(defaultIds.Contains(item.Id, StringComparer.Ordinal));
             }
 
-            await _router.ApplyConfigurationAsync(
-                BuiltInHudIds.Music,
-                defaultIds,
-                CancellationToken.None);
+            try
+            {
+                await _router.ApplyConfigurationAsync(
+                    BuiltInHudIds.Music,
+                    defaultIds,
+                    CancellationToken.None);
+            }
+            catch (Exception applyException)
+            {
+                try
+                {
+                    RestoreConfiguration(originalOrder, originalEnabled, originalDefaultHudId);
+                }
+                catch (Exception rollbackException)
+                {
+                    throw new AggregateException(
+                        "HUD navigation reset and rollback failed.",
+                        applyException,
+                        rollbackException);
+                }
+
+                throw;
+            }
             _defaultHudId = BuiltInHudIds.Music;
             _settings.DefaultHudId = BuiltInHudIds.Music;
             _settings.EnabledHudModuleIds = [.. defaultIds];
@@ -292,6 +355,18 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
         finally
         {
             _configurationGate.Release();
+        }
+    }
+
+    internal async Task MoveFromBindingAsync(string hudId, int offset)
+    {
+        try
+        {
+            await MoveAsync(hudId, offset);
+        }
+        catch (Exception exception)
+        {
+            Trace.TraceError(exception.ToString());
         }
     }
 
@@ -374,6 +449,29 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
 
     private HudNavigationItemViewModel GetItem(string hudId) =>
         Items.First(item => string.Equals(item.Id, hudId, StringComparison.Ordinal));
+
+    private void RestoreConfiguration(
+        IReadOnlyList<HudNavigationItemViewModel> originalOrder,
+        IReadOnlyDictionary<string, bool> originalEnabled,
+        string originalDefaultHudId)
+    {
+        for (int targetIndex = 0; targetIndex < originalOrder.Count; targetIndex++)
+        {
+            int currentIndex = Items.IndexOf(originalOrder[targetIndex]);
+            if (currentIndex != targetIndex)
+            {
+                Items.Move(currentIndex, targetIndex);
+            }
+        }
+
+        foreach (HudNavigationItemViewModel item in Items)
+        {
+            item.SetEnabled(originalEnabled[item.Id]);
+        }
+
+        _defaultHudId = originalDefaultHudId;
+        NotifyConfigurationChanged();
+    }
 
     private void NotifyConfigurationChanged()
     {

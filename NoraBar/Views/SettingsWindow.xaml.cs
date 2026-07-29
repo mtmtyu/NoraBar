@@ -334,8 +334,15 @@ namespace NoraBar.Views
         {
             if (_viewModel is null) return;
 
-            await _viewModel.EnterWidgetEditModeAsync();
-            WindowState = WindowState.Minimized;
+            try
+            {
+                await _viewModel.EnterWidgetEditModeAsync();
+                WindowState = WindowState.Minimized;
+            }
+            catch (Exception exception)
+            {
+                Trace.TraceError(exception.ToString());
+            }
         }
 
         private void HudModules_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)

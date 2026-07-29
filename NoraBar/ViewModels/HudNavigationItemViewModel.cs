@@ -25,8 +25,8 @@ public sealed class HudNavigationItemViewModel : ViewModelBase
             ? "\uE80F"
             : "\uE93C";
         NavigateCommand = new RelayCommand(async _ => await _owner.NavigateToAsync(Id));
-        MoveUpCommand = new RelayCommand(async _ => await _owner.MoveAsync(Id, -1));
-        MoveDownCommand = new RelayCommand(async _ => await _owner.MoveAsync(Id, 1));
+        MoveUpCommand = new RelayCommand(async _ => await _owner.MoveFromBindingAsync(Id, -1));
+        MoveDownCommand = new RelayCommand(async _ => await _owner.MoveFromBindingAsync(Id, 1));
     }
 
     public string Id { get; }
