@@ -11,6 +11,12 @@ namespace NoraBar.ViewModels
     public class MainViewModel : ViewModelBase
     {
         private readonly UserSettings _settings;
+        private static readonly Lazy<IReadOnlyList<TimeZoneOption>> CachedTimeZones = new(
+            static () => Array.AsReadOnly(
+                TimeZoneInfo.GetSystemTimeZones()
+                    .Select(zone => new TimeZoneOption(zone.Id, zone.DisplayName))
+                    .ToArray()));
+        private int _settingsSaveSuppressionCount;
 
         internal UserSettings SettingsSnapshot => _settings;
 
@@ -251,10 +257,7 @@ namespace NoraBar.ViewModels
 
         public IReadOnlyList<ScrollModeOption> AvailableScrollModes { get; }
 
-        public IReadOnlyList<TimeZoneOption> AvailableTimeZones { get; } =
-            TimeZoneInfo.GetSystemTimeZones()
-                .Select(zone => new TimeZoneOption(zone.Id, zone.DisplayName))
-                .ToArray();
+        public IReadOnlyList<TimeZoneOption> AvailableTimeZones => CachedTimeZones.Value;
 
         public IReadOnlyList<NavigationPlacementOption> AvailableNavigationPlacements { get; }
 
@@ -692,55 +695,60 @@ namespace NoraBar.ViewModels
             });
             ShowResetDialogCommand = new RelayCommand(_ => IsResetDialogOpen = true);
             CloseResetDialogCommand = new RelayCommand(_ => IsResetDialogOpen = false);
-            ResetAllSettingsCommand = new RelayCommand(_ => ResetAllSettings());
+            ResetAllSettingsCommand = new RelayCommand(async _ => await ResetAllSettingsAsync());
             RestartVisualizerCommand = new RelayCommand(_ => Music.RestartVisualizer());
         }
 
-        private void ResetAllSettings()
+        private async Task ResetAllSettingsAsync()
         {
             IsResetDialogOpen = false;
-            
             var defaultSettings = new UserSettings();
-
-            // Notify UI by setting properties
-            CurrentVariant = defaultSettings.Variant;
-            ShowProgressBar = defaultSettings.ShowProgressBar;
-            ShowLyrics = defaultSettings.ShowLyrics;
-            TextScrollMode = defaultSettings.TextScrollMode;
-            SelectedLanguage = defaultSettings.Language;
-            CheckUpdateOnStartup = defaultSettings.CheckUpdateOnStartup;
-            DisableExpandOnFullscreen = defaultSettings.DisableExpandOnFullscreen;
             HomeHudSettings homeDefaults = HomeHudSettings.Default;
-            HomeHudDesignVariant = homeDefaults.DesignVariant;
-            HomeHudTimeFormat = homeDefaults.TimeFormat;
-            FirstWorldClockLabel = homeDefaults.FirstClock.Label;
-            FirstWorldClockTimeZoneId = homeDefaults.FirstClock.TimeZoneId;
-            SecondWorldClockLabel = homeDefaults.SecondClock.Label;
-            SecondWorldClockTimeZoneId = homeDefaults.SecondClock.TimeZoneId;
-            HudNavigationPlacement = defaultSettings.HudNavigationPlacement;
-            
-            // Explicitly set startup to true as requested
-            IsStartupEnabled = true;
 
-            // Reset positions
-            HasCustomPosition = false;
-            WindowLeft = 0;
-            WindowTop = 0;
-            IsPositionEditMode = false;
-
-            ResetKnownSettings(_settings);
-
-            if (HudNavigation is not null)
+            _settingsSaveSuppressionCount++;
+            try
             {
-                _ = HudNavigation.ResetToDefaultsFromBindingAsync();
+                CurrentVariant = defaultSettings.Variant;
+                ShowProgressBar = defaultSettings.ShowProgressBar;
+                ShowLyrics = defaultSettings.ShowLyrics;
+                TextScrollMode = defaultSettings.TextScrollMode;
+                SelectedLanguage = defaultSettings.Language;
+                CheckUpdateOnStartup = defaultSettings.CheckUpdateOnStartup;
+                DisableExpandOnFullscreen = defaultSettings.DisableExpandOnFullscreen;
+                HomeHudDesignVariant = homeDefaults.DesignVariant;
+                HomeHudTimeFormat = homeDefaults.TimeFormat;
+                FirstWorldClockLabel = homeDefaults.FirstClock.Label;
+                FirstWorldClockTimeZoneId = homeDefaults.FirstClock.TimeZoneId;
+                SecondWorldClockLabel = homeDefaults.SecondClock.Label;
+                SecondWorldClockTimeZoneId = homeDefaults.SecondClock.TimeZoneId;
+                HudNavigationPlacement = defaultSettings.HudNavigationPlacement;
+                IsStartupEnabled = true;
+                HasCustomPosition = false;
+                WindowLeft = 0;
+                WindowTop = 0;
+                IsPositionEditMode = false;
+                ResetKnownSettings(_settings);
+
+                if (HudNavigation is not null)
+                {
+                    await HudNavigation.ResetToDefaultsFromBindingAsync();
+                }
+            }
+            finally
+            {
+                _settingsSaveSuppressionCount--;
             }
 
-            // Save current settings correctly
             SaveSettings();
         }
 
         private void SaveSettings()
         {
+            if (_settingsSaveSuppressionCount > 0)
+            {
+                return;
+            }
+
             UpdateKnownSettings(
                 _settings,
                 CurrentVariant,

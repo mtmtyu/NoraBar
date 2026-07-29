@@ -185,6 +185,17 @@ public class MainViewModelSettingsTests
     }
 
     [Fact]
+    public void AvailableTimeZones_IsSharedAndReadOnlyAcrossViewModels()
+    {
+        var first = new MainViewModel();
+        var second = new MainViewModel();
+
+        Assert.Same(first.AvailableTimeZones, second.AvailableTimeZones);
+        Assert.IsAssignableFrom<System.Collections.ObjectModel.ReadOnlyCollection<MainViewModel.TimeZoneOption>>(
+            first.AvailableTimeZones);
+    }
+
+    [Fact]
     public async Task EnterWidgetEditModeAsync_NavigatesToHomeHudAndEnablesEditMode()
     {
         var music = new FakeHudModule(BuiltInHudIds.Music);
