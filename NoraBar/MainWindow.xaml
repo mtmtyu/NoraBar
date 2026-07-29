@@ -243,7 +243,8 @@
         </Border>
 
         <!-- Overlay Palette for Widget Edit Mode (Positioned clearly below the HUD with Margin="0,16,0,0") -->
-        <homeViews:WidgetPaletteOverlayView VerticalAlignment="Top"
+        <homeViews:WidgetPaletteOverlayView x:Name="WidgetPaletteOverlay"
+                                           VerticalAlignment="Top"
                                            HorizontalAlignment="Center"
                                            Margin="0,16,0,0"
                                            Visibility="{Binding IsWidgetEditMode, Converter={StaticResource BoolToVis}}"/>

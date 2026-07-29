@@ -2,9 +2,11 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using NoraBar.Hud;
@@ -25,11 +27,14 @@ public partial class MainWindow : Window
     private const double CollapsedHeight = 2;
     private const int AnimationDurationMilliseconds = 400;
     private const double ExitOffset = -150;
+    private const int WindowNonClientHitTestMessage = 0x0084;
+    private static readonly IntPtr TransparentHitTestResult = new(-1);
 
     private readonly MainViewModel _viewModel;
     private readonly HudRouter _hudRouter;
     private readonly Func<Task> _requestShutdownAsync;
     private Views.SettingsWindow? _settingsWindow;
+    private HwndSource? _windowSource;
     private NotifyIcon? _notifyIcon;
     private ToolStripMenuItem? _settingsTrayMenuItem;
     private ToolStripMenuItem? _exitTrayMenuItem;
@@ -67,6 +72,13 @@ public partial class MainWindow : Window
         ApplyWindowPosition();
         InitializeSystemTray();
         UpdateLocalizedShellText();
+    }
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        _windowSource = PresentationSource.FromVisual(this) as HwndSource;
+        _windowSource?.AddHook(WindowMessageHook);
     }
 
     protected override async void OnContentRendered(EventArgs e)
@@ -197,12 +209,72 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _windowSource?.RemoveHook(WindowMessageHook);
+        _windowSource = null;
         DetachHudRouter();
         ReleaseShellResources();
         base.OnClosed(e);
     }
 
     internal bool IsShutdownRequested => Volatile.Read(ref _shutdownRequested) != 0;
+
+    private IntPtr WindowMessageHook(
+        IntPtr hwnd,
+        int message,
+        IntPtr wParam,
+        IntPtr lParam,
+        ref bool handled)
+    {
+        if (message != WindowNonClientHitTestMessage
+            || !NativeMethods.GetCursorPos(out NativePoint cursorPosition))
+        {
+            return IntPtr.Zero;
+        }
+
+        Point windowPoint;
+        try
+        {
+            windowPoint = PointFromScreen(
+                new Point(cursorPosition.X, cursorPosition.Y));
+        }
+        catch (InvalidOperationException)
+        {
+            return IntPtr.Zero;
+        }
+
+        Rect hudBounds = GetElementBounds(HudBorder) ?? Rect.Empty;
+        Rect? paletteBounds = GetElementBounds(WidgetPaletteOverlay);
+        if (HudInputHitTestPolicy.IsInteractive(
+                windowPoint,
+                hudBounds,
+                paletteBounds))
+        {
+            return IntPtr.Zero;
+        }
+
+        handled = true;
+        return TransparentHitTestResult;
+    }
+
+    private Rect? GetElementBounds(FrameworkElement element)
+    {
+        if (!element.IsVisible
+            || element.ActualWidth <= 0
+            || element.ActualHeight <= 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            GeneralTransform transform = element.TransformToAncestor(this);
+            return transform.TransformBounds(new Rect(element.RenderSize));
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
 
     private void HudRouter_PresentationChanged(object? sender, EventArgs e)
     {
@@ -628,5 +700,19 @@ public partial class MainWindow : Window
                     MessageBoxImage.Error);
             }
         }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private readonly struct NativePoint
+    {
+        internal readonly int X;
+        internal readonly int Y;
+    }
+
+    private static class NativeMethods
+    {
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool GetCursorPos(out NativePoint point);
     }
 }
