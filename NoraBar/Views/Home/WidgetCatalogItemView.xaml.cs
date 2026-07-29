@@ -1,8 +1,14 @@
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
-using NoraBar.Hud.Home;
+using System.Windows.Media.Imaging;
 using NoraBar.Hud.Home.Widgets;
+using NoraBar.Models;
+using NoraBar.Services;
 using NoraBar.ViewModels;
 using NoraBar.Views.Home.Widgets;
 
@@ -10,15 +16,35 @@ namespace NoraBar.Views.Home;
 
 public partial class WidgetCatalogItemView : UserControl
 {
+    private IDisposable? _previewView;
+    private WidgetCatalogPreviewViewModel? _previewSource;
+
     public WidgetCatalogItemView()
     {
         InitializeComponent();
         DataContextChanged += WidgetCatalogItemView_DataContextChanged;
+        Loaded += WidgetCatalogItemView_Loaded;
+        Unloaded += WidgetCatalogItemView_Unloaded;
     }
 
-    private void WidgetCatalogItemView_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    private void WidgetCatalogItemView_Loaded(object sender, RoutedEventArgs e)
     {
-        if (e.NewValue is HomeWidgetCustomizerItemViewModel item)
+        if (PreviewContentHost.Content is null
+            && DataContext is HomeWidgetCustomizerItemViewModel item)
+        {
+            BuildPreviewWidget(item);
+        }
+    }
+
+    private void WidgetCatalogItemView_Unloaded(object sender, RoutedEventArgs e) =>
+        ReleasePreview();
+
+    private void WidgetCatalogItemView_DataContextChanged(
+        object sender,
+        DependencyPropertyChangedEventArgs e)
+    {
+        ReleasePreview();
+        if (IsLoaded && e.NewValue is HomeWidgetCustomizerItemViewModel item)
         {
             BuildPreviewWidget(item);
         }
@@ -26,46 +52,116 @@ public partial class WidgetCatalogItemView : UserControl
 
     private void BuildPreviewWidget(HomeWidgetCustomizerItemViewModel item)
     {
-        MainViewModel dummyVm = new MainViewModel();
-        HomeHudViewModel homeVm = new HomeHudViewModel(dummyVm);
-        homeVm.Initialize();
-
-        UIElement? previewView = null;
-        switch (item.Type)
+        var source = new WidgetCatalogPreviewViewModel(item.Language);
+        UIElement? previewView = item.Type switch
         {
-            case HomeWidgetType.DigitalClock:
-                DigitalClockWidgetView clockView = new DigitalClockWidgetView { DataContext = homeVm };
-                clockView.SetStyle(item.Style);
-                previewView = clockView;
-                break;
+            HomeWidgetType.DigitalClock => CreateClockPreview(item, source),
+            HomeWidgetType.MediaControls => CreateMediaPreview(item, source),
+            _ => null
+        };
 
-            case HomeWidgetType.MediaControls:
-                MediaControlsWidgetView mediaView = new MediaControlsWidgetView { DataContext = homeVm };
-                mediaView.SetStyle(item.Style);
-                previewView = mediaView;
-                break;
-        }
-
+        _previewSource = source;
+        _previewView = previewView as IDisposable;
         PreviewContentHost.Content = previewView;
+    }
+
+    private static DigitalClockWidgetView CreateClockPreview(
+        HomeWidgetCustomizerItemViewModel item,
+        WidgetCatalogPreviewViewModel source)
+    {
+        var view = new DigitalClockWidgetView { DataContext = source };
+        view.SetStyle(item.Style);
+        return view;
+    }
+
+    private static MediaControlsWidgetView CreateMediaPreview(
+        HomeWidgetCustomizerItemViewModel item,
+        WidgetCatalogPreviewViewModel source)
+    {
+        var view = new MediaControlsWidgetView { DataContext = source };
+        view.SetStyle(item.Style);
+        return view;
+    }
+
+    private void ReleasePreview()
+    {
+        IDisposable? previewView = _previewView;
+        WidgetCatalogPreviewViewModel? previewSource = _previewSource;
+        BestEffortResourceReleaser.ReleaseAllAndReport(
+            static exception => Trace.TraceError(
+                $"Widget catalog preview cleanup failed: {exception}"),
+            () => PreviewContentHost.Content = null,
+            () => _previewView = null,
+            () => _previewSource = null,
+            () => previewView?.Dispose(),
+            () => previewSource?.Dispose());
     }
 
     private void AddButton_Click(object sender, RoutedEventArgs e)
     {
-        if (DataContext is HomeWidgetCustomizerItemViewModel item)
+        if (DataContext is not HomeWidgetCustomizerItemViewModel item)
         {
-            FrameworkElement? p = this;
-            while (p != null && p is not WidgetPaletteOverlayView)
-            {
-                p = VisualTreeHelper.GetParent(p) as FrameworkElement;
-            }
+            return;
+        }
 
-            if (p is WidgetPaletteOverlayView palette && palette.DataContext is MainViewModel mainVm)
-            {
-                string newId = $"widget_{item.Type.ToString().ToLowerInvariant()}_{Guid.NewGuid():N}";
-                List<HomeWidgetConfig> current = mainVm.ActiveHomeWidgets.ToList();
-                current.Add(new HomeWidgetConfig(newId, item.Type, item.Style));
-                mainVm.ActiveHomeWidgets = current.AsReadOnly();
-            }
+        FrameworkElement? parent = this;
+        while (parent is not null && parent is not WidgetPaletteOverlayView)
+        {
+            parent = VisualTreeHelper.GetParent(parent) as FrameworkElement;
+        }
+
+        if (parent is WidgetPaletteOverlayView palette
+            && palette.DataContext is MainViewModel mainViewModel)
+        {
+            string newId = $"widget_{item.Type.ToString().ToLowerInvariant()}_{Guid.NewGuid():N}";
+            List<HomeWidgetConfig> current = mainViewModel.ActiveHomeWidgets.ToList();
+            current.Add(new HomeWidgetConfig(newId, item.Type, item.Style));
+            mainViewModel.ActiveHomeWidgets = current.AsReadOnly();
         }
     }
+}
+
+internal sealed class WidgetCatalogPreviewViewModel : IMusicChangeSource, IDisposable
+{
+    private static readonly ICommand NoOpCommand = new RelayCommand(_ => { });
+
+    internal WidgetCatalogPreviewViewModel(AppLanguage language)
+    {
+        MediaTitle = LocalizationService.GetText(language, LocalizationKey.NoMediaPlaying);
+        PreviousMediaText = LocalizationService.GetText(language, LocalizationKey.MediaPrevious);
+        PlayPauseMediaText = LocalizationService.GetText(language, LocalizationKey.MediaPlay);
+        NextMediaText = LocalizationService.GetText(language, LocalizationKey.MediaNext);
+        DateTimeOffset now = DateTimeOffset.Now;
+        LocalTimeText = now.ToString("HH:mm");
+        LocalDateText = now.ToString("ddd, MMM d");
+    }
+
+    public WidgetCatalogPreviewViewModel Music => this;
+    public bool HasMedia => false;
+    public string MediaTitle { get; }
+    public string MediaArtist => string.Empty;
+    public string PreviousMediaText { get; }
+    public string PlayPauseMediaText { get; }
+    public string NextMediaText { get; }
+    public string LocalTimeText { get; }
+    public string LocalDateText { get; }
+    public string FirstWorldClockLabel => string.Empty;
+    public string SecondWorldClockLabel => string.Empty;
+    public string FirstWorldClockTimeText => string.Empty;
+    public string SecondWorldClockTimeText => string.Empty;
+    public BitmapImage? AlbumArt => null;
+    public bool IsPlaying => false;
+    public string CurrentLyric => string.Empty;
+    public ObservableCollection<LyricLineViewModel> LyricsList { get; } = [];
+    public int CurrentLyricIndex => -1;
+    public ICommand PlayPauseCommand => NoOpCommand;
+    public ICommand PreviousCommand => NoOpCommand;
+    public ICommand NextCommand => NoOpCommand;
+    public event PropertyChangedEventHandler? PropertyChanged
+    {
+        add { }
+        remove { }
+    }
+
+    public void Dispose() { }
 }

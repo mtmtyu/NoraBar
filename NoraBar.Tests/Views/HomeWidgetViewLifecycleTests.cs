@@ -233,6 +233,28 @@ public sealed class HomeWidgetViewLifecycleTests
     }
 
     [Fact]
+    public void WidgetCatalogPreview_UnloadedDisposesViewAndClearsContent()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var item = new HomeWidgetCustomizerItemViewModel(
+                "catalog",
+                HomeWidgetType.MediaControls,
+                HomeWidgetStyle.MediaCompact,
+                NoraBar.Models.AppLanguage.English);
+            var catalogView = new WidgetCatalogItemView { DataContext = item };
+            catalogView.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+            MediaControlsWidgetView preview = Assert.IsType<MediaControlsWidgetView>(
+                catalogView.PreviewContentHost.Content);
+
+            catalogView.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+
+            Assert.True(preview.IsDisposed);
+            Assert.Null(catalogView.PreviewContentHost.Content);
+        });
+    }
+
+    [Fact]
     public void SettingsPreviewCleanup_DisposesAndClearsOwnedPreview()
     {
         StaTestRunner.Run(() =>

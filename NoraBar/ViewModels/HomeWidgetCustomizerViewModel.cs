@@ -9,6 +9,7 @@ namespace NoraBar.ViewModels;
 public sealed class HomeWidgetCustomizerItemViewModel : ViewModelBase
 {
     private readonly AppLanguage _language;
+    internal AppLanguage Language => _language;
     public string Id { get; }
     public HomeWidgetType Type { get; }
 
