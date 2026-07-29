@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using NoraBar.Hud.Home;
 using NoraBar.Hud.Home.Widgets;
 using NoraBar.ViewModels;
 using NoraBar.Views.Home.Widgets;
@@ -26,18 +27,20 @@ public partial class WidgetCatalogItemView : UserControl
     private void BuildPreviewWidget(HomeWidgetCustomizerItemViewModel item)
     {
         MainViewModel dummyVm = new MainViewModel();
+        HomeHudViewModel homeVm = new HomeHudViewModel(dummyVm);
+        homeVm.Initialize();
 
         UIElement? previewView = null;
         switch (item.Type)
         {
             case HomeWidgetType.DigitalClock:
-                DigitalClockWidgetView clockView = new DigitalClockWidgetView { DataContext = dummyVm };
+                DigitalClockWidgetView clockView = new DigitalClockWidgetView { DataContext = homeVm };
                 clockView.SetStyle(item.Style);
                 previewView = clockView;
                 break;
 
             case HomeWidgetType.MediaControls:
-                MediaControlsWidgetView mediaView = new MediaControlsWidgetView { DataContext = dummyVm };
+                MediaControlsWidgetView mediaView = new MediaControlsWidgetView { DataContext = homeVm };
                 mediaView.SetStyle(item.Style);
                 previewView = mediaView;
                 break;

@@ -128,12 +128,12 @@
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Height="32"
                                     Background="Transparent" IsEnabled="{Binding HasMedia}">
                             <controls:IconButton IconText="&#xE892;" Width="28" Height="28" Margin="6,0"
-                                                 Command="{Binding Music.SkipPreviousCommand}"/>
+                                                 Command="{Binding Music.PreviousCommand}"/>
                             <controls:IconButton IconText="{Binding Music.IsPlaying, Converter={StaticResource PlayPauseIconConverter}}"
                                                  Width="32" Height="32" Margin="6,0"
                                                  Command="{Binding Music.PlayPauseCommand}"/>
                             <controls:IconButton IconText="&#xE893;" Width="28" Height="28" Margin="6,0"
-                                                 Command="{Binding Music.SkipNextCommand}"/>
+                                                 Command="{Binding Music.NextCommand}"/>
                         </StackPanel>
                     </StackPanel>
                 </Grid>
@@ -223,12 +223,12 @@
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Height="26"
                                     Background="Transparent" IsEnabled="{Binding HasMedia}">
                             <controls:IconButton IconText="&#xE892;" Width="24" Height="24" Margin="3,0"
-                                                 Command="{Binding Music.SkipPreviousCommand}"/>
+                                                 Command="{Binding Music.PreviousCommand}"/>
                             <controls:IconButton IconText="{Binding Music.IsPlaying, Converter={StaticResource PlayPauseIconConverter}}"
                                                  Width="26" Height="26" Margin="3,0"
                                                  Command="{Binding Music.PlayPauseCommand}"/>
                             <controls:IconButton IconText="&#xE893;" Width="24" Height="24" Margin="3,0"
-                                                 Command="{Binding Music.SkipNextCommand}"/>
+                                                 Command="{Binding Music.NextCommand}"/>
                         </StackPanel>
                     </StackPanel>
                 </Grid>
@@ -318,12 +318,12 @@
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Height="32"
                                     Background="Transparent" IsEnabled="{Binding HasMedia}">
                             <controls:IconButton IconText="&#xE892;" Width="28" Height="28" Margin="6,0"
-                                                 Command="{Binding Music.SkipPreviousCommand}"/>
+                                                 Command="{Binding Music.PreviousCommand}"/>
                             <controls:IconButton IconText="{Binding Music.IsPlaying, Converter={StaticResource PlayPauseIconConverter}}"
                                                  Width="32" Height="32" Margin="6,0"
                                                  Command="{Binding Music.PlayPauseCommand}"/>
                             <controls:IconButton IconText="&#xE893;" Width="28" Height="28" Margin="6,0"
-                                                 Command="{Binding Music.SkipNextCommand}"/>
+                                                 Command="{Binding Music.NextCommand}"/>
                         </StackPanel>
                     </StackPanel>
                 </Grid>
@@ -413,12 +413,12 @@
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Height="38"
                                     Background="Transparent" IsEnabled="{Binding HasMedia}">
                             <controls:IconButton IconText="&#xE892;" Width="34" Height="34" Margin="8,0"
-                                                 Command="{Binding Music.SkipPreviousCommand}"/>
+                                                 Command="{Binding Music.PreviousCommand}"/>
                             <controls:IconButton IconText="{Binding Music.IsPlaying, Converter={StaticResource PlayPauseIconConverter}}"
                                                  Width="38" Height="38" Margin="8,0"
                                                  Command="{Binding Music.PlayPauseCommand}"/>
                             <controls:IconButton IconText="&#xE893;" Width="34" Height="34" Margin="8,0"
-                                                 Command="{Binding Music.SkipNextCommand}"/>
+                                                 Command="{Binding Music.NextCommand}"/>
                         </StackPanel>
                     </StackPanel>
                 </Grid>
