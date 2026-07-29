@@ -66,7 +66,7 @@ public partial class MediaControlsWidgetView : UserControl, IDisposable, IHomeHu
             HomeWidgetStyle.MediaArtworkHoverSmall => Resources["MediaArtworkHoverSmallTemplate"] as DataTemplate,
             HomeWidgetStyle.MediaArtworkHoverMedium => Resources["MediaArtworkHoverMediumTemplate"] as DataTemplate,
             HomeWidgetStyle.MediaArtworkHoverLarge => Resources["MediaArtworkHoverLargeTemplate"] as DataTemplate,
-            HomeWidgetStyle.MediaArtworkHover => Resources["MediaArtworkHoverTemplate"] as DataTemplate,
+            HomeWidgetStyle.MediaArtworkHover => Resources["MediaArtworkHoverMediumTemplate"] as DataTemplate,
             HomeWidgetStyle.MediaBlurLyrics => Resources["MediaBlurLyricsTemplate"] as DataTemplate,
             _ => Resources["MediaCompactTemplate"] as DataTemplate
         };

@@ -21,7 +21,6 @@ public sealed class HudInteractiveSizePolicyTests
 
         Assert.Equal(currentContainerSize, result.ContainerSize);
         Assert.Equal(preferredContentSize, result.ContentSize);
-        Assert.Equal(HorizontalAlignment.Center, result.ContentHorizontalAlignment);
     }
 
     [Fact]
@@ -32,8 +31,7 @@ public sealed class HudInteractiveSizePolicyTests
             var contentHost = new FrameworkElement();
             var targets = new HudInteractiveSizeTargets(
                 new HudSize(848, 120),
-                new HudSize(450, 80),
-                HorizontalAlignment.Center);
+                new HudSize(450, 80));
 
             HudInteractiveSizePolicy.ApplyContentLayout(contentHost, targets);
 

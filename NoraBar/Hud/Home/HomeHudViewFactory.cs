@@ -6,7 +6,7 @@ namespace NoraBar.Hud.Home;
 
 internal static class HomeHudViewFactory
 {
-    internal static FrameworkElement Create(HomeHudDesignVariant variant)
+    internal static FrameworkElement Create(HomeHudDesignVariant _)
     {
         return new DynamicWidgetHomeView();
     }

@@ -205,6 +205,21 @@ public sealed class HomeWidgetViewLifecycleTests
     }
 
     [Fact]
+    public void MediaArtworkDefaultAndMediumStyles_UseSameTemplate()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var view = new MediaControlsWidgetView();
+
+            view.SetStyle(HomeWidgetStyle.MediaArtworkHover);
+            DataTemplate? defaultTemplate = view.MediaContentControl.ContentTemplate;
+            view.SetStyle(HomeWidgetStyle.MediaArtworkHoverMedium);
+
+            Assert.Same(defaultTemplate, view.MediaContentControl.ContentTemplate);
+            view.Dispose();
+        });
+    }
+    [Fact]
     public void CustomizerCleanup_UnsubscribesPreviewAndIsIdempotent()
     {
         StaTestRunner.Run(() =>

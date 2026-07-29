@@ -27,6 +27,8 @@ public partial class MainWindow : Window
     private const double CollapsedHeight = 2;
     private const int AnimationDurationMilliseconds = 400;
     private const double ExitOffset = -150;
+    private const double RightRailNavigationWidth = 48;
+    private const double TopTabNavigationHeight = 40;
     private const int WindowNonClientHitTestMessage = 0x0084;
     private static readonly IntPtr TransparentHitTestResult = new(-1);
 
@@ -623,7 +625,7 @@ public partial class MainWindow : Window
     private double GetPresentationWidth(double moduleWidth)
     {
         return UsesRightRailNavigation()
-                ? moduleWidth + 48
+                ? moduleWidth + RightRailNavigationWidth
                 : moduleWidth;
     }
 
@@ -632,7 +634,7 @@ public partial class MainWindow : Window
         HudNavigationViewModel? navigation = _viewModel.HudNavigation;
         return navigation is { ShowNavigation: true }
             && _viewModel.HudNavigationPlacement == HudNavigationPlacement.TopTabs
-                ? moduleHeight + 40
+                ? moduleHeight + TopTabNavigationHeight
                 : moduleHeight;
     }
 

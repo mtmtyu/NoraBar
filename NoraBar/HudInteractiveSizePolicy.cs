@@ -5,8 +5,7 @@ namespace NoraBar;
 
 internal readonly record struct HudInteractiveSizeTargets(
     HudSize ContainerSize,
-    HudSize ContentSize,
-    HorizontalAlignment ContentHorizontalAlignment);
+    HudSize ContentSize);
 
 internal static class HudInteractiveSizePolicy
 {
@@ -22,8 +21,7 @@ internal static class HudInteractiveSizePolicy
             isPointerOver);
         return new HudInteractiveSizeTargets(
             containerSize,
-            preferredContentSize,
-            HorizontalAlignment.Center);
+            preferredContentSize);
     }
 
     internal static void ApplyContentLayout(
@@ -34,7 +32,7 @@ internal static class HudInteractiveSizePolicy
 
         contentHost.Width = targets.ContentSize.Width;
         contentHost.Height = targets.ContentSize.Height;
-        contentHost.HorizontalAlignment = targets.ContentHorizontalAlignment;
+        contentHost.HorizontalAlignment = HorizontalAlignment.Center;
     }
 
     internal static HudSize ResolveTarget(

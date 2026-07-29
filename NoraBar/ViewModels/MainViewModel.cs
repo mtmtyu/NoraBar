@@ -1055,6 +1055,34 @@ namespace NoraBar.ViewModels
             return LocalizationService.GetText(SelectedLanguage, key);
         }
 
+        private static LocalizationKey GetScrollModeLocalizationKey(TextScrollMode mode) =>
+            mode switch
+            {
+                Models.TextScrollMode.Disabled => LocalizationKey.TextScrollDisabled,
+                Models.TextScrollMode.Always => LocalizationKey.TextScrollAlways,
+                Models.TextScrollMode.HoverOnly => LocalizationKey.TextScrollHoverOnly,
+                _ => throw new ArgumentOutOfRangeException(nameof(mode))
+            };
+
+        private static LocalizationKey GetNavigationPlacementLocalizationKey(
+            HudNavigationPlacement placement) =>
+            placement switch
+            {
+                HudNavigationPlacement.RightRail => LocalizationKey.NavigationRightRail,
+                HudNavigationPlacement.TopTabs => LocalizationKey.NavigationTopTabs,
+                _ => throw new ArgumentOutOfRangeException(nameof(placement))
+            };
+
+        private static LocalizationKey GetHomeTimeFormatLocalizationKey(
+            HomeHudTimeFormat format) =>
+            format switch
+            {
+                HomeHudTimeFormat.System => LocalizationKey.TimeFormatSystem,
+                HomeHudTimeFormat.TwelveHour => LocalizationKey.TimeFormatTwelveHour,
+                HomeHudTimeFormat.TwentyFourHour => LocalizationKey.TimeFormatTwentyFourHour,
+                _ => throw new ArgumentOutOfRangeException(nameof(format))
+            };
+
         internal void AttachHudNavigation(HudNavigationViewModel navigation)
         {
             ArgumentNullException.ThrowIfNull(navigation);
@@ -1104,22 +1132,19 @@ namespace NoraBar.ViewModels
             OnPropertyChanged(nameof(ShowLyricsDescriptionText));
             OnPropertyChanged(nameof(TextScrollModeText));
             OnPropertyChanged(nameof(TextScrollModeDescriptionText));
-            if (AvailableScrollModes != null)
+            foreach (ScrollModeOption option in AvailableScrollModes)
             {
-                AvailableScrollModes[0].DisplayName = T(LocalizationKey.TextScrollDisabled);
-                AvailableScrollModes[1].DisplayName = T(LocalizationKey.TextScrollAlways);
-                AvailableScrollModes[2].DisplayName = T(LocalizationKey.TextScrollHoverOnly);
+                option.DisplayName = T(GetScrollModeLocalizationKey(option.Mode));
             }
-            if (AvailableNavigationPlacements != null)
+
+            foreach (NavigationPlacementOption option in AvailableNavigationPlacements)
             {
-                AvailableNavigationPlacements[0].DisplayName = T(LocalizationKey.NavigationRightRail);
-                AvailableNavigationPlacements[1].DisplayName = T(LocalizationKey.NavigationTopTabs);
+                option.DisplayName = T(GetNavigationPlacementLocalizationKey(option.Placement));
             }
-            if (AvailableHomeTimeFormats != null)
+
+            foreach (HomeTimeFormatOption option in AvailableHomeTimeFormats)
             {
-                AvailableHomeTimeFormats[0].DisplayName = T(LocalizationKey.TimeFormatSystem);
-                AvailableHomeTimeFormats[1].DisplayName = T(LocalizationKey.TimeFormatTwelveHour);
-                AvailableHomeTimeFormats[2].DisplayName = T(LocalizationKey.TimeFormatTwentyFourHour);
+                option.DisplayName = T(GetHomeTimeFormatLocalizationKey(option.Format));
             }
             OnPropertyChanged(nameof(StartupText));
             OnPropertyChanged(nameof(StartupDescriptionText));

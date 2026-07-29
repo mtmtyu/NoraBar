@@ -1,7 +1,8 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Diagnostics;
+using System.Windows.Media;
 using NoraBar.Hud.Home;
 using NoraBar.Services;
 using NoraBar.ViewModels;
@@ -114,13 +115,54 @@ public partial class HomeWidgetCustomizerWindow : Window
         }
     }
 
-    private void CloseButton_Click(object sender, RoutedEventArgs e)
+    private void Window_KeyDown(object sender, KeyEventArgs e)
     {
-        DialogResult = false;
-        Close();
+        if (e.Key != Key.Escape)
+        {
+            return;
+        }
+
+        CancelAndClose();
+        e.Handled = true;
     }
 
-    private void CancelButton_Click(object sender, RoutedEventArgs e)
+    private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left
+            || IsInsideButton(e.OriginalSource as DependencyObject))
+        {
+            return;
+        }
+
+        DragMove();
+        e.Handled = true;
+    }
+
+    private static bool IsInsideButton(DependencyObject? source)
+    {
+        DependencyObject? current = source;
+        while (current is not null)
+        {
+            if (current is Button)
+            {
+                return true;
+            }
+
+            current = current is Visual
+                ? VisualTreeHelper.GetParent(current)
+                : LogicalTreeHelper.GetParent(current);
+        }
+
+        return false;
+    }
+
+    private void CloseButton_Click(object sender, RoutedEventArgs e) =>
+        CancelAndClose();
+
+    private void CancelButton_Click(object sender, RoutedEventArgs e) =>
+        CancelAndClose();
+
+    private void CancelAndClose()
     {
         DialogResult = false;
         Close();
