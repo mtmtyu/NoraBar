@@ -25,6 +25,7 @@ public sealed class WrapPanelAnimatedReorderHelper
     private TransformGroup? _draggedTransformGroup;
     private TranslateTransform? _draggedTranslate;
     private ScaleTransform? _draggedScale;
+    private Transform? _originalRenderTransform;
     private Effect? _originalEffect;
     private int _originalZIndex;
 
@@ -76,6 +77,7 @@ public sealed class WrapPanelAnimatedReorderHelper
             Color = Colors.Black
         };
 
+        _originalRenderTransform = itemContainer.RenderTransform;
         _draggedTransformGroup = new TransformGroup();
         _draggedScale = new ScaleTransform(1.05, 1.05);
         _draggedTranslate = new TranslateTransform(0, 0);
@@ -83,6 +85,8 @@ public sealed class WrapPanelAnimatedReorderHelper
         _draggedTransformGroup.Children.Add(_draggedScale);
         _draggedTransformGroup.Children.Add(_draggedTranslate);
         itemContainer.RenderTransform = _draggedTransformGroup;
+        itemContainer.LostMouseCapture += DraggedContainer_LostMouseCapture;
+        itemContainer.CaptureMouse();
     }
 
     public void UpdateDrag(Point currentMousePos)
@@ -103,35 +107,65 @@ public sealed class WrapPanelAnimatedReorderHelper
         }
     }
 
-    public void EndDrag()
+    public void EndDrag() => FinishDrag(commit: true);
+
+    public void CancelDrag() => FinishDrag(commit: false);
+
+    private void DraggedContainer_LostMouseCapture(object sender, MouseEventArgs e) =>
+        FinishDrag(commit: false);
+
+    private void FinishDrag(bool commit)
     {
-        if (!_isDragging || _draggedContainer == null) return;
+        FrameworkElement? draggedContainer = _draggedContainer;
+        if (!_isDragging || draggedContainer is null)
+        {
+            ClearState();
+            return;
+        }
 
+        int fromIndex = _initialIndex;
+        int toIndex = _targetIndex;
         _isDragging = false;
-
-        // Reset elevation effect
-        _draggedContainer.Effect = _originalEffect;
-        Panel.SetZIndex(_draggedContainer, _originalZIndex);
-
-        // Reset transforms
-        foreach (TranslateTransform tt in _itemTranslates)
+        draggedContainer.LostMouseCapture -= DraggedContainer_LostMouseCapture;
+        if (draggedContainer.IsMouseCaptured)
         {
-            tt.BeginAnimation(TranslateTransform.XProperty, null);
-            tt.BeginAnimation(TranslateTransform.YProperty, null);
-            tt.X = 0;
-            tt.Y = 0;
+            draggedContainer.ReleaseMouseCapture();
         }
 
-        _draggedContainer.RenderTransform = Transform.Identity;
-
-        if (_initialIndex >= 0 && _targetIndex >= 0 && _initialIndex != _targetIndex)
+        draggedContainer.Effect = _originalEffect;
+        Panel.SetZIndex(draggedContainer, _originalZIndex);
+        foreach (TranslateTransform translate in _itemTranslates)
         {
-            _onReorderCommitted(_initialIndex, _targetIndex);
+            translate.BeginAnimation(TranslateTransform.XProperty, null);
+            translate.BeginAnimation(TranslateTransform.YProperty, null);
+            translate.X = 0;
+            translate.Y = 0;
         }
 
+        draggedContainer.RenderTransform = _originalRenderTransform ?? Transform.Identity;
+        ClearState();
+
+        if (commit && fromIndex >= 0 && toIndex >= 0 && fromIndex != toIndex)
+        {
+            _onReorderCommitted(fromIndex, toIndex);
+        }
+    }
+
+    private void ClearState()
+    {
+        _isDragging = false;
         _draggedContainer = null;
         _initialIndex = -1;
         _targetIndex = -1;
+        _items.Clear();
+        _initialPositions.Clear();
+        _itemTranslates.Clear();
+        _draggedTransformGroup = null;
+        _draggedTranslate = null;
+        _draggedScale = null;
+        _originalRenderTransform = null;
+        _originalEffect = null;
+        _originalZIndex = 0;
     }
 
     private int CalculateTargetIndex(Point mousePos)

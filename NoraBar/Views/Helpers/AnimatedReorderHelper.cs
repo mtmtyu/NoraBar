@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -18,8 +19,10 @@ public sealed class AnimatedReorderHelper
     private int _targetIndex = -1;
 
     private readonly List<FrameworkElement> _containers = new();
+    private readonly List<int> _containerItemIndices = new();
     private readonly List<double> _initialTopPositions = new();
     private readonly List<double> _containerHeights = new();
+    private readonly List<Transform> _originalTransforms = new();
     private readonly List<TranslateTransform> _containerTranslates = new();
 
     private TransformGroup? _draggedTransformGroup;
@@ -28,6 +31,7 @@ public sealed class AnimatedReorderHelper
 
     private static readonly IEasingFunction EaseOut = new CubicEase { EasingMode = EasingMode.EaseOut };
 
+    private int _originalZIndex;
     private bool _isAnimatingSwap;
 
     public AnimatedReorderHelper(ItemsControl itemsControl, Action<int, int> onReorderCommitted)
@@ -137,9 +141,11 @@ public sealed class AnimatedReorderHelper
     private void StartDrag(MouseEventArgs e)
     {
         _containers.Clear();
+        _containerItemIndices.Clear();
         _initialTopPositions.Clear();
         _containerHeights.Clear();
         _containerTranslates.Clear();
+        _originalTransforms.Clear();
 
         int count = _itemsControl.Items.Count;
         _initialIndex = -1;
@@ -149,17 +155,19 @@ public sealed class AnimatedReorderHelper
             if (_itemsControl.ItemContainerGenerator.ContainerFromIndex(i) is FrameworkElement container)
             {
                 _containers.Add(container);
+                _containerItemIndices.Add(i);
 
                 Point relativePos = container.TranslatePoint(new Point(0, 0), _itemsControl);
                 _initialTopPositions.Add(relativePos.Y);
                 _containerHeights.Add(container.ActualHeight);
 
+                _originalTransforms.Add(container.RenderTransform);
                 TranslateTransform translateTransform = EnsureTransformGroup(container, out ScaleTransform? _);
                 _containerTranslates.Add(translateTransform);
 
                 if (container == _draggedContainer)
                 {
-                    _initialIndex = i;
+                    _initialIndex = _containers.Count - 1;
                 }
             }
         }
@@ -177,6 +185,7 @@ public sealed class AnimatedReorderHelper
         _draggedTranslate = _containerTranslates[_initialIndex];
         _draggedTransformGroup = _draggedContainer.RenderTransform as TransformGroup;
 
+        _originalZIndex = Panel.GetZIndex(_draggedContainer);
         Panel.SetZIndex(_draggedContainer, 999);
 
         if (_draggedScale != null)
@@ -187,6 +196,7 @@ public sealed class AnimatedReorderHelper
             _draggedScale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnimY);
         }
 
+        _draggedContainer.LostMouseCapture += DraggedContainer_LostMouseCapture;
         _draggedContainer.CaptureMouse();
     }
 
@@ -252,6 +262,7 @@ public sealed class AnimatedReorderHelper
             return;
         }
 
+        _draggedContainer.LostMouseCapture -= DraggedContainer_LostMouseCapture;
         _draggedContainer.ReleaseMouseCapture();
 
         double landingY = 0;
@@ -273,13 +284,17 @@ public sealed class AnimatedReorderHelper
             _draggedScale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnimY);
         }
 
-        int fromIndex = _initialIndex;
-        int toIndex = _targetIndex;
+        int fromIndex = _containerItemIndices[_initialIndex];
+        int toIndex = _containerItemIndices[_targetIndex];
         FrameworkElement draggedContainer = _draggedContainer;
 
         dropAnim.Completed += (s, e) =>
         {
-            Panel.SetZIndex(draggedContainer, 0);
+            Panel.SetZIndex(draggedContainer, _originalZIndex);
+            for (int i = 0; i < _containers.Count; i++)
+            {
+                _containers[i].RenderTransform = _originalTransforms[i];
+            }
 
             for (int i = 0; i < _containerTranslates.Count; i++)
             {
@@ -307,10 +322,41 @@ public sealed class AnimatedReorderHelper
         _draggedTransformGroup = null;
         _initialIndex = -1;
         _targetIndex = -1;
+        _originalZIndex = 0;
         _containers.Clear();
+        _containerItemIndices.Clear();
         _initialTopPositions.Clear();
         _containerHeights.Clear();
         _containerTranslates.Clear();
+        _originalTransforms.Clear();
+    }
+
+    private void DraggedContainer_LostMouseCapture(object sender, MouseEventArgs e)
+    {
+        if (!_isDragging)
+        {
+            return;
+        }
+
+        if (_draggedContainer is not null)
+        {
+            _draggedContainer.LostMouseCapture -= DraggedContainer_LostMouseCapture;
+            Panel.SetZIndex(_draggedContainer, _originalZIndex);
+            for (int i = 0; i < _containers.Count; i++)
+            {
+                _containers[i].RenderTransform = _originalTransforms[i];
+            }
+        }
+
+        foreach (TranslateTransform translate in _containerTranslates)
+        {
+            translate.BeginAnimation(TranslateTransform.YProperty, null);
+            translate.Y = 0;
+        }
+
+        _draggedScale?.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+        _draggedScale?.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+        ResetState();
     }
 
     private FrameworkElement? FindItemContainer(DependencyObject? child)
@@ -359,7 +405,7 @@ public sealed class AnimatedReorderHelper
     {
         while (element != null && element is not ItemsControl)
         {
-            if (element is Button || element is CheckBox || element is TextBox || element is ComboBox)
+            if (element is ButtonBase or RangeBase or TextBoxBase or ComboBox or Thumb)
             {
                 return true;
             }

@@ -43,7 +43,7 @@ public partial class WidgetPaletteOverlayView : UserControl
                 Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
             {
                 HomeWidgetConfig config = _draggedItem.ToConfig();
-                DataObject dragData = new DataObject("NoraBarCatalogWidgetConfig", config);
+                DataObject dragData = new DataObject(WidgetDragDataFormats.CatalogConfig, config);
                 DragDrop.DoDragDrop(fe, dragData, DragDropEffects.Copy);
                 _draggedItem = null;
             }

@@ -402,30 +402,46 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable, IHomeHudM
 
             _dragStartPoint = e.GetPosition(WidgetsContainer);
             _draggedWidgetIndex = index;
-            EnsureReorderHelper(vm);
-            _reorderHelper?.StartDrag(container, _dragStartPoint, index);
-            container.CaptureMouse();
-            e.Handled = true;
         };
 
         container.PreviewMouseMove += (_, e) =>
         {
-            if (container.IsMouseCaptured && _draggedWidgetIndex >= 0)
-            {
-                Point currentPosition = e.GetPosition(WidgetsContainer);
-                _reorderHelper?.UpdateDrag(currentPosition);
-            }
-        };
-
-        container.PreviewMouseLeftButtonUp += (_, _) =>
-        {
-            if (!container.IsMouseCaptured)
+            if (_draggedWidgetIndex < 0 || e.LeftButton != MouseButtonState.Pressed)
             {
                 return;
             }
 
-            container.ReleaseMouseCapture();
-            _reorderHelper?.EndDrag();
+            Point currentPosition = e.GetPosition(WidgetsContainer);
+            if (!container.IsMouseCaptured)
+            {
+                Vector movement = currentPosition - _dragStartPoint;
+                if (Math.Abs(movement.X) < SystemParameters.MinimumHorizontalDragDistance
+                    && Math.Abs(movement.Y) < SystemParameters.MinimumVerticalDragDistance)
+                {
+                    return;
+                }
+
+                EnsureReorderHelper(vm);
+                _reorderHelper?.StartDrag(container, _dragStartPoint, index);
+                e.Handled = true;
+            }
+
+            _reorderHelper?.UpdateDrag(currentPosition);
+        };
+
+        container.PreviewMouseLeftButtonUp += (_, _) =>
+        {
+            if (container.IsMouseCaptured)
+            {
+                _reorderHelper?.EndDrag();
+            }
+
+            _draggedWidgetIndex = -1;
+        };
+
+        container.LostMouseCapture += (_, _) =>
+        {
+            _reorderHelper?.CancelDrag();
             _draggedWidgetIndex = -1;
         };
 
@@ -494,10 +510,10 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable, IHomeHudM
             return;
         }
 
-        if (e.Data.GetDataPresent("NoraBarWidgetReorderIndex")
-            || e.Data.GetDataPresent("NoraBarCatalogWidgetConfig"))
+        if (e.Data.GetDataPresent(WidgetDragDataFormats.ReorderIndex)
+            || e.Data.GetDataPresent(WidgetDragDataFormats.CatalogConfig))
         {
-            e.Effects = e.Data.GetDataPresent("NoraBarCatalogWidgetConfig")
+            e.Effects = e.Data.GetDataPresent(WidgetDragDataFormats.CatalogConfig)
                 ? DragDropEffects.Copy
                 : DragDropEffects.Move;
         }
@@ -518,18 +534,20 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable, IHomeHudM
 
         List<HomeWidgetConfig> currentWidgets = vm.ActiveWidgets.ToList();
 
-        if (e.Data.GetDataPresent("NoraBarCatalogWidgetConfig")
-            && e.Data.GetData("NoraBarCatalogWidgetConfig") is HomeWidgetConfig catalogConfig)
+        if (e.Data.GetDataPresent(WidgetDragDataFormats.CatalogConfig)
+            && e.Data.GetData(WidgetDragDataFormats.CatalogConfig) is HomeWidgetConfig catalogConfig)
         {
             string newId = $"widget_{catalogConfig.Type.ToString().ToLowerInvariant()}_{Guid.NewGuid():N}";
             var newWidget = new HomeWidgetConfig(newId, catalogConfig.Type, catalogConfig.Style);
-            currentWidgets.Add(newWidget);
+            Point dropPoint = e.GetPosition(WidgetsContainer);
+            int targetIndex = Math.Clamp(CalculateDropIndex(dropPoint), 0, currentWidgets.Count);
+            currentWidgets.Insert(targetIndex, newWidget);
             UpdateWidgets(vm, currentWidgets);
             return;
         }
 
-        if (e.Data.GetDataPresent("NoraBarWidgetReorderIndex")
-            && e.Data.GetData("NoraBarWidgetReorderIndex") is int fromIndex)
+        if (e.Data.GetDataPresent(WidgetDragDataFormats.ReorderIndex)
+            && e.Data.GetData(WidgetDragDataFormats.ReorderIndex) is int fromIndex)
         {
             Point dropPoint = e.GetPosition(WidgetsContainer);
             int targetIndex = CalculateDropIndex(dropPoint);
