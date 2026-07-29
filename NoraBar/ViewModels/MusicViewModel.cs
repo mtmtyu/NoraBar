@@ -304,18 +304,31 @@ namespace NoraBar.ViewModels
             
             _ = _mediaService.InitializeAsync();
 
-            _audioVisualizerService.SpectrumDataUpdated += (s, data) =>
-            {
-                System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    SpectrumData = data;
-                }, System.Windows.Threading.DispatcherPriority.Render);
-            };
+            _audioVisualizerService.SpectrumDataUpdated += AudioVisualizerService_SpectrumDataUpdated;
             _audioVisualizerService.Start();
+        }
+
+        private void AudioVisualizerService_SpectrumDataUpdated(
+            object? sender,
+            float[] data)
+        {
+            System.Windows.Threading.Dispatcher? dispatcher =
+                System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher is null
+                || dispatcher.HasShutdownStarted
+                || dispatcher.HasShutdownFinished)
+            {
+                return;
+            }
+
+            dispatcher.InvokeAsync(
+                () => SpectrumData = data,
+                System.Windows.Threading.DispatcherPriority.Render);
         }
 
         public void Cleanup()
         {
+            _audioVisualizerService.SpectrumDataUpdated -= AudioVisualizerService_SpectrumDataUpdated;
             _audioVisualizerService.Stop();
             _audioVisualizerService.Dispose();
         }
