@@ -81,13 +81,15 @@ public sealed class HomeWidgetCustomizerViewModelTests
     {
         List<HomeWidgetConfig> initial = new List<HomeWidgetConfig>
         {
-            new("w1", HomeWidgetType.DigitalClock, HomeWidgetStyle.ClockMinimal)
+            new("w1", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact)
         };
         HomeWidgetCustomizerViewModel vm = new HomeWidgetCustomizerViewModel(initial);
         int eventCount = 0;
         vm.PreviewInvalidated += (s, e) => eventCount++;
 
-        vm.ActiveWidgets[0].Style = HomeWidgetStyle.ClockMinimal;
+        int countBeforeStyleChange = eventCount;
+        vm.ActiveWidgets[0].Style = HomeWidgetStyle.MediaArtworkHoverSmall;
+        Assert.True(eventCount > countBeforeStyleChange);
 
         int countBeforeAdd = eventCount;
         vm.AddWidgetCommand.Execute(vm.CatalogWidgets[0]);

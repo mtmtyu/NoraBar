@@ -788,6 +788,17 @@ public sealed class HomeHudModuleTests
                 new HudViewContext(HudPresentationState.Expanded)));
     }
 
+    [Fact]
+    public async Task RunWithForeignDispatcherViewAsync_WhenViewCreationFails_PreservesFailure()
+    {
+        var failure = new InvalidOperationException("create");
+
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            RunWithForeignDispatcherViewAsync<FrameworkElement>(() => throw failure, _ => Task.CompletedTask));
+
+        Assert.Same(failure, exception);
+    }
+
     private static async Task RunWithForeignDispatcherViewAsync<TView>(
         Func<TView> createView,
         Func<TView, Task> runScenario)
@@ -797,8 +808,15 @@ public sealed class HomeHudModuleTests
             TaskCreationOptions.RunContinuationsAsynchronously);
         var thread = new Thread(() =>
         {
-            ready.SetResult((Dispatcher.CurrentDispatcher, createView()));
-            Dispatcher.Run();
+            try
+            {
+                ready.SetResult((Dispatcher.CurrentDispatcher, createView()));
+                Dispatcher.Run();
+            }
+            catch (Exception exception)
+            {
+                ready.TrySetException(exception);
+            }
         })
         {
             IsBackground = true

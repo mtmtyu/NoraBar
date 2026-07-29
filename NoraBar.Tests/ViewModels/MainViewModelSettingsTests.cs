@@ -173,17 +173,15 @@ public class MainViewModelSettingsTests
     {
         var viewModel = new MainViewModel();
         var initial = viewModel.ActiveHomeWidgets.ToList();
-        if (initial.Count >= 2)
-        {
-            var item0 = initial[0];
-            var item1 = initial[1];
+        Assert.True(initial.Count >= 2);
+        var item0 = initial[0];
+        var item1 = initial[1];
 
-            List<NoraBar.Hud.Home.Widgets.HomeWidgetConfig> reordered = [item1, item0, .. initial.Skip(2)];
-            viewModel.ActiveHomeWidgets = reordered.AsReadOnly();
+        List<NoraBar.Hud.Home.Widgets.HomeWidgetConfig> reordered = [item1, item0, .. initial.Skip(2)];
+        viewModel.ActiveHomeWidgets = reordered.AsReadOnly();
 
-            Assert.Equal(item1.Id, viewModel.ActiveHomeWidgets[0].Id);
-            Assert.Equal(item0.Id, viewModel.ActiveHomeWidgets[1].Id);
-        }
+        Assert.Equal(item1.Id, viewModel.ActiveHomeWidgets[0].Id);
+        Assert.Equal(item0.Id, viewModel.ActiveHomeWidgets[1].Id);
     }
 
     [Fact]

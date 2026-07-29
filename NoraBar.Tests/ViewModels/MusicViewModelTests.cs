@@ -85,14 +85,19 @@ public sealed class MusicViewModelTests
 
     private static void RunWithApplication(Action action)
     {
-        var application = new System.Windows.Application();
+        System.Windows.Application? application = System.Windows.Application.Current;
+        bool ownsApplication = application is null;
+        application ??= new System.Windows.Application();
         try
         {
             action();
         }
         finally
         {
-            application.Shutdown();
+            if (ownsApplication)
+            {
+                application.Shutdown();
+            }
         }
     }
 

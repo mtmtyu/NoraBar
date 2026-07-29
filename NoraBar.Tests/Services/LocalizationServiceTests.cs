@@ -71,6 +71,15 @@ public class LocalizationServiceTests
                             violations.Add($"[{relativePath}] <{element.Name.LocalName}> has hardcoded {attrName}=\"{val}\"");
                         }
                     }
+
+                    if (!element.HasElements)
+                    {
+                        string val = element.Value.Trim();
+                        if (!IsWhitelistedText(val))
+                        {
+                            violations.Add($"[{relativePath}] <{element.Name.LocalName}> has hardcoded text \"{val}\"");
+                        }
+                    }
                 }
             }
             catch (Exception ex)

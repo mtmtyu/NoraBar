@@ -809,9 +809,12 @@ public sealed class HomeWidgetViewLifecycleTests
             var view = new DynamicWidgetHomeView { DataContext = source };
 
             WeakReference oldWidget = RebuildAndReleaseOldMediaWidget(view, source);
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
+            for (int attempt = 0; attempt < 3 && oldWidget.IsAlive; attempt++)
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+            }
 
             Assert.False(oldWidget.IsAlive);
             view.Dispose();

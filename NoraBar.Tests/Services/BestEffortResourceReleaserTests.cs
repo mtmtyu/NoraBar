@@ -54,8 +54,16 @@ public sealed class BestEffortResourceReleaserTests
     [Fact]
     public void ReleaseAllAndReport_WhenReporterFails_DoesNotEscapeUiBoundary()
     {
+        bool reporterCalled = false;
+
         BestEffortResourceReleaser.ReleaseAllAndReport(
-            _ => throw new InvalidOperationException("trace"),
+            _ =>
+            {
+                reporterCalled = true;
+                throw new InvalidOperationException("trace");
+            },
             () => throw new InvalidOperationException("cleanup"));
+
+        Assert.True(reporterCalled);
     }
 }
