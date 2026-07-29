@@ -15,6 +15,8 @@ internal sealed class HomeHudPreview : IDisposable
         HudSize preferredSize,
         IDisposable viewModel)
     {
+        ArgumentNullException.ThrowIfNull(view);
+        ArgumentNullException.ThrowIfNull(viewModel);
         View = view;
         PreferredSize = preferredSize;
         _viewModel = viewModel;

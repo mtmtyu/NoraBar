@@ -361,6 +361,50 @@ public sealed class HomeHudModuleTests
     }
 
     [Fact]
+    public async Task DisposeAsync_DisposesSourceOnOwningDispatcher()
+    {
+        var ready = new TaskCompletionSource<(HomeHudModule Module, Dispatcher Dispatcher, FakeHomeHudPresentationSource Source)>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
+                var source = new FakeHomeHudPresentationSource
+                {
+                    OwningDispatcher = dispatcher
+                };
+                var module = new HomeHudModule(source, _ => new FrameworkElement());
+                ready.SetResult((module, dispatcher, source));
+                Dispatcher.Run();
+            }
+            catch (Exception exception)
+            {
+                ready.TrySetException(exception);
+            }
+        })
+        {
+            IsBackground = true
+        };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        (HomeHudModule Module, Dispatcher Dispatcher, FakeHomeHudPresentationSource Source)? state = null;
+        try
+        {
+            state = await ready.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await state.Value.Module.DisposeAsync().AsTask()
+                .WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(thread.ManagedThreadId, state.Value.Source.DisposeThreadId);
+        }
+        finally
+        {
+            state?.Dispatcher.BeginInvokeShutdown(DispatcherPriority.Send);
+            thread.Join(TimeSpan.FromSeconds(5));
+        }
+
+        Assert.False(thread.IsAlive);
+    }
+    [Fact]
     public async Task GetView_WhenFactoryReturnsForeignDispatcherView_DisposesItOnOwner()
     {
         var ready = new TaskCompletionSource<(Dispatcher Dispatcher, DispatcherAwareView View)>(
@@ -849,16 +893,18 @@ public sealed class HomeHudModuleTests
         public HomeHudDesignVariant DesignVariant { get; set; } =
             HomeHudDesignVariant.FusionBalanced;
 
-        public IReadOnlyList<NoraBar.Hud.Home.Widgets.HomeWidgetConfig>? ActiveWidgets { get; set; }
+        public IReadOnlyList<NoraBar.Hud.Home.Widgets.HomeWidgetConfig> ActiveWidgets { get; set; } = [];
 
         public double MaxWidgetWidth { get; set; } = 800;
         public double MaxWidgetHeight { get; set; } = 300;
 
         public object ViewDataContext { get; } = new();
+        public Dispatcher? OwningDispatcher { get; init; }
         public int InitializeCount { get; private set; }
         public int StartCount { get; private set; }
         public int StopCount { get; private set; }
         public int DisposeCount { get; private set; }
+        public int? DisposeThreadId { get; private set; }
         public Exception? StopException { get; init; }
         public Exception? UnsubscribeException { get; init; }
         public Exception? DisposeException { get; init; }
@@ -891,6 +937,7 @@ public sealed class HomeHudModuleTests
 
         public void Dispose()
         {
+            DisposeThreadId = Environment.CurrentManagedThreadId;
             DisposeCount++;
             if (DisposeException is not null)
             {

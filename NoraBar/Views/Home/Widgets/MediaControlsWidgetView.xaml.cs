@@ -17,6 +17,7 @@ namespace NoraBar.Views.Home.Widgets;
 public partial class MediaControlsWidgetView : UserControl, IDisposable, IHomeHudManagedResource
 {
     internal const int MaxLyricContainerAttempts = 5;
+    private const string BlurLyricsListBoxName = "LyricsListBoxBlur";
 
     private readonly Func<bool> _isLoaded;
     private readonly Func<CancellationToken, bool>? _tryScrollToCurrentLyric;
@@ -238,8 +239,9 @@ public partial class MediaControlsWidgetView : UserControl, IDisposable, IHomeHu
             return true;
         }
 
-        ListBox? lyricsListBox = FindVisualChild<ListBox>(MediaContentControl);
-        if (lyricsListBox is null || lyricsListBox.Name != "LyricsListBoxBlur")
+        ListBox? lyricsListBox = FindVisualChildByName<ListBox>(
+            MediaContentControl, BlurLyricsListBoxName);
+        if (lyricsListBox is null)
         {
             return false;
         }
@@ -323,6 +325,28 @@ public partial class MediaControlsWidgetView : UserControl, IDisposable, IHomeHu
 
         _pendingLyricScroll = null;
         cancellation?.Dispose();
+    }
+
+    private static T? FindVisualChildByName<T>(DependencyObject parent, string name)
+        where T : FrameworkElement
+    {
+        int childCount = VisualTreeHelper.GetChildrenCount(parent);
+        for (int index = 0; index < childCount; index++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(parent, index);
+            if (child is T match && string.Equals(match.Name, name, StringComparison.Ordinal))
+            {
+                return match;
+            }
+
+            T? descendant = FindVisualChildByName<T>(child, name);
+            if (descendant is not null)
+            {
+                return descendant;
+            }
+        }
+
+        return null;
     }
 
     private static T? FindVisualChild<T>(DependencyObject obj)

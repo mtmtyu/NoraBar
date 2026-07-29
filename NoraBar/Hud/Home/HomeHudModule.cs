@@ -311,9 +311,10 @@ internal sealed class HomeHudModule : IHudModule
                 }
             }
 
-            ViewDisposalOutcome viewDisposal = await DisposeViewsAsync(
+            ViewDisposalOutcome viewDisposal = await DisposeResourcesAsync(
                 views,
-                dispatcher,
+                _source,
+                dispatcher ?? _source.OwningDispatcher,
                 _viewDisposalTimeout);
             exceptions.AddRange(viewDisposal.Exceptions);
 
@@ -325,7 +326,6 @@ internal sealed class HomeHudModule : IHudModule
             }
             else
             {
-                DisposeSource(exceptions);
                 finalCleanupCompletionSource.TrySetResult(null);
             }
         }
@@ -361,7 +361,6 @@ internal sealed class HomeHudModule : IHudModule
         try
         {
             List<Exception> exceptions = [.. await lateViewCleanup];
-            DisposeSource(exceptions);
             if (exceptions.Count == 0)
             {
                 finalCleanupCompletionSource.TrySetResult(null);
@@ -394,50 +393,35 @@ internal sealed class HomeHudModule : IHudModule
         }
     }
 
-    private void DisposeSource(ICollection<Exception> exceptions)
-    {
-        try
-        {
-            _source.Dispose();
-        }
-        catch (Exception exception)
-        {
-            exceptions.Add(exception);
-        }
-    }
-
-    private static async Task<ViewDisposalOutcome> DisposeViewsAsync(
+    private static async Task<ViewDisposalOutcome> DisposeResourcesAsync(
         IReadOnlyList<FrameworkElement> views,
+        IHomeHudPresentationSource source,
         Dispatcher? dispatcher,
         TimeSpan timeout)
     {
-        if (views.Count == 0 || dispatcher is null)
+        if (dispatcher is null)
         {
-            return ViewDisposalOutcome.Completed([]);
-        }
-
-        if (!views.Any(view => view is IDisposable or IHomeHudManagedResource))
-        {
-            return ViewDisposalOutcome.Completed([]);
+            return ViewDisposalOutcome.Completed(CleanupResources(views, source));
         }
 
         if (dispatcher.CheckAccess())
         {
-            return ViewDisposalOutcome.Completed(CleanupViews(views));
+            return ViewDisposalOutcome.Completed(CleanupResources(views, source));
         }
 
         if (dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
         {
             List<Exception> exceptions = [.. ReleaseManagedResources(views)];
+            DisposeSource(source, exceptions);
             exceptions.Add(new InvalidOperationException(
-                "Home HUD views could not be disposed because their Dispatcher is shutting down."));
+                "Home HUD resources could not be disposed on their owning Dispatcher because it is shutting down."));
             return ViewDisposalOutcome.Completed(exceptions);
         }
 
         var callbackCompletion = new TaskCompletionSource<IReadOnlyList<Exception>>(
             TaskCreationOptions.RunContinuationsAsynchronously);
         DispatcherOperation operation = dispatcher.InvokeAsync(
-            () => callbackCompletion.TrySetResult(CleanupViews(views)),
+            () => callbackCompletion.TrySetResult(CleanupResources(views, source)),
             DispatcherPriority.Send);
         try
         {
@@ -447,11 +431,12 @@ internal sealed class HomeHudModule : IHudModule
         catch (TimeoutException)
         {
             var timeoutException = new TimeoutException(
-                $"Home HUD view disposal did not complete within {timeout}.");
+                $"Home HUD resource disposal did not complete within {timeout}.");
             if (operation.Abort())
             {
                 await ObserveAbortedOperationAsync(operation.Task);
                 List<Exception> exceptions = [.. ReleaseManagedResources(views)];
+                DisposeSource(source, exceptions);
                 exceptions.Add(timeoutException);
                 return ViewDisposalOutcome.Completed(exceptions);
             }
@@ -463,6 +448,7 @@ internal sealed class HomeHudModule : IHudModule
         catch (Exception exception)
         {
             List<Exception> exceptions = [exception, .. ReleaseManagedResources(views)];
+            DisposeSource(source, exceptions);
             return ViewDisposalOutcome.Completed(exceptions);
         }
     }
@@ -549,7 +535,7 @@ internal sealed class HomeHudModule : IHudModule
         catch (TimeoutException)
         {
             var timeoutException = new TimeoutException(
-                $"Rejected Home HUD view disposal did not complete within {timeout}.");
+                $"Rejected Home HUD resource disposal did not complete within {timeout}.");
             if (operation.Abort())
             {
                 ObserveAbortedOperationAsync(operation.Task).GetAwaiter().GetResult();
@@ -566,6 +552,29 @@ internal sealed class HomeHudModule : IHudModule
         {
             return ViewDisposalOutcome.Completed(
                 [exception, .. ReleaseManagedResources([view])]);
+        }
+    }
+
+    private static IReadOnlyList<Exception> CleanupResources(
+        IReadOnlyList<FrameworkElement> views,
+        IHomeHudPresentationSource source)
+    {
+        List<Exception> exceptions = [.. CleanupViews(views)];
+        DisposeSource(source, exceptions);
+        return exceptions;
+    }
+
+    private static void DisposeSource(
+        IHomeHudPresentationSource source,
+        ICollection<Exception> exceptions)
+    {
+        try
+        {
+            source.Dispose();
+        }
+        catch (Exception exception)
+        {
+            exceptions.Add(exception);
         }
     }
 
@@ -692,6 +701,13 @@ internal sealed class HomeHudModule : IHudModule
 
     private void EnsureViewDispatcher(Dispatcher dispatcher)
     {
+        if (_source.OwningDispatcher is not null
+            && _source.OwningDispatcher != dispatcher)
+        {
+            throw new InvalidOperationException(
+                "ホームHUDのViewとsourceは同じDispatcherに属する必要があります。");
+        }
+
         if (_viewDispatcher is not null && _viewDispatcher != dispatcher)
         {
             throw new InvalidOperationException(

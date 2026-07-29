@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Threading;
 using NoraBar.Hud;
 using NoraBar.Hud.Home;
 using NoraBar.Hud.Home.Widgets;
@@ -9,6 +10,19 @@ namespace NoraBar.Tests.Hud;
 
 public sealed class HomeHudPreviewFactoryTests
 {
+    [Fact]
+    public void Constructor_WhenViewIsNull_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            new HomeHudPreview(null!, new HudSize(100, 100), new TrackingSource()));
+    }
+
+    [Fact]
+    public void Constructor_WhenViewModelIsNull_Throws()
+    {
+        StaTestRunner.Run(() => Assert.Throws<ArgumentNullException>(() =>
+            new HomeHudPreview(new FrameworkElement(), new HudSize(100, 100), null!)));
+    }
     [Fact]
     public void Create_WhenViewCreationFails_DisposesInitializedSource()
     {
@@ -132,10 +146,11 @@ public sealed class HomeHudPreviewFactoryTests
     private sealed class TrackingSource : IHomeHudPresentationSource
     {
         public HomeHudDesignVariant DesignVariant => HomeHudDesignVariant.FusionBalanced;
-        public IReadOnlyList<HomeWidgetConfig>? ActiveWidgets => [];
+        public IReadOnlyList<HomeWidgetConfig> ActiveWidgets => [];
         public double MaxWidgetWidth => 800;
         public double MaxWidgetHeight => 300;
         public object ViewDataContext => this;
+        public Dispatcher? OwningDispatcher => null;
         public int InitializeCount { get; private set; }
         public int StartCount { get; private set; }
         public int DisposeCount { get; private set; }

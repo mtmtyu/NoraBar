@@ -45,6 +45,8 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
 
     public object ViewDataContext => this;
 
+    public Dispatcher OwningDispatcher => _clockTimer.Dispatcher;
+
     public MusicViewModel Music => _viewModel.Music;
 
     public bool HasMedia => Music.HasActiveSession;
@@ -246,6 +248,23 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (string.IsNullOrEmpty(e.PropertyName))
+        {
+            RefreshClock();
+            OnPropertyChanged(nameof(ActiveWidgets));
+            OnPropertyChanged(nameof(MaxWidgetWidth));
+            OnPropertyChanged(nameof(MaxWidgetHeight));
+            OnPropertyChanged(nameof(IsWidgetEditMode));
+            OnPropertyChanged(nameof(MediaTitle));
+            OnPropertyChanged(nameof(PreviousMediaText));
+            OnPropertyChanged(nameof(PlayPauseMediaText));
+            OnPropertyChanged(nameof(NextMediaText));
+            OnPropertyChanged(nameof(FirstWorldClockLabel));
+            OnPropertyChanged(nameof(SecondWorldClockLabel));
+            PresentationInvalidated?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
         switch (e.PropertyName)
         {
             case nameof(MainViewModel.HomeHudDesignVariant):
