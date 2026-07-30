@@ -135,4 +135,28 @@ public sealed class HomeWidgetSettingsTests
         Assert.Single(reloaded.EffectiveWidgets);
         Assert.Equal(HomeWidgetStyle.MediaBlurLyrics, reloaded.EffectiveWidgets[0].Style);
     }
+
+    [Fact]
+    public void Read_LegacyType1_ParsesAsMediaControls()
+    {
+        UserSettings settings = new UserSettings
+        {
+            Modules = new Dictionary<string, System.Text.Json.JsonElement>(StringComparer.Ordinal)
+            {
+                [NoraBar.Hud.BuiltInHudIds.Home] = System.Text.Json.JsonSerializer.SerializeToElement(new
+                {
+                    Widgets = new[]
+                    {
+                        new { Id = "w_media", Type = 1, Style = 1 }
+                    }
+                })
+            }
+        };
+
+        HomeHudSettings result = HomeHudSettingsJson.Read(settings);
+
+        Assert.Single(result.EffectiveWidgets);
+        Assert.Equal(HomeWidgetType.MediaControls, result.EffectiveWidgets[0].Type);
+        Assert.Equal(HomeWidgetStyle.MediaCompact, result.EffectiveWidgets[0].Style);
+    }
 }
