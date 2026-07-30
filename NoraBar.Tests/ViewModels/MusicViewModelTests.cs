@@ -9,6 +9,7 @@ using Xunit;
 
 namespace NoraBar.Tests.ViewModels;
 
+[Collection(WpfApplicationCollection.Name)]
 public sealed class MusicViewModelTests
 {
     private static readonly TimeSpan StaTimeout = TimeSpan.FromSeconds(10);
