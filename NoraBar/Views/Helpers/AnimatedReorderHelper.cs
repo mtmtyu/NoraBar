@@ -23,6 +23,7 @@ public sealed class AnimatedReorderHelper
     private readonly List<double> _initialTopPositions = new();
     private readonly List<double> _containerHeights = new();
     private readonly List<Transform> _originalTransforms = new();
+    private readonly List<Point> _originalTransformOrigins = new();
     private readonly List<TranslateTransform> _containerTranslates = new();
 
     private TransformGroup? _draggedTransformGroup;
@@ -66,8 +67,12 @@ public sealed class AnimatedReorderHelper
         Point posTo = cTo.TranslatePoint(new Point(0, 0), _itemsControl);
         double deltaY = posTo.Y - posFrom.Y;
 
-        TranslateTransform tFrom = EnsureTransformGroup(cFrom, out _);
-        TranslateTransform tTo = EnsureTransformGroup(cTo, out _);
+        Transform originalFrom = cFrom.RenderTransform;
+        Transform originalTo = cTo.RenderTransform;
+        Point originalFromOrigin = cFrom.RenderTransformOrigin;
+        Point originalToOrigin = cTo.RenderTransformOrigin;
+        TranslateTransform tFrom = CreateTransientTransformGroup(cFrom, out _);
+        TranslateTransform tTo = CreateTransientTransformGroup(cTo, out _);
 
         DoubleAnimation animFrom = new(0, deltaY, TimeSpan.FromMilliseconds(160)) { EasingFunction = EaseOut };
         DoubleAnimation animTo = new(0, -deltaY, TimeSpan.FromMilliseconds(160)) { EasingFunction = EaseOut };
@@ -76,8 +81,10 @@ public sealed class AnimatedReorderHelper
         {
             tFrom.BeginAnimation(TranslateTransform.YProperty, null);
             tTo.BeginAnimation(TranslateTransform.YProperty, null);
-            tFrom.Y = 0;
-            tTo.Y = 0;
+            cFrom.RenderTransform = originalFrom;
+            cFrom.RenderTransformOrigin = originalFromOrigin;
+            cTo.RenderTransform = originalTo;
+            cTo.RenderTransformOrigin = originalToOrigin;
             _isAnimatingSwap = false;
             _onReorderCommitted(fromIndex, toIndex);
         };
@@ -146,6 +153,7 @@ public sealed class AnimatedReorderHelper
         _containerHeights.Clear();
         _containerTranslates.Clear();
         _originalTransforms.Clear();
+        _originalTransformOrigins.Clear();
 
         int count = _itemsControl.Items.Count;
         _initialIndex = -1;
@@ -162,7 +170,8 @@ public sealed class AnimatedReorderHelper
                 _containerHeights.Add(container.ActualHeight);
 
                 _originalTransforms.Add(container.RenderTransform);
-                TranslateTransform translateTransform = EnsureTransformGroup(container, out ScaleTransform? _);
+                _originalTransformOrigins.Add(container.RenderTransformOrigin);
+                TranslateTransform translateTransform = CreateTransientTransformGroup(container, out ScaleTransform? _);
                 _containerTranslates.Add(translateTransform);
 
                 if (container == _draggedContainer)
@@ -181,7 +190,9 @@ public sealed class AnimatedReorderHelper
         _targetIndex = _initialIndex;
         _isDragging = true;
 
-        EnsureTransformGroup(_draggedContainer, out _draggedScale);
+        _draggedScale = (_draggedContainer.RenderTransform as TransformGroup)?.Children
+            .OfType<ScaleTransform>()
+            .LastOrDefault();
         _draggedTranslate = _containerTranslates[_initialIndex];
         _draggedTransformGroup = _draggedContainer.RenderTransform as TransformGroup;
 
@@ -291,16 +302,12 @@ public sealed class AnimatedReorderHelper
         dropAnim.Completed += (s, e) =>
         {
             Panel.SetZIndex(draggedContainer, _originalZIndex);
-            for (int i = 0; i < _containers.Count; i++)
-            {
-                _containers[i].RenderTransform = _originalTransforms[i];
-            }
-
             for (int i = 0; i < _containerTranslates.Count; i++)
             {
                 _containerTranslates[i].BeginAnimation(TranslateTransform.YProperty, null);
                 _containerTranslates[i].Y = 0;
             }
+            RestoreContainerTransforms();
 
             ResetState();
 
@@ -329,6 +336,7 @@ public sealed class AnimatedReorderHelper
         _containerHeights.Clear();
         _containerTranslates.Clear();
         _originalTransforms.Clear();
+        _originalTransformOrigins.Clear();
     }
 
     private void DraggedContainer_LostMouseCapture(object sender, MouseEventArgs e)
@@ -342,10 +350,6 @@ public sealed class AnimatedReorderHelper
         {
             _draggedContainer.LostMouseCapture -= DraggedContainer_LostMouseCapture;
             Panel.SetZIndex(_draggedContainer, _originalZIndex);
-            for (int i = 0; i < _containers.Count; i++)
-            {
-                _containers[i].RenderTransform = _originalTransforms[i];
-            }
         }
 
         foreach (TranslateTransform translate in _containerTranslates)
@@ -356,6 +360,7 @@ public sealed class AnimatedReorderHelper
 
         _draggedScale?.BeginAnimation(ScaleTransform.ScaleXProperty, null);
         _draggedScale?.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+        RestoreContainerTransforms();
         ResetState();
     }
 
@@ -372,32 +377,35 @@ public sealed class AnimatedReorderHelper
         return null;
     }
 
-    private static TranslateTransform EnsureTransformGroup(FrameworkElement container, out ScaleTransform scaleTransform)
+    private void RestoreContainerTransforms()
     {
-        TranslateTransform? translate = null;
-        ScaleTransform? scale = null;
-
-        if (container.RenderTransform is TransformGroup tg)
+        int count = Math.Min(
+            _containers.Count,
+            Math.Min(_originalTransforms.Count, _originalTransformOrigins.Count));
+        for (int i = 0; i < count; i++)
         {
-            foreach (Transform t in tg.Children)
-            {
-                if (t is TranslateTransform tt) translate = tt;
-                if (t is ScaleTransform st) scale = st;
-            }
+            _containers[i].RenderTransform = _originalTransforms[i];
+            _containers[i].RenderTransformOrigin = _originalTransformOrigins[i];
+        }
+    }
+
+    private static TranslateTransform CreateTransientTransformGroup(
+        FrameworkElement container,
+        out ScaleTransform scaleTransform)
+    {
+        Transform original = container.RenderTransform;
+        TransformGroup group = new();
+        if (original != Transform.Identity)
+        {
+            group.Children.Add(original.CloneCurrentValue());
         }
 
-        if (translate == null || scale == null)
-        {
-            container.RenderTransformOrigin = new Point(0.5, 0.5);
-            TransformGroup group = new();
-            translate = new TranslateTransform();
-            scale = new ScaleTransform();
-            group.Children.Add(translate);
-            group.Children.Add(scale);
-            container.RenderTransform = group;
-        }
-
-        scaleTransform = scale;
+        TranslateTransform translate = new();
+        scaleTransform = new ScaleTransform();
+        group.Children.Add(translate);
+        group.Children.Add(scaleTransform);
+        container.RenderTransformOrigin = new Point(0.5, 0.5);
+        container.RenderTransform = group;
         return translate;
     }
 
