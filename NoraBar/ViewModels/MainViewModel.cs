@@ -1294,7 +1294,8 @@ namespace NoraBar.ViewModels
             {
                 if (!string.IsNullOrWhiteSpace(value) && SetProperty(ref _timeZoneId, value))
                 {
-                    Label = GetDefaultLabelForTimeZone(value);
+                    string label = GetDefaultLabelForTimeZone(value);
+                    SetProperty(ref _label, label, nameof(Label));
                     _onChanged();
                 }
             }

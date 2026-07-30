@@ -307,6 +307,24 @@ public class MainViewModelSettingsTests
     }
 
     [Fact]
+    public void WorldClockEntry_ChangingTimeZoneId_InvokesCallbackOnceAndNotifiesBothProperties()
+    {
+        int callbackCount = 0;
+        var changedProperties = new List<string?>();
+        var item = new WorldClockEntryViewModel("UTC", "UTC", () => callbackCount++);
+        item.PropertyChanged += (_, args) => changedProperties.Add(args.PropertyName);
+
+        item.TimeZoneId = "Tokyo Standard Time";
+
+        Assert.Equal(1, callbackCount);
+        Assert.Contains(nameof(WorldClockEntryViewModel.TimeZoneId), changedProperties);
+        Assert.Contains(nameof(WorldClockEntryViewModel.Label), changedProperties);
+
+        item.Label = "TOKYO";
+        Assert.Equal(2, callbackCount);
+    }
+
+    [Fact]
     public void GetDefaultLabelForTimeZone_ReturnsExpectedAbbreviations()
     {
         Assert.Equal("UTC", WorldClockEntryViewModel.GetDefaultLabelForTimeZone("UTC"));
