@@ -7,6 +7,7 @@ namespace NoraBar;
 internal readonly record struct HudInteractiveSizeTargets(
     HudSize ContainerSize,
     HudSize ContentSize,
+    bool StretchesContentWidth,
     bool StretchesContentHeight);
 
 internal static class HudInteractiveSizePolicy
@@ -24,6 +25,7 @@ internal static class HudInteractiveSizePolicy
         return new HudInteractiveSizeTargets(
             containerSize,
             preferredContentSize,
+            desiredContainerSize.Width > currentContainerSize.Width,
             desiredContainerSize.Height > currentContainerSize.Height);
     }
 
@@ -33,11 +35,15 @@ internal static class HudInteractiveSizePolicy
     {
         ArgumentNullException.ThrowIfNull(contentHost);
 
-        contentHost.Width = targets.ContentSize.Width;
+        contentHost.Width = targets.StretchesContentWidth
+            ? double.NaN
+            : targets.ContentSize.Width;
         contentHost.Height = targets.StretchesContentHeight
             ? double.NaN
             : targets.ContentSize.Height;
-        contentHost.HorizontalAlignment = HorizontalAlignment.Center;
+        contentHost.HorizontalAlignment = targets.StretchesContentWidth
+            ? HorizontalAlignment.Stretch
+            : HorizontalAlignment.Center;
         contentHost.VerticalAlignment = targets.StretchesContentHeight
             ? VerticalAlignment.Stretch
             : VerticalAlignment.Center;
