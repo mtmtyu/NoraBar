@@ -63,7 +63,7 @@ public class LocalizationServiceTests
                     foreach (XAttribute attr in element.Attributes())
                     {
                         string attrName = attr.Name.LocalName;
-                        if (attrName is "Text" or "Content" or "Title" or "Header")
+                        if (attrName is "Text" or "Content" or "Title" or "Header" or "ToolTip")
                         {
                             string val = attr.Value.Trim();
                             if (IsWhitelistedText(val)) continue;
@@ -93,6 +93,103 @@ public class LocalizationServiceTests
             string.Join("\n", violations));
     }
 
+    [Fact]
+    public void AllCSharpFiles_HaveNoHardcodedUserVisibleStrings()
+    {
+        string baseDir = AppContext.BaseDirectory;
+        string noraBarDir = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "NoraBar"));
+        if (!Directory.Exists(noraBarDir))
+        {
+            noraBarDir = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "NoraBar"));
+        }
+
+        Assert.True(Directory.Exists(noraBarDir), $"NoraBar directory not found at '{noraBarDir}'.");
+
+        string[] csFiles = Directory.GetFiles(noraBarDir, "*.cs", SearchOption.AllDirectories);
+        Assert.True(csFiles.Length > 0, "No C# files found to test.");
+
+        List<string> violations = [];
+        var propertyAssignRegex = new Regex(@"\b(ToolTip|Text|Content|Header|Title)\s*=\s*""([^""]+)""", RegexOptions.Compiled);
+        var japaneseTextRegex = new Regex(@"[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]", RegexOptions.Compiled);
+
+        foreach (string file in csFiles)
+        {
+            string relativePath = Path.GetRelativePath(noraBarDir, file);
+
+            if (relativePath.StartsWith("bin", StringComparison.OrdinalIgnoreCase) ||
+                relativePath.StartsWith("obj", StringComparison.OrdinalIgnoreCase) ||
+                relativePath.StartsWith("Resources", StringComparison.OrdinalIgnoreCase) ||
+                relativePath.EndsWith("LocalizationService.cs", StringComparison.OrdinalIgnoreCase) ||
+                relativePath.Contains("AssemblyInfo", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            string[] lines = File.ReadAllLines(file);
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string line = lines[i];
+
+                string trimmed = line.TrimStart();
+                bool isExceptionLine = line.Contains("throw ") || line.Contains("Exception(") ||
+                    (i > 0 && (lines[i - 1].Contains("Exception") || lines[i - 1].Contains("throw"))) ||
+                    (i > 1 && (lines[i - 2].Contains("Exception") || lines[i - 2].Contains("throw"))) ||
+                    (i > 2 && (lines[i - 3].Contains("Exception") || lines[i - 3].Contains("throw")));
+
+                if (trimmed.StartsWith("//") || trimmed.StartsWith("/*") || trimmed.StartsWith("*") ||
+                    isExceptionLine || trimmed.StartsWith("Trace.") || trimmed.StartsWith("Debug."))
+                {
+                    continue;
+                }
+
+                MatchCollection matches = propertyAssignRegex.Matches(line);
+                foreach (Match match in matches)
+                {
+                    string propName = match.Groups[1].Value;
+                    string val = match.Groups[2].Value.Trim();
+                    if (!IsWhitelistedText(val))
+                    {
+                        violations.Add($"[{relativePath}:L{i + 1}] Assigning hardcoded {propName}=\"{val}\"");
+                    }
+                }
+
+                if ((relativePath.StartsWith("Views", StringComparison.OrdinalIgnoreCase) ||
+                     relativePath.StartsWith("ViewModels", StringComparison.OrdinalIgnoreCase) ||
+                     relativePath.StartsWith("Hud", StringComparison.OrdinalIgnoreCase)) &&
+                    japaneseTextRegex.IsMatch(line))
+                {
+                    MatchCollection stringMatches = Regex.Matches(line, @"""([^""]+)""");
+                    foreach (Match m in stringMatches)
+                    {
+                        string strVal = m.Groups[1].Value.Trim();
+                        if (japaneseTextRegex.IsMatch(strVal) && !IsWhitelistedText(strVal))
+                        {
+                            violations.Add($"[{relativePath}:L{i + 1}] Contains hardcoded Japanese string \"{strVal}\"");
+                        }
+                    }
+                }
+            }
+        }
+
+        Assert.True(violations.Count == 0,
+            $"Found {violations.Count} hardcoded user-visible text occurrences across C# files:\n" +
+            string.Join("\n", violations));
+    }
+
+    [Theory]
+    [InlineData("Remove Widget", false)]
+    [InlineData("ウィジェットを削除", false)]
+    [InlineData("Delete Item", false)]
+    [InlineData("NoraBar", true)]
+    [InlineData("{Binding Title}", true)]
+    [InlineData("\uE711", true)]
+    [InlineData("12:34", true)]
+    public void IsWhitelistedText_DetectsHardcodedEnglishAndJapaneseText(string text, bool expectedWhitelisted)
+    {
+        bool isWhitelisted = IsWhitelistedText(text);
+        Assert.Equal(expectedWhitelisted, isWhitelisted);
+    }
+
     private static bool IsWhitelistedText(string text)
     {
         if (string.IsNullOrWhiteSpace(text)) return true;
@@ -107,18 +204,23 @@ public class LocalizationServiceTests
             if (cat is UnicodeCategory.PrivateUse or UnicodeCategory.MathSymbol or
                        UnicodeCategory.OtherSymbol or UnicodeCategory.OtherPunctuation or
                        UnicodeCategory.OpenPunctuation or UnicodeCategory.ClosePunctuation or
-                       UnicodeCategory.DecimalDigitNumber)
+                       UnicodeCategory.DecimalDigitNumber or UnicodeCategory.Control)
             {
                 return true;
             }
         }
 
-        // 数値、単なる記号、タイムコード、パーセンテージ等
+        // アイコンフォントコード (e.g. \uE711)
+        if (Regex.IsMatch(text, @"^\\u[0-9a-fA-F]{4}$")) return true;
+
+        // 数値、単なる記号、タイムコード、パーセンテージ、日付/時刻フォーマット等
         if (Regex.IsMatch(text, @"^[\d\s:\.,\+\-\*\/\%\(\)\<\>\#\$]+$")) return true;
+        if (Regex.IsMatch(text, @"^(yyyy|MM|dd|HH|mm|ss|ddd|MMM)")) return true;
 
         // 固有名詞・ブランド名
-        if (text is "NoraBar" or "LRCLIB" or "CSCore" or "MIT" or "MS-PL") return true;
+        if (text is "NoraBar" or "LRCLIB" or "CSCore" or "MIT" or "MS-PL" or "Segoe Fluent Icons" or "Segoe UI") return true;
 
         return false;
     }
 }
+

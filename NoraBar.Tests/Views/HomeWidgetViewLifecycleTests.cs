@@ -7,6 +7,7 @@ using System.Windows.Threading;
 using NoraBar.Hud;
 using NoraBar.Hud.Home;
 using NoraBar.Hud.Home.Widgets;
+using NoraBar.Models;
 using NoraBar.ViewModels;
 using NoraBar.Views.Home;
 using NoraBar.Views.Home.Widgets;
@@ -974,6 +975,8 @@ public sealed class HomeWidgetViewLifecycleTests
         {
             ActiveWidgets = activeWidgets;
         }
+
+        public AppLanguage Language { get; set; } = AppLanguage.English;
 
         public IReadOnlyList<HomeWidgetConfig> ActiveWidgets { get; set; }
 

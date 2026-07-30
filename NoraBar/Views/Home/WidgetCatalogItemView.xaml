@@ -15,7 +15,7 @@
                     <TextBlock Text="{Binding Title}" Foreground="White" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="120"/>
                 </StackPanel>
                 <Button Content="+" Click="AddButton_Click" HorizontalAlignment="Right" VerticalAlignment="Center"
-                        Background="#4064B5F6" Foreground="White" FontWeight="Bold" FontSize="12" Width="20" Height="20" BorderThickness="0" Cursor="Hand" ToolTip="Add Widget">
+                        Background="#4064B5F6" Foreground="White" FontWeight="Bold" FontSize="12" Width="20" Height="20" BorderThickness="0" Cursor="Hand" ToolTip="{Binding AddWidgetText}">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border Background="{TemplateBinding Background}" CornerRadius="10">

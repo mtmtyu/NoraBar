@@ -48,6 +48,8 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
 
     public HomeHudDesignVariant DesignVariant => _viewModel.HomeHudDesignVariant;
 
+    public AppLanguage Language => _viewModel.SelectedLanguage;
+
     public object ViewDataContext => this;
 
     public Dispatcher OwningDispatcher => _clockTimer.Dispatcher;

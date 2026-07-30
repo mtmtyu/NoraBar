@@ -1,10 +1,13 @@
 using System.ComponentModel;
 using NoraBar.Hud.Home.Widgets;
+using NoraBar.Models;
 
 namespace NoraBar.Hud.Home;
 
 internal interface IHomeWidgetPresentationSource : INotifyPropertyChanged
 {
+    AppLanguage Language { get; }
+
     IReadOnlyList<HomeWidgetConfig> ActiveWidgets { get; }
 
     IReadOnlyList<HomeWorldClockItemViewModel> WorldClockItems { get; }
@@ -17,3 +20,4 @@ internal interface IHomeWidgetPresentationSource : INotifyPropertyChanged
 
     void UpdateActiveWidgets(IReadOnlyList<HomeWidgetConfig> widgets);
 }
+

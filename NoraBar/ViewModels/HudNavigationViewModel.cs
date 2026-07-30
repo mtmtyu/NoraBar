@@ -486,11 +486,10 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
 
     private static string GetDisplayName(string hudId, AppLanguage language)
     {
-        bool japanese = language == AppLanguage.Japanese;
         return hudId switch
         {
-            BuiltInHudIds.Music => japanese ? "音楽" : "Music",
-            BuiltInHudIds.Home => japanese ? "ホーム" : "Home",
+            BuiltInHudIds.Music => LocalizationService.GetText(language, LocalizationKey.MusicHudName),
+            BuiltInHudIds.Home => LocalizationService.GetText(language, LocalizationKey.HomeHudName),
             _ => hudId
         };
     }

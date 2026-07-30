@@ -363,7 +363,7 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable, IHomeHudM
             VerticalAlignment = VerticalAlignment.Top,
             Margin = new Thickness(0, -6, -6, 0),
             Cursor = Cursors.Hand,
-            ToolTip = "Remove Widget"
+            ToolTip = LocalizationService.GetText(vm.Language, LocalizationKey.RemoveWidget)
         };
 
         var buttonTemplate = new ControlTemplate(typeof(Button));

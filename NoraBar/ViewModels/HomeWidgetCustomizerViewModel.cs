@@ -42,6 +42,7 @@ public sealed class HomeWidgetCustomizerItemViewModel : ViewModelBase
     public string MoveUpText => T(LocalizationKey.MoveUp);
     public string MoveDownText => T(LocalizationKey.MoveDown);
     public string RemoveText => T(LocalizationKey.RemoveWidget);
+    public string AddWidgetText => T(LocalizationKey.AddWidgetButton);
     public string IconText => Type switch
     {
         HomeWidgetType.DigitalClock => "\uE814",
