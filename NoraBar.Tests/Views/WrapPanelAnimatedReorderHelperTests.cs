@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using NoraBar.Hud.Home.Widgets;
@@ -62,6 +63,62 @@ public sealed class WrapPanelAnimatedReorderHelperTests
     }
 
     [Fact]
+    public void StartDrag_ThenCancel_RestoresAllOriginalTransforms()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var panel = new HomeWidgetPanel();
+            var item1 = new FrameworkElement { Width = 120, Height = 40 };
+            var item2 = new FrameworkElement { Width = 120, Height = 40 };
+            var originalTransform1 = new RotateTransform(10);
+            var originalTransform2 = new ScaleTransform(1.5, 1.5);
+            item1.RenderTransform = originalTransform1;
+            item2.RenderTransform = originalTransform2;
+            panel.Children.Add(item1);
+            panel.Children.Add(item2);
+            var helper = new WrapPanelAnimatedReorderHelper(panel, (_, _) => { });
+
+            helper.StartDrag(item1, new Point(10, 10), index: 0);
+            
+            // Transform has been replaced temporarily
+            Assert.NotSame(originalTransform1, item1.RenderTransform);
+            Assert.NotSame(originalTransform2, item2.RenderTransform);
+
+            helper.CancelDrag();
+
+            Assert.Same(originalTransform1, item1.RenderTransform);
+            Assert.Same(originalTransform2, item2.RenderTransform);
+        });
+    }
+
+    [Fact]
+    public void StartDrag_WhenMouseCaptureLost_RestoresAllOriginalTransforms()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var panel = new HomeWidgetPanel();
+            var item1 = new FrameworkElement { Width = 120, Height = 40 };
+            var item2 = new FrameworkElement { Width = 120, Height = 40 };
+            var originalTransform1 = new RotateTransform(10);
+            var originalTransform2 = new ScaleTransform(1.5, 1.5);
+            item1.RenderTransform = originalTransform1;
+            item2.RenderTransform = originalTransform2;
+            panel.Children.Add(item1);
+            panel.Children.Add(item2);
+            var helper = new WrapPanelAnimatedReorderHelper(panel, (_, _) => { });
+
+            helper.StartDrag(item1, new Point(10, 10), index: 0);
+            item1.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0)
+            {
+                RoutedEvent = UIElement.LostMouseCaptureEvent
+            });
+
+            Assert.Same(originalTransform1, item1.RenderTransform);
+            Assert.Same(originalTransform2, item2.RenderTransform);
+        });
+    }
+
+    [Fact]
     public void UpdateDrag_MovingNarrowItemBeforeWideItem_PreviewsReorderedLayout()
     {
         StaTestRunner.Run(() =>
@@ -113,6 +170,9 @@ public sealed class WrapPanelAnimatedReorderHelperTests
                 Assert.Equal(expectedOffset, wideItemTranslation.X, precision: 3);
 
                 helper.CancelDrag();
+
+                Assert.Same(Transform.Identity, wideItem.RenderTransform);
+                Assert.Same(Transform.Identity, narrowItem.RenderTransform);
             }
             finally
             {

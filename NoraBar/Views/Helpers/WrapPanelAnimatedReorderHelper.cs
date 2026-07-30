@@ -22,11 +22,12 @@ public sealed class WrapPanelAnimatedReorderHelper
     private readonly List<FrameworkElement> _items = new();
     private readonly List<Point> _initialPositions = new();
     private readonly List<TranslateTransform> _itemTranslates = new();
+    private readonly List<Transform?> _originalRenderTransforms = new();
+    private readonly List<Point> _originalRenderTransformOrigins = new();
 
     private TransformGroup? _draggedTransformGroup;
     private TranslateTransform? _draggedTranslate;
     private ScaleTransform? _draggedScale;
-    private Transform? _originalRenderTransform;
     private Effect? _originalEffect;
     private int _originalZIndex;
 
@@ -63,11 +64,21 @@ public sealed class WrapPanelAnimatedReorderHelper
             return;
         }
 
-        _originalRenderTransform = itemContainer.RenderTransform;
         foreach (FrameworkElement item in _items)
         {
-            _itemTranslates.Add(EnsureTranslateTransform(item));
+            _originalRenderTransforms.Add(item.RenderTransform);
+            _originalRenderTransformOrigins.Add(item.RenderTransformOrigin);
         }
+
+        for (int i = 0; i < _items.Count; i++)
+        {
+            FrameworkElement item = _items[i];
+            if (i == index) continue; // Dragged item handled separately
+            
+            _itemTranslates.Add(CreateTemporaryTransform(item, _originalRenderTransforms[i]));
+        }
+        // Add a placeholder for the dragged item so indices align
+        _itemTranslates.Insert(index, new TranslateTransform());
 
         _isDragging = true;
         _draggedContainer = itemContainer;
@@ -92,6 +103,7 @@ public sealed class WrapPanelAnimatedReorderHelper
         _draggedScale = new ScaleTransform(1.05, 1.05);
         _draggedTranslate = new TranslateTransform(0, 0);
 
+        _draggedTransformGroup.Children.Add(_originalRenderTransforms[index]?.CloneCurrentValue() ?? Transform.Identity);
         _draggedTransformGroup.Children.Add(_draggedScale);
         _draggedTransformGroup.Children.Add(_draggedTranslate);
         itemContainer.RenderTransform = _draggedTransformGroup;
@@ -154,11 +166,15 @@ public sealed class WrapPanelAnimatedReorderHelper
         {
             translate.BeginAnimation(TranslateTransform.XProperty, null);
             translate.BeginAnimation(TranslateTransform.YProperty, null);
-            translate.X = 0;
-            translate.Y = 0;
         }
 
-        draggedContainer.RenderTransform = _originalRenderTransform ?? Transform.Identity;
+        for (int i = 0; i < _items.Count; i++)
+        {
+            FrameworkElement item = _items[i];
+            item.RenderTransform = _originalRenderTransforms[i] ?? Transform.Identity;
+            item.RenderTransformOrigin = _originalRenderTransformOrigins[i];
+        }
+
         ClearState();
 
         if (canCommit && fromIndex != toIndex)
@@ -207,10 +223,11 @@ public sealed class WrapPanelAnimatedReorderHelper
         _items.Clear();
         _initialPositions.Clear();
         _itemTranslates.Clear();
+        _originalRenderTransforms.Clear();
+        _originalRenderTransformOrigins.Clear();
         _draggedTransformGroup = null;
         _draggedTranslate = null;
         _draggedScale = null;
-        _originalRenderTransform = null;
         _originalEffect = null;
         _originalZIndex = 0;
     }
@@ -279,26 +296,20 @@ public sealed class WrapPanelAnimatedReorderHelper
         return positions;
     }
 
-    private static TranslateTransform EnsureTranslateTransform(FrameworkElement element)
+    private static TranslateTransform CreateTemporaryTransform(FrameworkElement element, Transform? original)
     {
-        if (element.RenderTransform is TranslateTransform existingTt)
-        {
-            return existingTt;
-        }
-
-        if (element.RenderTransform is TransformGroup group)
-        {
-            foreach (Transform child in group.Children)
-            {
-                if (child is TranslateTransform ttChild) return ttChild;
-            }
-            TranslateTransform newTt = new TranslateTransform();
-            group.Children.Add(newTt);
-            return newTt;
-        }
-
         TranslateTransform tt = new TranslateTransform();
-        element.RenderTransform = tt;
+        if (original == null || original == Transform.Identity)
+        {
+            element.RenderTransform = tt;
+        }
+        else
+        {
+            TransformGroup group = new TransformGroup();
+            group.Children.Add(original.CloneCurrentValue());
+            group.Children.Add(tt);
+            element.RenderTransform = group;
+        }
         return tt;
     }
 }
