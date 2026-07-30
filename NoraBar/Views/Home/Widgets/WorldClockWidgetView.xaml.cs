@@ -9,16 +9,11 @@ public partial class WorldClockWidgetView : UserControl
     public WorldClockWidgetView()
     {
         InitializeComponent();
-        ClockContentControl.ContentTemplate = Resources["WorldClockMinimalTemplate"] as DataTemplate;
+        ClockContentControl.ContentTemplate = Resources["WorldClockListTemplate"] as DataTemplate;
     }
 
     public void SetStyle(HomeWidgetStyle style)
     {
-        string templateKey = style switch
-        {
-            HomeWidgetStyle.WorldClockList => "WorldClockListTemplate",
-            _ => "WorldClockMinimalTemplate"
-        };
-        ClockContentControl.ContentTemplate = Resources[templateKey] as DataTemplate;
+        ClockContentControl.ContentTemplate = Resources["WorldClockListTemplate"] as DataTemplate;
     }
 }

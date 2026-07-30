@@ -826,7 +826,6 @@ namespace NoraBar.ViewModels
         public IReadOnlyList<HomeWidgetCustomizerItemViewModel> CatalogWidgets { get; } =
         [
             new("catalog_clock", NoraBar.Hud.Home.Widgets.HomeWidgetType.DigitalClock, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.ClockMinimal),
-            new("catalog_world_clock", NoraBar.Hud.Home.Widgets.HomeWidgetType.WorldClock, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.WorldClockMinimal),
             new("catalog_world_clock_list", NoraBar.Hud.Home.Widgets.HomeWidgetType.WorldClock, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.WorldClockList),
             new("catalog_media", NoraBar.Hud.Home.Widgets.HomeWidgetType.MediaControls, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.MediaCompact),
             new("catalog_media_artwork_sm", NoraBar.Hud.Home.Widgets.HomeWidgetType.MediaControls, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.MediaArtworkHoverSmall),
