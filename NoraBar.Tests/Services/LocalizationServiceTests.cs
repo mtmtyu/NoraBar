@@ -215,7 +215,7 @@ public class LocalizationServiceTests
 
         // 数値、単なる記号、タイムコード、パーセンテージ、日付/時刻フォーマット等
         if (Regex.IsMatch(text, @"^[\d\s:\.,\+\-\*\/\%\(\)\<\>\#\$]+$")) return true;
-        if (Regex.IsMatch(text, @"^(yyyy|MM|dd|HH|mm|ss|ddd|MMM)")) return true;
+        if (Regex.IsMatch(text, @"\A(?:yyyy|yy|MMMM|MMM|MM|M|dddd|ddd|dd|d|HH|H|hh|h|mm|m|ss|s|tt|t|[\s\-:/.,年月日時分秒])+\z")) return true;
 
         // 固有名詞・ブランド名
         if (text is "NoraBar" or "LRCLIB" or "CSCore" or "MIT" or "MS-PL" or "Segoe Fluent Icons" or "Segoe UI") return true;
