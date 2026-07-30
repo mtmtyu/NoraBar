@@ -12,7 +12,7 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1" Padding="8,3,8,4" Margin="0,1">
+                        <Border BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1" Padding="8,2,8,2" Margin="0,0,0,1">
                             <Grid MinWidth="180">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
@@ -20,9 +20,9 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="{Binding Label}" Foreground="#B3FFFFFF" FontSize="12" FontWeight="Bold" FontFamily="Segoe UI Variable Display, Segoe UI" VerticalAlignment="Center" Margin="0,0,16,0"/>
                                 <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding TimeText}" Foreground="#FFFFFFFF" FontSize="15" FontWeight="Bold" HorizontalAlignment="Right" FontFamily="Segoe UI Variable Display, Segoe UI">
+                                    <TextBlock Text="{Binding TimeText}" Foreground="#FFFFFFFF" FontSize="14" FontWeight="Bold" HorizontalAlignment="Right" FontFamily="Segoe UI Variable Display, Segoe UI">
                                         <TextBlock.Effect>
-                                            <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.3" Color="Black"/>
+                                            <DropShadowEffect BlurRadius="4" ShadowDepth="1" Opacity="0.3" Color="Black"/>
                                         </TextBlock.Effect>
                                     </TextBlock>
                                     <TextBlock Text="{Binding DateText}" Foreground="#88FFFFFF" FontSize="10" FontWeight="Regular" HorizontalAlignment="Right" FontFamily="Segoe UI Variable Text, Segoe UI"/>
