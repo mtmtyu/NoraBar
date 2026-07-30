@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
+using System.Reflection;
 using NoraBar.Views.Helpers;
 using Xunit;
 
@@ -9,6 +10,28 @@ namespace NoraBar.Tests.Views;
 
 public sealed class AnimatedReorderHelperTests
 {
+    [Fact]
+    public void IsInteractiveControl_DetectsNestedSelectorsWithoutBlockingOrdinarySurfaces()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var itemsControl = new ListBox();
+            var helper = new AnimatedReorderHelper(itemsControl, (_, _) => { });
+            MethodInfo method = typeof(AnimatedReorderHelper).GetMethod(
+                "IsInteractiveControl",
+                BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("Interactive-control detector was not found.");
+
+            Assert.True(Invoke(new ComboBox()));
+            Assert.True(Invoke(new ListBox()));
+            Assert.False(Invoke(new Border()));
+            Assert.False(Invoke(itemsControl));
+
+            bool Invoke(DependencyObject source) =>
+                Assert.IsType<bool>(method.Invoke(helper, new object?[] { source }));
+        });
+    }
+
     [Fact]
     public void AnimateSwap_RestoresOriginalTransformsAfterCompletion()
     {

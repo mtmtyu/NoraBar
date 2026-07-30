@@ -409,13 +409,17 @@ public sealed class AnimatedReorderHelper
         return translate;
     }
 
-    private static bool IsInteractiveControl(DependencyObject? element)
+    private bool IsInteractiveControl(DependencyObject? element)
     {
-        while (element != null && element is not ItemsControl)
+        while (element != null && element != _itemsControl)
         {
-            if (element is ButtonBase or RangeBase or TextBoxBase or ComboBox or Thumb)
+            if (element is ButtonBase or RangeBase or TextBoxBase or Selector or Thumb)
             {
                 return true;
+            }
+            if (element is ItemsControl)
+            {
+                break;
             }
             element = VisualTreeHelper.GetParent(element);
         }
