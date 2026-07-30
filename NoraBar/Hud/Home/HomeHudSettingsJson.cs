@@ -52,6 +52,8 @@ internal static class HomeHudSettingsJson
         root[DesignVariantProperty] = (int)homeSettings.DesignVariant;
         root[TimeFormatProperty] = (int)homeSettings.TimeFormat;
         root[WorldClocksProperty] = CreateWorldClocksNode(homeSettings.EffectiveWorldClocks);
+        root.Remove(FirstClockProperty);
+        root.Remove(SecondClockProperty);
         root[WidgetsProperty] = CreateWidgetsNode(homeSettings.EffectiveWidgets);
         root[MaxWidgetWidthProperty] = homeSettings.MaxWidgetWidth;
         root[MaxWidgetHeightProperty] = homeSettings.MaxWidgetHeight;
@@ -105,6 +107,10 @@ internal static class HomeHudSettingsJson
                 string label = ReadNonEmptyString(item, LabelProperty) ?? "CLOCK";
                 string timeZoneId = ReadNonEmptyString(item, TimeZoneIdProperty) ?? "Local";
                 list.Add(new HomeWorldClockEntry(label, timeZoneId));
+                if (list.Count == HomeHudSettings.MaximumWorldClockCount)
+                {
+                    break;
+                }
             }
 
             if (list.Count > 0)

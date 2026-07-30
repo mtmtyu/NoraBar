@@ -637,7 +637,7 @@ namespace NoraBar.ViewModels
 
             AddWorldClockCommand = new RelayCommand(_ =>
             {
-                if (WorldClockEntries.Count < 3)
+                if (WorldClockEntries.Count < HomeHudSettings.MaximumWorldClockCount)
                 {
                     string defaultTimeZoneId = "UTC";
                     WorldClockEntries.Add(new WorldClockEntryViewModel(WorldClockEntryViewModel.GetDefaultLabelForTimeZone(defaultTimeZoneId), defaultTimeZoneId, OnWorldClockChanged));

@@ -13,6 +13,8 @@ internal sealed record HomeHudSettings(
     double MaxWidgetWidth = 800,
     double MaxWidgetHeight = 300)
 {
+    internal const int MaximumWorldClockCount = 3;
+
     private static readonly IReadOnlyList<HomeWidgetConfig> DefaultWidgetsList = new List<HomeWidgetConfig>
     {
         new("widget_clock", HomeWidgetType.DigitalClock, HomeWidgetStyle.ClockMinimal),

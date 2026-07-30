@@ -52,6 +52,62 @@ public sealed class HomeHudSettingsJsonTests
     }
 
     [Fact]
+    public void Read_LimitsWorldClocksToMaximumSupportedCount()
+    {
+        var settings = new UserSettings
+        {
+            Modules = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+            {
+                [BuiltInHudIds.Home] = JsonSerializer.SerializeToElement(new
+                {
+                    WorldClocks = new object[]
+                    {
+                        "invalid",
+                        new { Label = "SEA", TimeZoneId = "Pacific Standard Time" },
+                        new { Label = "TYO", TimeZoneId = "Tokyo Standard Time" },
+                        new { Label = "LON", TimeZoneId = "GMT Standard Time" },
+                        new { Label = "NYC", TimeZoneId = "Eastern Standard Time" }
+                    }
+                })
+            }
+        };
+
+        HomeHudSettings result = HomeHudSettingsJson.Read(settings);
+
+        Assert.Collection(
+            result.EffectiveWorldClocks,
+            clock => Assert.Equal("SEA", clock.Label),
+            clock => Assert.Equal("TYO", clock.Label),
+            clock => Assert.Equal("LON", clock.Label));
+    }
+
+    [Fact]
+    public void Write_RemovesLegacyWorldClockPropertiesAfterMigration()
+    {
+        var settings = new UserSettings
+        {
+            Modules = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+            {
+                [BuiltInHudIds.Home] = JsonSerializer.SerializeToElement(new
+                {
+                    FirstClock = new { Label = "SEA", TimeZoneId = "Pacific Standard Time" },
+                    SecondClock = new { Label = "TYO", TimeZoneId = "Tokyo Standard Time" },
+                    FutureProperty = "preserved"
+                })
+            }
+        };
+        HomeHudSettings migrated = HomeHudSettingsJson.Read(settings);
+
+        HomeHudSettingsJson.Write(settings, migrated);
+
+        JsonElement payload = settings.Modules[BuiltInHudIds.Home];
+        Assert.False(payload.TryGetProperty("FirstClock", out _));
+        Assert.False(payload.TryGetProperty("SecondClock", out _));
+        Assert.Equal("preserved", payload.GetProperty("FutureProperty").GetString());
+        Assert.Equal(2, payload.GetProperty("WorldClocks").GetArrayLength());
+    }
+
+    [Fact]
     public void Write_PreservesUnknownHomePayloadProperties()
     {
         var settings = new UserSettings
