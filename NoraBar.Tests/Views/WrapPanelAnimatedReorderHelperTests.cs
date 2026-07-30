@@ -11,6 +11,57 @@ namespace NoraBar.Tests.Views;
 public sealed class WrapPanelAnimatedReorderHelperTests
 {
     [Fact]
+    public void StartDrag_WithInvalidIndex_LeavesItemsUnchangedAndIdle()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var panel = new HomeWidgetPanel();
+            var item = new FrameworkElement { Width = 120, Height = 40 };
+            var originalTransform = new RotateTransform(10);
+            item.RenderTransform = originalTransform;
+            panel.Children.Add(item);
+            var helper = new WrapPanelAnimatedReorderHelper(panel, (_, _) => { });
+
+            helper.StartDrag(item, new Point(10, 10), index: 1);
+
+            Assert.Same(originalTransform, item.RenderTransform);
+            Assert.Null(item.Effect);
+            Assert.False(item.IsMouseCaptured);
+            Assert.Equal(0, System.Windows.Controls.Panel.GetZIndex(item));
+        });
+    }
+
+    [Fact]
+    public void UpdateDrag_WhenItemsChange_CancelsWithoutCommittingAndRestoresItem()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var panel = new HomeWidgetPanel();
+            var first = new FrameworkElement { Width = 120, Height = 40 };
+            var dragged = new FrameworkElement { Width = 120, Height = 40 };
+            var originalTransform = new RotateTransform(10);
+            dragged.RenderTransform = originalTransform;
+            panel.Children.Add(first);
+            panel.Children.Add(dragged);
+            var commits = new List<(int From, int To)>();
+            var helper = new WrapPanelAnimatedReorderHelper(
+                panel,
+                (from, to) => commits.Add((from, to)));
+
+            helper.StartDrag(dragged, new Point(150, 20), index: 1);
+            panel.Children.Remove(first);
+            helper.UpdateDrag(new Point(10, 20));
+            helper.EndDrag();
+
+            Assert.Empty(commits);
+            Assert.Same(originalTransform, dragged.RenderTransform);
+            Assert.Null(dragged.Effect);
+            Assert.False(dragged.IsMouseCaptured);
+            Assert.Equal(0, System.Windows.Controls.Panel.GetZIndex(dragged));
+        });
+    }
+
+    [Fact]
     public void UpdateDrag_MovingNarrowItemBeforeWideItem_PreviewsReorderedLayout()
     {
         StaTestRunner.Run(() =>

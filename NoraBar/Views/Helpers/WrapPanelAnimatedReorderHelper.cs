@@ -40,17 +40,10 @@ public sealed class WrapPanelAnimatedReorderHelper
 
     public void StartDrag(FrameworkElement itemContainer, Point startMousePos, int index)
     {
+        ArgumentNullException.ThrowIfNull(itemContainer);
         if (_isDragging) return;
 
-        _isDragging = true;
-        _draggedContainer = itemContainer;
-        _initialIndex = index;
-        _targetIndex = index;
-        _dragStartPoint = startMousePos;
-
-        _items.Clear();
-        _initialPositions.Clear();
-        _itemTranslates.Clear();
+        ClearState();
 
         foreach (UIElement child in _containerPanel.Children)
         {
@@ -59,11 +52,28 @@ public sealed class WrapPanelAnimatedReorderHelper
                 _items.Add(fe);
                 Point pos = fe.TranslatePoint(new Point(0, 0), _containerPanel);
                 _initialPositions.Add(pos);
-
-                TranslateTransform tt = EnsureTranslateTransform(fe);
-                _itemTranslates.Add(tt);
             }
         }
+
+        if (index < 0
+            || index >= _items.Count
+            || !ReferenceEquals(_items[index], itemContainer))
+        {
+            ClearState();
+            return;
+        }
+
+        _originalRenderTransform = itemContainer.RenderTransform;
+        foreach (FrameworkElement item in _items)
+        {
+            _itemTranslates.Add(EnsureTranslateTransform(item));
+        }
+
+        _isDragging = true;
+        _draggedContainer = itemContainer;
+        _initialIndex = index;
+        _targetIndex = index;
+        _dragStartPoint = startMousePos;
 
         // Elevate dragged item visually
         _originalZIndex = Panel.GetZIndex(itemContainer);
@@ -78,7 +88,6 @@ public sealed class WrapPanelAnimatedReorderHelper
             Color = Colors.Black
         };
 
-        _originalRenderTransform = itemContainer.RenderTransform;
         _draggedTransformGroup = new TransformGroup();
         _draggedScale = new ScaleTransform(1.05, 1.05);
         _draggedTranslate = new TranslateTransform(0, 0);
@@ -93,6 +102,11 @@ public sealed class WrapPanelAnimatedReorderHelper
     public void UpdateDrag(Point currentMousePos)
     {
         if (!_isDragging || _draggedContainer == null || _draggedTranslate == null) return;
+        if (!HasValidDragState())
+        {
+            FinishDrag(commit: false);
+            return;
+        }
 
         double deltaX = currentMousePos.X - _dragStartPoint.X;
         double deltaY = currentMousePos.Y - _dragStartPoint.Y;
@@ -124,6 +138,7 @@ public sealed class WrapPanelAnimatedReorderHelper
             return;
         }
 
+        bool canCommit = commit && HasValidDragState();
         int fromIndex = _initialIndex;
         int toIndex = _targetIndex;
         _isDragging = false;
@@ -146,10 +161,41 @@ public sealed class WrapPanelAnimatedReorderHelper
         draggedContainer.RenderTransform = _originalRenderTransform ?? Transform.Identity;
         ClearState();
 
-        if (commit && fromIndex >= 0 && toIndex >= 0 && fromIndex != toIndex)
+        if (canCommit && fromIndex != toIndex)
         {
             _onReorderCommitted(fromIndex, toIndex);
         }
+    }
+
+    private bool HasValidDragState()
+    {
+        if (_initialIndex < 0
+            || _initialIndex >= _items.Count
+            || _targetIndex < 0
+            || _targetIndex >= _items.Count
+            || _draggedContainer is null
+            || !ReferenceEquals(_items[_initialIndex], _draggedContainer))
+        {
+            return false;
+        }
+
+        int itemIndex = 0;
+        foreach (UIElement child in _containerPanel.Children)
+        {
+            if (child is not FrameworkElement item)
+            {
+                continue;
+            }
+
+            if (itemIndex >= _items.Count || !ReferenceEquals(_items[itemIndex], item))
+            {
+                return false;
+            }
+
+            itemIndex++;
+        }
+
+        return itemIndex == _items.Count;
     }
 
     private void ClearState()
