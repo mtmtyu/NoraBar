@@ -598,6 +598,11 @@ public partial class DynamicWidgetHomeView : UserControl, IDisposable, IHomeHudM
                 clockView.SetStyle(widget.Style);
                 return clockView;
 
+            case HomeWidgetType.WorldClock:
+                var worldClockView = new WorldClockWidgetView { DataContext = vm };
+                worldClockView.SetStyle(widget.Style);
+                return worldClockView;
+
             case HomeWidgetType.MediaControls:
                 var mediaView = new MediaControlsWidgetView { DataContext = vm };
                 mediaView.SetStyle(widget.Style);

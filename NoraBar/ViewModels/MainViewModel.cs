@@ -468,6 +468,7 @@ namespace NoraBar.ViewModels
         public string WorldClocksDescriptionText => T(LocalizationKey.WorldClocksDescription);
         public string ClockLabelText => T(LocalizationKey.ClockLabel);
         public string TimeZoneText => T(LocalizationKey.TimeZone);
+        public string AddClockButtonText => T(LocalizationKey.AddClockButton);
         public string DesignStyleText => T(LocalizationKey.DesignStyle);
         public string DesignStyleDescriptionText => T(LocalizationKey.DesignStyleDescription);
         public string DesignMinimalText => T(LocalizationKey.DesignMinimal);
@@ -1168,6 +1169,7 @@ namespace NoraBar.ViewModels
             OnPropertyChanged(nameof(WorldClocksDescriptionText));
             OnPropertyChanged(nameof(ClockLabelText));
             OnPropertyChanged(nameof(TimeZoneText));
+            OnPropertyChanged(nameof(AddClockButtonText));
             OnPropertyChanged(nameof(AboutText));
             OnPropertyChanged(nameof(DesignStyleText));
             OnPropertyChanged(nameof(DesignStyleDescriptionText));

@@ -29,6 +29,7 @@ public sealed class HomeWidgetCustomizerItemViewModel : ViewModelBase
     public string Title => (Type, Style) switch
     {
         (HomeWidgetType.DigitalClock, _) => T(LocalizationKey.WidgetDigitalClock),
+        (HomeWidgetType.WorldClock, _) => T(LocalizationKey.WidgetWorldClock),
         (HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact) => T(LocalizationKey.WidgetMediaCompact),
         (HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverSmall) => T(LocalizationKey.WidgetMediaArtworkSmall),
         (HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverMedium) => T(LocalizationKey.WidgetMediaArtworkMedium),
@@ -44,6 +45,7 @@ public sealed class HomeWidgetCustomizerItemViewModel : ViewModelBase
     public string IconText => Type switch
     {
         HomeWidgetType.DigitalClock => "\uE814",
+        HomeWidgetType.WorldClock => "\uE814",
         HomeWidgetType.MediaControls => "\uE93C",
         _ => "\uE700"
     };
@@ -51,6 +53,7 @@ public sealed class HomeWidgetCustomizerItemViewModel : ViewModelBase
     public IReadOnlyList<HomeWidgetStyle> AvailableStyles => Type switch
     {
         HomeWidgetType.DigitalClock => [HomeWidgetStyle.ClockMinimal],
+        HomeWidgetType.WorldClock => [HomeWidgetStyle.WorldClockMinimal],
         HomeWidgetType.MediaControls => [
             HomeWidgetStyle.MediaCompact,
             HomeWidgetStyle.MediaArtworkHoverSmall,
@@ -153,6 +156,7 @@ public sealed class HomeWidgetCustomizerViewModel : ViewModelBase
         CatalogWidgets = new ObservableCollection<HomeWidgetCustomizerItemViewModel>
         {
             new("catalog_clock", HomeWidgetType.DigitalClock, HomeWidgetStyle.ClockMinimal, _language),
+            new("catalog_world_clock", HomeWidgetType.WorldClock, HomeWidgetStyle.WorldClockMinimal, _language),
             new("catalog_media", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact, _language),
             new("catalog_media_artwork_sm", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverSmall, _language),
             new("catalog_media_artwork_md", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverMedium, _language),

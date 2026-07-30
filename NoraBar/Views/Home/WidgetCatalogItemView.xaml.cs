@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using NoraBar.Hud.Home;
 using NoraBar.Hud.Home.Widgets;
 using NoraBar.Models;
 using NoraBar.Services;
@@ -56,6 +57,7 @@ public partial class WidgetCatalogItemView : UserControl
         UIElement? previewView = item.Type switch
         {
             HomeWidgetType.DigitalClock => CreateClockPreview(item, source),
+            HomeWidgetType.WorldClock => CreateWorldClockPreview(item, source),
             HomeWidgetType.MediaControls => CreateMediaPreview(item, source),
             _ => null
         };
@@ -70,6 +72,15 @@ public partial class WidgetCatalogItemView : UserControl
         WidgetCatalogPreviewViewModel source)
     {
         var view = new DigitalClockWidgetView { DataContext = source };
+        view.SetStyle(item.Style);
+        return view;
+    }
+
+    private static WorldClockWidgetView CreateWorldClockPreview(
+        HomeWidgetCustomizerItemViewModel item,
+        WidgetCatalogPreviewViewModel source)
+    {
+        var view = new WorldClockWidgetView { DataContext = source };
         view.SetStyle(item.Style);
         return view;
     }
@@ -149,6 +160,11 @@ internal sealed class WidgetCatalogPreviewViewModel : IMusicChangeSource, IDispo
     public string SecondWorldClockLabel => string.Empty;
     public string FirstWorldClockTimeText => string.Empty;
     public string SecondWorldClockTimeText => string.Empty;
+    public IReadOnlyList<HomeWorldClockItemViewModel> WorldClockItems { get; } =
+    [
+        new HomeWorldClockItemViewModel("NYC", "Eastern Standard Time") { TimeText = "14:05", DateText = "Thu, Jul 30" },
+        new HomeWorldClockItemViewModel("LON", "GMT Standard Time") { TimeText = "19:05", DateText = "Thu, Jul 30" }
+    ];
     public BitmapImage? AlbumArt => null;
     public bool IsPlaying => false;
     public string CurrentLyric => string.Empty;

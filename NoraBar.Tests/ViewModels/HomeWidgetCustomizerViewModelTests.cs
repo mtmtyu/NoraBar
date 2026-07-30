@@ -18,7 +18,7 @@ public sealed class HomeWidgetCustomizerViewModelTests
         HomeWidgetCustomizerViewModel vm = new HomeWidgetCustomizerViewModel(initial);
 
         Assert.Equal(2, vm.ActiveWidgets.Count);
-        Assert.Equal(6, vm.CatalogWidgets.Count);
+        Assert.Equal(7, vm.CatalogWidgets.Count);
         Assert.Equal("w1", vm.ActiveWidgets[0].Id);
     }
 

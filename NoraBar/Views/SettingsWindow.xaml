@@ -1165,46 +1165,57 @@
                                 </Border>
 
                                 <Border Style="{StaticResource SettingCardStyle}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="110"/>
-                                            <ColumnDefinition Width="230"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
-                                        <StackPanel Grid.ColumnSpan="3" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <StackPanel Margin="0,0,0,12">
                                             <TextBlock Text="{Binding WorldClocksText}" Style="{StaticResource CardHeaderStyle}"/>
                                             <TextBlock Text="{Binding WorldClocksDescriptionText}" Style="{StaticResource CardSubHeaderStyle}"/>
                                         </StackPanel>
-                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ClockLabelText}"
-                                                   Foreground="#8AFFFFFF" FontSize="11" Margin="0,0,8,4"/>
-                                        <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding TimeZoneText}"
-                                                   Foreground="#8AFFFFFF" FontSize="11" Margin="0,0,0,4"/>
-                                        <TextBlock Grid.Row="2" Text="1" Foreground="White" VerticalAlignment="Center"/>
-                                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding FirstWorldClockLabel, UpdateSourceTrigger=PropertyChanged}"
-                                                 Height="32" Margin="0,0,8,0" MaxLength="12"/>
-                                        <ComboBox Grid.Row="2" Grid.Column="2"
-                                                  ItemsSource="{Binding AvailableTimeZones}"
-                                                  DisplayMemberPath="DisplayName"
-                                                  SelectedValuePath="Id"
-                                                  SelectedValue="{Binding FirstWorldClockTimeZoneId}"
-                                                  Height="32"/>
-                                        <TextBlock Grid.Row="3" Text="2" Foreground="White" VerticalAlignment="Center"
-                                                   Margin="0,8,0,0"/>
-                                        <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding SecondWorldClockLabel, UpdateSourceTrigger=PropertyChanged}"
-                                                 Height="32" Margin="0,8,8,0" MaxLength="12"/>
-                                        <ComboBox Grid.Row="3" Grid.Column="2"
-                                                  ItemsSource="{Binding AvailableTimeZones}"
-                                                  DisplayMemberPath="DisplayName"
-                                                  SelectedValuePath="Id"
-                                                  SelectedValue="{Binding SecondWorldClockTimeZoneId}"
-                                                  Height="32" Margin="0,8,0,0"/>
-                                    </Grid>
+
+                                        <ItemsControl ItemsSource="{Binding WorldClockEntries}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,0,0,8">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="110"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <TextBox Grid.Column="0" Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}"
+                                                                 Height="32" Margin="0,0,8,0" MaxLength="12"
+                                                                 ToolTip="Clock Label (e.g. NYC, LON)"/>
+
+                                                        <ComboBox Grid.Column="1"
+                                                                  ItemsSource="{Binding DataContext.AvailableTimeZones, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                  DisplayMemberPath="DisplayName"
+                                                                  SelectedValuePath="Id"
+                                                                  SelectedValue="{Binding TimeZoneId}"
+                                                                  Height="32" Margin="0,0,8,0"/>
+
+                                                        <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                                            <Button Content="▲" Height="32" Width="30" Margin="0,0,4,0"
+                                                                    ToolTip="Move Up"
+                                                                    Command="{Binding DataContext.MoveWorldClockUpCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    CommandParameter="{Binding}"/>
+                                                            <Button Content="▼" Height="32" Width="30" Margin="0,0,4,0"
+                                                                    ToolTip="Move Down"
+                                                                    Command="{Binding DataContext.MoveWorldClockDownCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    CommandParameter="{Binding}"/>
+                                                            <Button Content="✕" Height="32" Width="30"
+                                                                    ToolTip="Remove"
+                                                                    Command="{Binding DataContext.RemoveWorldClockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    CommandParameter="{Binding}"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <Button Command="{Binding AddWorldClockCommand}"
+                                                Content="{Binding AddClockButtonText}"
+                                                HorizontalAlignment="Left"
+                                                Margin="0,4,0,0" Padding="12,6"/>
+                                    </StackPanel>
                                 </Border>
                             </StackPanel>
 
