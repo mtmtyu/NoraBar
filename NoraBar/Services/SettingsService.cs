@@ -44,8 +44,16 @@ namespace NoraBar.Services
         private static readonly string SettingsDirectoryPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             SettingsDirectoryName);
-        private static readonly string FilePath = Path.Combine(SettingsDirectoryPath, SettingsFileName);
-        private static readonly string LegacyFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, SettingsFileName);
+            
+        internal static string? OverrideSettingsDirectoryPath { get; set; }
+
+        private static string FilePath => OverrideSettingsDirectoryPath != null
+            ? Path.Combine(OverrideSettingsDirectoryPath, SettingsFileName)
+            : Path.Combine(SettingsDirectoryPath, SettingsFileName);
+
+        private static string LegacyFilePath => OverrideSettingsDirectoryPath != null
+            ? Path.Combine(OverrideSettingsDirectoryPath, "legacy_" + SettingsFileName)
+            : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, SettingsFileName);
 
         public static UserSettings Load()
         {
@@ -78,7 +86,8 @@ namespace NoraBar.Services
             try
             {
                 MigrateLegacySettingsIfNeeded();
-                Directory.CreateDirectory(SettingsDirectoryPath);
+                string currentSettingsDir = OverrideSettingsDirectoryPath ?? SettingsDirectoryPath;
+                Directory.CreateDirectory(currentSettingsDir);
 
                 string json = UserSettingsJson.Serialize(settings);
                 File.WriteAllText(FilePath, json);
@@ -96,7 +105,8 @@ namespace NoraBar.Services
                 return;
             }
 
-            Directory.CreateDirectory(SettingsDirectoryPath);
+            string currentSettingsDir = OverrideSettingsDirectoryPath ?? SettingsDirectoryPath;
+            Directory.CreateDirectory(currentSettingsDir);
             File.Move(LegacyFilePath, FilePath);
         }
     }

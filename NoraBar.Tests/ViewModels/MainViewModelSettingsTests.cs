@@ -8,8 +8,32 @@ using Xunit;
 
 namespace NoraBar.Tests.ViewModels;
 
-public class MainViewModelSettingsTests
+public class MainViewModelSettingsTests : IDisposable
 {
+    public MainViewModelSettingsTests()
+    {
+        SettingsService.OverrideSettingsDirectoryPath = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(),
+            "NoraBar_TestSettings_" + System.Guid.NewGuid().ToString("N"));
+    }
+
+    public void Dispose()
+    {
+        string? tempDir = SettingsService.OverrideSettingsDirectoryPath;
+        SettingsService.OverrideSettingsDirectoryPath = null;
+        if (tempDir != null && System.IO.Directory.Exists(tempDir))
+        {
+            try
+            {
+                System.IO.Directory.Delete(tempDir, true);
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+        }
+    }
+
     [Fact]
     public void UpdateKnownSettings_PreservesHudModuleConfiguration()
     {
