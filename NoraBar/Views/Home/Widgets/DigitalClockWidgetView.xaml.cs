@@ -6,14 +6,21 @@ namespace NoraBar.Views.Home.Widgets;
 
 public partial class DigitalClockWidgetView : UserControl
 {
+    private const string ClockMinimalTemplateKey = "ClockMinimalTemplate";
+
     public DigitalClockWidgetView()
     {
         InitializeComponent();
-        ClockContentControl.ContentTemplate = Resources["ClockMinimalTemplate"] as DataTemplate;
+        SetStyle(HomeWidgetStyle.ClockMinimal);
     }
 
     public void SetStyle(HomeWidgetStyle style)
     {
-        ClockContentControl.ContentTemplate = Resources["ClockMinimalTemplate"] as DataTemplate;
+        string templateKey = style switch
+        {
+            HomeWidgetStyle.ClockMinimal => ClockMinimalTemplateKey,
+            _ => throw new ArgumentOutOfRangeException(nameof(style), style, "Unsupported digital clock style.")
+        };
+        ClockContentControl.ContentTemplate = (DataTemplate)Resources[templateKey];
     }
 }
