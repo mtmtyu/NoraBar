@@ -29,6 +29,7 @@ public sealed class HomeWidgetCustomizerItemViewModel : ViewModelBase
     public string Title => (Type, Style) switch
     {
         (HomeWidgetType.DigitalClock, _) => T(LocalizationKey.WidgetDigitalClock),
+        (HomeWidgetType.WorldClock, HomeWidgetStyle.WorldClockList) => T(LocalizationKey.WidgetWorldClockList),
         (HomeWidgetType.WorldClock, _) => T(LocalizationKey.WidgetWorldClock),
         (HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact) => T(LocalizationKey.WidgetMediaCompact),
         (HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverSmall) => T(LocalizationKey.WidgetMediaArtworkSmall),
@@ -53,7 +54,7 @@ public sealed class HomeWidgetCustomizerItemViewModel : ViewModelBase
     public IReadOnlyList<HomeWidgetStyle> AvailableStyles => Type switch
     {
         HomeWidgetType.DigitalClock => [HomeWidgetStyle.ClockMinimal],
-        HomeWidgetType.WorldClock => [HomeWidgetStyle.WorldClockMinimal],
+        HomeWidgetType.WorldClock => [HomeWidgetStyle.WorldClockMinimal, HomeWidgetStyle.WorldClockList],
         HomeWidgetType.MediaControls => [
             HomeWidgetStyle.MediaCompact,
             HomeWidgetStyle.MediaArtworkHoverSmall,
@@ -157,6 +158,7 @@ public sealed class HomeWidgetCustomizerViewModel : ViewModelBase
         {
             new("catalog_clock", HomeWidgetType.DigitalClock, HomeWidgetStyle.ClockMinimal, _language),
             new("catalog_world_clock", HomeWidgetType.WorldClock, HomeWidgetStyle.WorldClockMinimal, _language),
+            new("catalog_world_clock_list", HomeWidgetType.WorldClock, HomeWidgetStyle.WorldClockList, _language),
             new("catalog_media", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact, _language),
             new("catalog_media_artwork_sm", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverSmall, _language),
             new("catalog_media_artwork_md", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaArtworkHoverMedium, _language),

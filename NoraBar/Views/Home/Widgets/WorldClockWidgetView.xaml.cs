@@ -14,6 +14,11 @@ public partial class WorldClockWidgetView : UserControl
 
     public void SetStyle(HomeWidgetStyle style)
     {
-        ClockContentControl.ContentTemplate = Resources["WorldClockMinimalTemplate"] as DataTemplate;
+        string templateKey = style switch
+        {
+            HomeWidgetStyle.WorldClockList => "WorldClockListTemplate",
+            _ => "WorldClockMinimalTemplate"
+        };
+        ClockContentControl.ContentTemplate = Resources[templateKey] as DataTemplate;
     }
 }
