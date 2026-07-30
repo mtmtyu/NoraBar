@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using NoraBar.Hud;
 using Xunit;
 
@@ -21,23 +22,67 @@ public sealed class HudInteractiveSizePolicyTests
 
         Assert.Equal(currentContainerSize, result.ContainerSize);
         Assert.Equal(preferredContentSize, result.ContentSize);
+        Assert.False(result.StretchesContentHeight);
     }
 
     [Fact]
-    public void ApplyContentLayout_AppliesPreferredSizeAndAlignmentToHost()
+    public void ResolveTargets_StretchesContentHeightWhileContainerGrows()
+    {
+        var preferredContentSize = new HudSize(450, 80);
+        var collapsedContainerSize = new HudSize(200, 2);
+
+        HudInteractiveSizeTargets result = HudInteractiveSizePolicy.ResolveTargets(
+            preferredContentSize,
+            preferredContentSize,
+            collapsedContainerSize,
+            isPointerOver: true);
+
+        Assert.True(result.StretchesContentHeight);
+    }
+
+    [Fact]
+    public void ApplyContentLayout_PreservesWidthWithoutFixingAnimatedHeight()
     {
         StaTestRunner.Run(() =>
         {
-            var contentHost = new FrameworkElement();
+            var contentHost = new ContentControl();
             var targets = new HudInteractiveSizeTargets(
                 new HudSize(848, 120),
-                new HudSize(450, 80));
+                new HudSize(450, 80),
+                StretchesContentHeight: true);
 
             HudInteractiveSizePolicy.ApplyContentLayout(contentHost, targets);
 
+            var animatedContainer = new Grid();
+            animatedContainer.Children.Add(contentHost);
+            animatedContainer.Measure(new Size(450, 20));
+            animatedContainer.Arrange(new Rect(0, 0, 450, 20));
+
             Assert.Equal(450, contentHost.Width);
-            Assert.Equal(80, contentHost.Height);
+            Assert.True(double.IsNaN(contentHost.Height));
+            Assert.Equal(20, contentHost.ActualHeight);
             Assert.Equal(HorizontalAlignment.Center, contentHost.HorizontalAlignment);
+            Assert.Equal(VerticalAlignment.Stretch, contentHost.VerticalAlignment);
+            Assert.Equal(HorizontalAlignment.Stretch, contentHost.HorizontalContentAlignment);
+            Assert.Equal(VerticalAlignment.Stretch, contentHost.VerticalContentAlignment);
+        });
+    }
+
+    [Fact]
+    public void ApplyContentLayout_KeepsPreferredHeightWhenContainerIsRetained()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var contentHost = new ContentControl();
+            var targets = new HudInteractiveSizeTargets(
+                new HudSize(848, 120),
+                new HudSize(450, 80),
+                StretchesContentHeight: false);
+
+            HudInteractiveSizePolicy.ApplyContentLayout(contentHost, targets);
+
+            Assert.Equal(80, contentHost.Height);
+            Assert.Equal(VerticalAlignment.Center, contentHost.VerticalAlignment);
         });
     }
 

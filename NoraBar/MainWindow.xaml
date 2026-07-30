@@ -165,7 +165,9 @@
                                 Grid.Row="1"
                                 Grid.Column="0"
                                 HorizontalAlignment="Center"
-                                VerticalAlignment="Center"/>
+                                VerticalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                VerticalContentAlignment="Stretch"/>
 
                 <ItemsControl Grid.Row="1" Grid.Column="1"
                               ItemsSource="{Binding HudNavigation.EnabledItems}"
