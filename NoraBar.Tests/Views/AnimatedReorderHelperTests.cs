@@ -37,10 +37,11 @@ public sealed class AnimatedReorderHelperTests
     {
         StaTestRunner.Run(() =>
         {
-            var itemsControl = new ListBox
-            {
-                ItemsSource = new[] { "first", "second" }
-            };
+            var first = new ListBoxItem { Content = "first" };
+            var second = new ListBoxItem { Content = "second" };
+            var itemsControl = new ListBox();
+            itemsControl.Items.Add(first);
+            itemsControl.Items.Add(second);
             var hostWindow = new Window
             {
                 Width = 300,
@@ -57,8 +58,8 @@ public sealed class AnimatedReorderHelperTests
                 hostWindow.Show();
                 hostWindow.UpdateLayout();
 
-                var first = Assert.IsType<ListBoxItem>(itemsControl.ItemContainerGenerator.ContainerFromIndex(0));
-                var second = Assert.IsType<ListBoxItem>(itemsControl.ItemContainerGenerator.ContainerFromIndex(1));
+                Assert.Same(first, itemsControl.ItemContainerGenerator.ContainerFromIndex(0));
+                Assert.Same(second, itemsControl.ItemContainerGenerator.ContainerFromIndex(1));
                 var firstTransform = new TransformGroup
                 {
                     Children =
