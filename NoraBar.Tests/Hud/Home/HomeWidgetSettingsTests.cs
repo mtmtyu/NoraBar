@@ -32,8 +32,11 @@ public sealed class HomeWidgetSettingsTests
         HomeHudSettings customSettings = new HomeHudSettings(
             HomeHudDesignVariant.FusionBalanced,
             HomeHudTimeFormat.TwelveHour,
-            new HomeWorldClockSettings("NYC", "Eastern Standard Time"),
-            new HomeWorldClockSettings("LON", "GMT Standard Time"),
+            new[]
+            {
+                new HomeWorldClockEntry("NYC", "Eastern Standard Time"),
+                new HomeWorldClockEntry("LON", "GMT Standard Time")
+            },
             customWidgets);
 
         HomeHudSettingsJson.Write(settings, customSettings);
@@ -61,8 +64,11 @@ public sealed class HomeWidgetSettingsTests
         HomeHudSettings customSettings = new HomeHudSettings(
             HomeHudDesignVariant.FusionBalanced,
             HomeHudTimeFormat.TwelveHour,
-            new HomeWorldClockSettings("NYC", "Eastern Standard Time"),
-            new HomeWorldClockSettings("LON", "GMT Standard Time"),
+            new[]
+            {
+                new HomeWorldClockEntry("NYC", "Eastern Standard Time"),
+                new HomeWorldClockEntry("LON", "GMT Standard Time")
+            },
             customWidgets);
 
         HomeHudSettingsJson.Write(settings, customSettings);
@@ -88,8 +94,11 @@ public sealed class HomeWidgetSettingsTests
         HomeHudSettings customSettings = new HomeHudSettings(
             HomeHudDesignVariant.FusionBalanced,
             HomeHudTimeFormat.TwelveHour,
-            new HomeWorldClockSettings("NYC", "Eastern Standard Time"),
-            new HomeWorldClockSettings("LON", "GMT Standard Time"),
+            new[]
+            {
+                new HomeWorldClockEntry("NYC", "Eastern Standard Time"),
+                new HomeWorldClockEntry("LON", "GMT Standard Time")
+            },
             customWidgets);
 
         HomeHudSettingsJson.Write(settings, customSettings);
@@ -113,8 +122,11 @@ public sealed class HomeWidgetSettingsTests
         HomeHudSettings customSettings = new HomeHudSettings(
             HomeHudDesignVariant.FusionBalanced,
             HomeHudTimeFormat.TwelveHour,
-            new HomeWorldClockSettings("NYC", "Eastern Standard Time"),
-            new HomeWorldClockSettings("LON", "GMT Standard Time"),
+            new[]
+            {
+                new HomeWorldClockEntry("NYC", "Eastern Standard Time"),
+                new HomeWorldClockEntry("LON", "GMT Standard Time")
+            },
             customWidgets);
 
         HomeHudSettingsJson.Write(settings, customSettings);

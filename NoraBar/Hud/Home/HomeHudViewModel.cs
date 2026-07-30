@@ -73,9 +73,9 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
         _viewModel.SelectedLanguage,
         LocalizationKey.MediaNext);
 
-    public string FirstWorldClockLabel => _viewModel.FirstWorldClockLabel.ToUpperInvariant();
+    public string FirstWorldClockLabel => WorldClockItems.Count > 0 ? WorldClockItems[0].Label : string.Empty;
 
-    public string SecondWorldClockLabel => _viewModel.SecondWorldClockLabel.ToUpperInvariant();
+    public string SecondWorldClockLabel => WorldClockItems.Count > 1 ? WorldClockItems[1].Label : string.Empty;
 
     private string _localTimeText = string.Empty;
     public string LocalTimeText
@@ -91,19 +91,12 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
         private set => SetProperty(ref _localDateText, value);
     }
 
-    private string _firstWorldClockTimeText = string.Empty;
-    public string FirstWorldClockTimeText
-    {
-        get => _firstWorldClockTimeText;
-        private set => SetProperty(ref _firstWorldClockTimeText, value);
-    }
+    public string FirstWorldClockTimeText => WorldClockItems.Count > 0 ? WorldClockItems[0].TimeText : string.Empty;
 
-    private string _secondWorldClockTimeText = string.Empty;
-    public string SecondWorldClockTimeText
-    {
-        get => _secondWorldClockTimeText;
-        private set => SetProperty(ref _secondWorldClockTimeText, value);
-    }
+    public string SecondWorldClockTimeText => WorldClockItems.Count > 1 ? WorldClockItems[1].TimeText : string.Empty;
+
+    private readonly List<HomeWorldClockItemViewModel> _worldClockItems = new();
+    public IReadOnlyList<HomeWorldClockItemViewModel> WorldClockItems => _worldClockItems.AsReadOnly();
 
     public event EventHandler? PresentationInvalidated;
 
@@ -159,27 +152,48 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
         CultureInfo systemCulture = CultureInfo.CurrentCulture;
         LocalTimeText = HomeHudClockFormatter.FormatTime(now, format, systemCulture);
         LocalDateText = HomeHudClockFormatter.FormatDate(now, _viewModel.SelectedLanguage);
-        FirstWorldClockTimeText = HomeHudClockFormatter.FormatTime(
-            ConvertTime(now, _viewModel.FirstWorldClockTimeZoneId),
-            format,
-            systemCulture);
-        SecondWorldClockTimeText = HomeHudClockFormatter.FormatTime(
-            ConvertTime(now, _viewModel.SecondWorldClockTimeZoneId),
-            format,
-            systemCulture);
+
+        var entries = _viewModel.WorldClockEntries;
+        // Synchronize _worldClockItems length with entries
+        while (_worldClockItems.Count < entries.Count)
+        {
+            _worldClockItems.Add(new HomeWorldClockItemViewModel(string.Empty, string.Empty));
+        }
+        while (_worldClockItems.Count > entries.Count)
+        {
+            _worldClockItems.RemoveAt(_worldClockItems.Count - 1);
+        }
+
+        for (int i = 0; i < entries.Count; i++)
+        {
+            var entry = entries[i];
+            var item = _worldClockItems[i];
+            item.Label = entry.Label.ToUpperInvariant();
+            item.TimeZoneId = entry.TimeZoneId;
+            DateTimeOffset convertedNow = ConvertTime(now, entry.TimeZoneId);
+            item.TimeText = HomeHudClockFormatter.FormatTime(convertedNow, format, systemCulture);
+            item.DateText = HomeHudClockFormatter.FormatDate(convertedNow, _viewModel.SelectedLanguage);
+        }
+
+        OnPropertyChanged(nameof(FirstWorldClockLabel));
+        OnPropertyChanged(nameof(SecondWorldClockLabel));
+        OnPropertyChanged(nameof(FirstWorldClockTimeText));
+        OnPropertyChanged(nameof(SecondWorldClockTimeText));
+        OnPropertyChanged(nameof(WorldClockItems));
     }
 
     private static DateTimeOffset ConvertTime(DateTimeOffset value, string timeZoneId)
     {
+        if (string.IsNullOrWhiteSpace(timeZoneId) || string.Equals(timeZoneId, "Local", StringComparison.OrdinalIgnoreCase))
+        {
+            return TimeZoneInfo.ConvertTime(value, TimeZoneInfo.Local);
+        }
+
         try
         {
             return TimeZoneInfo.ConvertTime(value, TimeZoneInfo.FindSystemTimeZoneById(timeZoneId));
         }
-        catch (TimeZoneNotFoundException)
-        {
-            return TimeZoneInfo.ConvertTime(value, TimeZoneInfo.Utc);
-        }
-        catch (InvalidTimeZoneException)
+        catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
         {
             return TimeZoneInfo.ConvertTime(value, TimeZoneInfo.Utc);
         }
@@ -281,18 +295,14 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
             case nameof(MainViewModel.HomeHudTimeFormat):
             case nameof(MainViewModel.FirstWorldClockTimeZoneId):
             case nameof(MainViewModel.SecondWorldClockTimeZoneId):
+            case nameof(MainViewModel.FirstWorldClockLabel):
+            case nameof(MainViewModel.SecondWorldClockLabel):
             case nameof(MainViewModel.SelectedLanguage):
                 RefreshClock();
                 OnPropertyChanged(nameof(MediaTitle));
                 OnPropertyChanged(nameof(PreviousMediaText));
                 OnPropertyChanged(nameof(PlayPauseMediaText));
                 OnPropertyChanged(nameof(NextMediaText));
-                break;
-            case nameof(MainViewModel.FirstWorldClockLabel):
-                OnPropertyChanged(nameof(FirstWorldClockLabel));
-                break;
-            case nameof(MainViewModel.SecondWorldClockLabel):
-                OnPropertyChanged(nameof(SecondWorldClockLabel));
                 break;
         }
     }

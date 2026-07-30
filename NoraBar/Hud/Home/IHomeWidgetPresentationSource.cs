@@ -7,6 +7,8 @@ internal interface IHomeWidgetPresentationSource : INotifyPropertyChanged
 {
     IReadOnlyList<HomeWidgetConfig> ActiveWidgets { get; }
 
+    IReadOnlyList<HomeWorldClockItemViewModel> WorldClockItems { get; }
+
     double MaxWidgetWidth { get; }
 
     double MaxWidgetHeight { get; }

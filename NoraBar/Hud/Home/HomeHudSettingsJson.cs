@@ -10,6 +10,7 @@ internal static class HomeHudSettingsJson
 {
     private const string DesignVariantProperty = "DesignVariant";
     private const string TimeFormatProperty = "TimeFormat";
+    private const string WorldClocksProperty = "WorldClocks";
     private const string FirstClockProperty = "FirstClock";
     private const string SecondClockProperty = "SecondClock";
     private const string WidgetsProperty = "Widgets";
@@ -35,8 +36,7 @@ internal static class HomeHudSettingsJson
         return new HomeHudSettings(
             ReadEnum(payload, DesignVariantProperty, defaults.DesignVariant),
             ReadEnum(payload, TimeFormatProperty, defaults.TimeFormat),
-            ReadClock(payload, FirstClockProperty, defaults.FirstClock),
-            ReadClock(payload, SecondClockProperty, defaults.SecondClock),
+            ReadWorldClocks(payload, defaults.EffectiveWorldClocks),
             ReadWidgets(payload),
             ReadDouble(payload, MaxWidgetWidthProperty, defaults.MaxWidgetWidth),
             ReadDouble(payload, MaxWidgetHeightProperty, defaults.MaxWidgetHeight));
@@ -51,12 +51,25 @@ internal static class HomeHudSettingsJson
         JsonObject root = ReadExistingObject(settings);
         root[DesignVariantProperty] = (int)homeSettings.DesignVariant;
         root[TimeFormatProperty] = (int)homeSettings.TimeFormat;
-        root[FirstClockProperty] = CreateClockNode(homeSettings.FirstClock);
-        root[SecondClockProperty] = CreateClockNode(homeSettings.SecondClock);
+        root[WorldClocksProperty] = CreateWorldClocksNode(homeSettings.EffectiveWorldClocks);
         root[WidgetsProperty] = CreateWidgetsNode(homeSettings.EffectiveWidgets);
         root[MaxWidgetWidthProperty] = homeSettings.MaxWidgetWidth;
         root[MaxWidgetHeightProperty] = homeSettings.MaxWidgetHeight;
         settings.Modules[BuiltInHudIds.Home] = JsonSerializer.SerializeToElement(root);
+    }
+
+    private static JsonArray CreateWorldClocksNode(IReadOnlyList<HomeWorldClockEntry> clocks)
+    {
+        JsonArray array = new JsonArray();
+        foreach (HomeWorldClockEntry clock in clocks)
+        {
+            array.Add(new JsonObject
+            {
+                [LabelProperty] = clock.Label,
+                [TimeZoneIdProperty] = clock.TimeZoneId
+            });
+        }
+        return array;
     }
 
     private static JsonArray CreateWidgetsNode(IReadOnlyList<HomeWidgetConfig> widgets)
@@ -72,6 +85,67 @@ internal static class HomeHudSettingsJson
             });
         }
         return array;
+    }
+
+    private static IReadOnlyList<HomeWorldClockEntry>? ReadWorldClocks(
+        JsonElement payload,
+        IReadOnlyList<HomeWorldClockEntry> fallback)
+    {
+        if (payload.TryGetProperty(WorldClocksProperty, out JsonElement clocksElement)
+            && clocksElement.ValueKind == JsonValueKind.Array)
+        {
+            List<HomeWorldClockEntry> list = new List<HomeWorldClockEntry>();
+            foreach (JsonElement item in clocksElement.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                string label = ReadNonEmptyString(item, LabelProperty) ?? "CLOCK";
+                string timeZoneId = ReadNonEmptyString(item, TimeZoneIdProperty) ?? "Local";
+                list.Add(new HomeWorldClockEntry(label, timeZoneId));
+            }
+
+            if (list.Count > 0)
+            {
+                return list.AsReadOnly();
+            }
+        }
+
+        // Legacy fallback from FirstClock / SecondClock
+        List<HomeWorldClockEntry> legacyList = new List<HomeWorldClockEntry>();
+        HomeWorldClockEntry? first = ReadLegacyClock(payload, FirstClockProperty);
+        if (first is not null)
+        {
+            legacyList.Add(first);
+        }
+
+        HomeWorldClockEntry? second = ReadLegacyClock(payload, SecondClockProperty);
+        if (second is not null)
+        {
+            legacyList.Add(second);
+        }
+
+        return legacyList.Count > 0 ? legacyList.AsReadOnly() : fallback;
+    }
+
+    private static HomeWorldClockEntry? ReadLegacyClock(JsonElement payload, string propertyName)
+    {
+        if (!payload.TryGetProperty(propertyName, out JsonElement clock)
+            || clock.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        string? label = ReadNonEmptyString(clock, LabelProperty);
+        string? timeZoneId = ReadNonEmptyString(clock, TimeZoneIdProperty);
+        if (label is null && timeZoneId is null)
+        {
+            return null;
+        }
+
+        return new HomeWorldClockEntry(label ?? "CLOCK", timeZoneId ?? "Local");
     }
 
     private static IReadOnlyList<HomeWidgetConfig>? ReadWidgets(JsonElement payload)
@@ -122,12 +196,6 @@ internal static class HomeHudSettingsJson
         }
     }
 
-    private static JsonObject CreateClockNode(HomeWorldClockSettings clock) => new()
-    {
-        [LabelProperty] = clock.Label,
-        [TimeZoneIdProperty] = clock.TimeZoneId
-    };
-
     private static TEnum ReadEnum<TEnum>(
         JsonElement payload,
         string propertyName,
@@ -139,22 +207,6 @@ internal static class HomeHudSettingsJson
             && Enum.IsDefined(typeof(TEnum), numericValue)
                 ? (TEnum)Enum.ToObject(typeof(TEnum), numericValue)
                 : fallback;
-    }
-
-    private static HomeWorldClockSettings ReadClock(
-        JsonElement payload,
-        string propertyName,
-        HomeWorldClockSettings fallback)
-    {
-        if (!payload.TryGetProperty(propertyName, out JsonElement clock)
-            || clock.ValueKind != JsonValueKind.Object)
-        {
-            return fallback;
-        }
-
-        string label = ReadNonEmptyString(clock, LabelProperty) ?? fallback.Label;
-        string timeZoneId = ReadNonEmptyString(clock, TimeZoneIdProperty) ?? fallback.TimeZoneId;
-        return new HomeWorldClockSettings(label, timeZoneId);
     }
 
     private static string? ReadNonEmptyString(JsonElement value, string propertyName)

@@ -45,7 +45,70 @@ public sealed class HomeHudViewModelTests
                 Assert.Contains(nameof(HomeHudViewModel.MediaTitle), changedProperties);
                 Assert.Contains(nameof(HomeHudViewModel.FirstWorldClockLabel), changedProperties);
                 Assert.Contains(nameof(HomeHudViewModel.SecondWorldClockLabel), changedProperties);
+                Assert.Contains(nameof(HomeHudViewModel.WorldClockItems), changedProperties);
                 Assert.Equal(1, invalidationCount);
+            }
+            finally
+            {
+                viewModel.Dispose();
+                source.Music.Cleanup();
+            }
+        });
+    }
+
+    [Fact]
+    public void WorldClockItems_UpdatesWithMainViewModelEntriesAndReordering()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var source = new TestMainViewModel();
+            DateTimeOffset now = new(2026, 1, 1, 12, 0, 0, TimeSpan.Zero);
+            var viewModel = new HomeHudViewModel(
+                source,
+                new DispatcherTimer(DispatcherPriority.Background),
+                () => now);
+
+            try
+            {
+                viewModel.Initialize();
+
+                // Setup deterministic 3 entries
+                while (source.WorldClockEntries.Count < 3)
+                {
+                    source.AddWorldClockCommand.Execute(null);
+                }
+                while (source.WorldClockEntries.Count > 3)
+                {
+                    source.RemoveWorldClockCommand.Execute(source.WorldClockEntries[source.WorldClockEntries.Count - 1]);
+                }
+
+                Assert.Equal(3, viewModel.WorldClockItems.Count);
+
+                // Reduce to 1 entry first
+                source.RemoveWorldClockCommand.Execute(source.WorldClockEntries[2]);
+                source.RemoveWorldClockCommand.Execute(source.WorldClockEntries[1]);
+                Assert.Single(viewModel.WorldClockItems);
+
+                // Add entry when count < 3
+                source.AddWorldClockCommand.Execute(null);
+                Assert.Equal(2, viewModel.WorldClockItems.Count);
+
+                source.AddWorldClockCommand.Execute(null);
+                Assert.Equal(3, viewModel.WorldClockItems.Count);
+
+                // Adding 4th should be suppressed (max 3)
+                source.AddWorldClockCommand.Execute(null);
+                Assert.Equal(3, viewModel.WorldClockItems.Count);
+
+                // Move item up/down
+                var firstItem = source.WorldClockEntries[0];
+                var secondItem = source.WorldClockEntries[1];
+                string firstLabel = firstItem.Label;
+                string secondLabel = secondItem.Label;
+
+                source.MoveWorldClockDownCommand.Execute(firstItem);
+                Assert.Equal(secondLabel.ToUpperInvariant(), viewModel.WorldClockItems[0].Label);
+                Assert.Equal(firstLabel.ToUpperInvariant(), viewModel.WorldClockItems[1].Label);
             }
             finally
             {

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Net.Http.Json;
 using System.Windows.Input;
 using NoraBar.Hud;
@@ -355,58 +356,66 @@ namespace NoraBar.ViewModels
             }
         }
 
-        private string _firstWorldClockLabel = string.Empty;
+        public ObservableCollection<WorldClockEntryViewModel> WorldClockEntries { get; } = new();
+
+        public ICommand AddWorldClockCommand { get; }
+        public ICommand RemoveWorldClockCommand { get; }
+        public ICommand MoveWorldClockUpCommand { get; }
+        public ICommand MoveWorldClockDownCommand { get; }
+
+        private void OnWorldClockChanged()
+        {
+            OnPropertyChanged(nameof(FirstWorldClockLabel));
+            OnPropertyChanged(nameof(FirstWorldClockTimeZoneId));
+            OnPropertyChanged(nameof(SecondWorldClockLabel));
+            OnPropertyChanged(nameof(SecondWorldClockTimeZoneId));
+            SaveSettings();
+        }
+
         public string FirstWorldClockLabel
         {
-            get => _firstWorldClockLabel;
+            get => WorldClockEntries.Count > 0 ? WorldClockEntries[0].Label : string.Empty;
             set
             {
-                if (!string.IsNullOrWhiteSpace(value)
-                    && SetProperty(ref _firstWorldClockLabel, value))
+                if (WorldClockEntries.Count > 0 && !string.IsNullOrWhiteSpace(value))
                 {
-                    SaveSettings();
+                    WorldClockEntries[0].Label = value;
                 }
             }
         }
 
-        private string _firstWorldClockTimeZoneId = string.Empty;
         public string FirstWorldClockTimeZoneId
         {
-            get => _firstWorldClockTimeZoneId;
+            get => WorldClockEntries.Count > 0 ? WorldClockEntries[0].TimeZoneId : string.Empty;
             set
             {
-                if (!string.IsNullOrWhiteSpace(value)
-                    && SetProperty(ref _firstWorldClockTimeZoneId, value))
+                if (WorldClockEntries.Count > 0 && !string.IsNullOrWhiteSpace(value))
                 {
-                    SaveSettings();
+                    WorldClockEntries[0].TimeZoneId = value;
                 }
             }
         }
 
-        private string _secondWorldClockLabel = string.Empty;
         public string SecondWorldClockLabel
         {
-            get => _secondWorldClockLabel;
+            get => WorldClockEntries.Count > 1 ? WorldClockEntries[1].Label : string.Empty;
             set
             {
-                if (!string.IsNullOrWhiteSpace(value)
-                    && SetProperty(ref _secondWorldClockLabel, value))
+                if (WorldClockEntries.Count > 1 && !string.IsNullOrWhiteSpace(value))
                 {
-                    SaveSettings();
+                    WorldClockEntries[1].Label = value;
                 }
             }
         }
 
-        private string _secondWorldClockTimeZoneId = string.Empty;
         public string SecondWorldClockTimeZoneId
         {
-            get => _secondWorldClockTimeZoneId;
+            get => WorldClockEntries.Count > 1 ? WorldClockEntries[1].TimeZoneId : string.Empty;
             set
             {
-                if (!string.IsNullOrWhiteSpace(value)
-                    && SetProperty(ref _secondWorldClockTimeZoneId, value))
+                if (WorldClockEntries.Count > 1 && !string.IsNullOrWhiteSpace(value))
                 {
-                    SaveSettings();
+                    WorldClockEntries[1].TimeZoneId = value;
                 }
             }
         }
@@ -616,14 +625,57 @@ namespace NoraBar.ViewModels
             HomeHudSettings homeSettings = HomeHudSettingsJson.Read(_settings);
             _homeHudDesignVariant = homeSettings.DesignVariant;
             _homeHudTimeFormat = homeSettings.TimeFormat;
-            _firstWorldClockLabel = homeSettings.FirstClock.Label;
-            _firstWorldClockTimeZoneId = homeSettings.FirstClock.TimeZoneId;
-            _secondWorldClockLabel = homeSettings.SecondClock.Label;
-            _secondWorldClockTimeZoneId = homeSettings.SecondClock.TimeZoneId;
+            foreach (HomeWorldClockEntry clock in homeSettings.EffectiveWorldClocks)
+            {
+                WorldClockEntries.Add(new WorldClockEntryViewModel(clock.Label, clock.TimeZoneId, OnWorldClockChanged));
+            }
             _activeHomeWidgets = homeSettings.EffectiveWidgets;
             _maxWidgetWidth = homeSettings.MaxWidgetWidth;
             _maxWidgetHeight = homeSettings.MaxWidgetHeight;
             _hudNavigationPlacement = _settings.HudNavigationPlacement;
+
+            AddWorldClockCommand = new RelayCommand(_ =>
+            {
+                if (WorldClockEntries.Count < 3)
+                {
+                    WorldClockEntries.Add(new WorldClockEntryViewModel("NEW", "UTC", OnWorldClockChanged));
+                    OnWorldClockChanged();
+                }
+            });
+
+            RemoveWorldClockCommand = new RelayCommand(p =>
+            {
+                if (WorldClockEntries.Count > 1 && p is WorldClockEntryViewModel item && WorldClockEntries.Remove(item))
+                {
+                    OnWorldClockChanged();
+                }
+            });
+
+            MoveWorldClockUpCommand = new RelayCommand(p =>
+            {
+                if (p is WorldClockEntryViewModel item)
+                {
+                    int index = WorldClockEntries.IndexOf(item);
+                    if (index > 0)
+                    {
+                        WorldClockEntries.Move(index, index - 1);
+                        OnWorldClockChanged();
+                    }
+                }
+            });
+
+            MoveWorldClockDownCommand = new RelayCommand(p =>
+            {
+                if (p is WorldClockEntryViewModel item)
+                {
+                    int index = WorldClockEntries.IndexOf(item);
+                    if (index >= 0 && index < WorldClockEntries.Count - 1)
+                    {
+                        WorldClockEntries.Move(index, index + 1);
+                        OnWorldClockChanged();
+                    }
+                }
+            });
 
             AvailableScrollModes = new[]
             {
@@ -717,10 +769,11 @@ namespace NoraBar.ViewModels
                 DisableExpandOnFullscreen = defaultSettings.DisableExpandOnFullscreen;
                 HomeHudDesignVariant = homeDefaults.DesignVariant;
                 HomeHudTimeFormat = homeDefaults.TimeFormat;
-                FirstWorldClockLabel = homeDefaults.FirstClock.Label;
-                FirstWorldClockTimeZoneId = homeDefaults.FirstClock.TimeZoneId;
-                SecondWorldClockLabel = homeDefaults.SecondClock.Label;
-                SecondWorldClockTimeZoneId = homeDefaults.SecondClock.TimeZoneId;
+                WorldClockEntries.Clear();
+                foreach (HomeWorldClockEntry clock in homeDefaults.EffectiveWorldClocks)
+                {
+                    WorldClockEntries.Add(new WorldClockEntryViewModel(clock.Label, clock.TimeZoneId, OnWorldClockChanged));
+                }
                 HudNavigationPlacement = defaultSettings.HudNavigationPlacement;
                 IsStartupEnabled = true;
                 HasCustomPosition = false;
@@ -772,6 +825,7 @@ namespace NoraBar.ViewModels
         public IReadOnlyList<HomeWidgetCustomizerItemViewModel> CatalogWidgets { get; } =
         [
             new("catalog_clock", NoraBar.Hud.Home.Widgets.HomeWidgetType.DigitalClock, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.ClockMinimal),
+            new("catalog_world_clock", NoraBar.Hud.Home.Widgets.HomeWidgetType.WorldClock, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.WorldClockMinimal),
             new("catalog_media", NoraBar.Hud.Home.Widgets.HomeWidgetType.MediaControls, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.MediaCompact),
             new("catalog_media_artwork_sm", NoraBar.Hud.Home.Widgets.HomeWidgetType.MediaControls, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.MediaArtworkHoverSmall),
             new("catalog_media_artwork_md", NoraBar.Hud.Home.Widgets.HomeWidgetType.MediaControls, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.MediaArtworkHoverMedium),
@@ -821,12 +875,7 @@ namespace NoraBar.ViewModels
         internal HomeHudSettings GetHomeHudSettings() => new(
             HomeHudDesignVariant,
             HomeHudTimeFormat,
-            new HomeWorldClockSettings(
-                FirstWorldClockLabel.Trim(),
-                FirstWorldClockTimeZoneId),
-            new HomeWorldClockSettings(
-                SecondWorldClockLabel.Trim(),
-                SecondWorldClockTimeZoneId),
+            WorldClockEntries.Select(e => new HomeWorldClockEntry(e.Label.Trim(), e.TimeZoneId)).ToList(),
             ActiveHomeWidgets,
             MaxWidgetWidth,
             MaxWidgetHeight);
@@ -1189,5 +1238,43 @@ namespace NoraBar.ViewModels
             OnPropertyChanged(nameof(RestartVisualizerButtonText));
         }
 
+    }
+
+    public sealed class WorldClockEntryViewModel : ViewModelBase
+    {
+        private readonly Action _onChanged;
+        private string _label;
+        private string _timeZoneId;
+
+        public WorldClockEntryViewModel(string label, string timeZoneId, Action onChanged)
+        {
+            _label = label;
+            _timeZoneId = timeZoneId;
+            _onChanged = onChanged;
+        }
+
+        public string Label
+        {
+            get => _label;
+            set
+            {
+                if (!string.IsNullOrWhiteSpace(value) && SetProperty(ref _label, value))
+                {
+                    _onChanged();
+                }
+            }
+        }
+
+        public string TimeZoneId
+        {
+            get => _timeZoneId;
+            set
+            {
+                if (!string.IsNullOrWhiteSpace(value) && SetProperty(ref _timeZoneId, value))
+                {
+                    _onChanged();
+                }
+            }
+        }
     }
 }

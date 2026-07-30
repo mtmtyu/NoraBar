@@ -3,13 +3,12 @@ using NoraBar.Models;
 
 namespace NoraBar.Hud.Home;
 
-internal sealed record HomeWorldClockSettings(string Label, string TimeZoneId);
+internal sealed record HomeWorldClockEntry(string Label, string TimeZoneId);
 
 internal sealed record HomeHudSettings(
     HomeHudDesignVariant DesignVariant,
     HomeHudTimeFormat TimeFormat,
-    HomeWorldClockSettings FirstClock,
-    HomeWorldClockSettings SecondClock,
+    IReadOnlyList<HomeWorldClockEntry>? WorldClocks,
     IReadOnlyList<HomeWidgetConfig>? Widgets = null,
     double MaxWidgetWidth = 800,
     double MaxWidgetHeight = 300)
@@ -20,13 +19,21 @@ internal sealed record HomeHudSettings(
         new("widget_media", HomeWidgetType.MediaControls, HomeWidgetStyle.MediaCompact)
     }.AsReadOnly();
 
+    public static IReadOnlyList<HomeWorldClockEntry> DefaultWorldClocksList { get; } = new List<HomeWorldClockEntry>
+    {
+        new("LOCAL", "Local"),
+        new("NYC", "Eastern Standard Time"),
+        new("LON", "GMT Standard Time")
+    }.AsReadOnly();
+
     public IReadOnlyList<HomeWidgetConfig> EffectiveWidgets => Widgets is { Count: > 0 } ? Widgets : DefaultWidgetsList;
+
+    public IReadOnlyList<HomeWorldClockEntry> EffectiveWorldClocks => WorldClocks is { Count: > 0 } ? WorldClocks : DefaultWorldClocksList;
 
     internal static HomeHudSettings Default { get; } = new(
         HomeHudDesignVariant.FusionBalanced,
         HomeHudTimeFormat.System,
-        new HomeWorldClockSettings("NYC", "Eastern Standard Time"),
-        new HomeWorldClockSettings("LON", "GMT Standard Time"),
+        DefaultWorldClocksList,
         DefaultWidgetsList,
         800,
         300);

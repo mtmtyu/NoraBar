@@ -944,6 +944,8 @@ public sealed class HomeWidgetViewLifecycleTests
 
         public IReadOnlyList<HomeWidgetConfig> ActiveWidgets { get; set; }
 
+        public IReadOnlyList<HomeWorldClockItemViewModel> WorldClockItems { get; set; } = Array.Empty<HomeWorldClockItemViewModel>();
+
         public double MaxWidgetWidth { get; set; } = 800;
 
         public double MaxWidgetHeight { get; set; } = 300;

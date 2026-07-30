@@ -10,7 +10,7 @@ namespace NoraBar.Tests.Settings;
 public sealed class HomeHudSettingsJsonTests
 {
     [Fact]
-    public void Read_UsesBalancedDesignAndNewYorkLondonDefaults()
+    public void Read_UsesBalancedDesignAndDefaultWorldClocks()
     {
         var settings = new UserSettings();
 
@@ -18,10 +18,37 @@ public sealed class HomeHudSettingsJsonTests
 
         Assert.Equal(HomeHudDesignVariant.FusionBalanced, result.DesignVariant);
         Assert.Equal(HomeHudTimeFormat.System, result.TimeFormat);
-        Assert.Equal("NYC", result.FirstClock.Label);
-        Assert.Equal("Eastern Standard Time", result.FirstClock.TimeZoneId);
-        Assert.Equal("LON", result.SecondClock.Label);
-        Assert.Equal("GMT Standard Time", result.SecondClock.TimeZoneId);
+        Assert.Equal(3, result.EffectiveWorldClocks.Count);
+        Assert.Equal("LOCAL", result.EffectiveWorldClocks[0].Label);
+        Assert.Equal("Local", result.EffectiveWorldClocks[0].TimeZoneId);
+        Assert.Equal("NYC", result.EffectiveWorldClocks[1].Label);
+        Assert.Equal("Eastern Standard Time", result.EffectiveWorldClocks[1].TimeZoneId);
+        Assert.Equal("LON", result.EffectiveWorldClocks[2].Label);
+        Assert.Equal("GMT Standard Time", result.EffectiveWorldClocks[2].TimeZoneId);
+    }
+
+    [Fact]
+    public void Read_MigratesLegacyFirstAndSecondClock()
+    {
+        var settings = new UserSettings
+        {
+            Modules = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+            {
+                [BuiltInHudIds.Home] = JsonSerializer.SerializeToElement(new
+                {
+                    FirstClock = new { Label = "SEA", TimeZoneId = "Pacific Standard Time" },
+                    SecondClock = new { Label = "TYO", TimeZoneId = "Tokyo Standard Time" }
+                })
+            }
+        };
+
+        HomeHudSettings result = HomeHudSettingsJson.Read(settings);
+
+        Assert.Equal(2, result.EffectiveWorldClocks.Count);
+        Assert.Equal("SEA", result.EffectiveWorldClocks[0].Label);
+        Assert.Equal("Pacific Standard Time", result.EffectiveWorldClocks[0].TimeZoneId);
+        Assert.Equal("TYO", result.EffectiveWorldClocks[1].Label);
+        Assert.Equal("Tokyo Standard Time", result.EffectiveWorldClocks[1].TimeZoneId);
     }
 
     [Fact]
@@ -41,15 +68,20 @@ public sealed class HomeHudSettingsJsonTests
         var home = new HomeHudSettings(
             HomeHudDesignVariant.FusionExpressive,
             HomeHudTimeFormat.TwentyFourHour,
-            new HomeWorldClockSettings("SEA", "Pacific Standard Time"),
-            new HomeWorldClockSettings("TYO", "Tokyo Standard Time"));
+            new[]
+            {
+                new HomeWorldClockEntry("SEA", "Pacific Standard Time"),
+                new HomeWorldClockEntry("TYO", "Tokyo Standard Time")
+            });
 
         HomeHudSettingsJson.Write(settings, home);
 
         JsonElement payload = settings.Modules[BuiltInHudIds.Home];
         Assert.Equal((int)HomeHudDesignVariant.FusionExpressive, payload.GetProperty("DesignVariant").GetInt32());
         Assert.True(payload.GetProperty("FutureProperty").GetProperty("enabled").GetBoolean());
-        Assert.Equal("TYO", payload.GetProperty("SecondClock").GetProperty("Label").GetString());
+        JsonElement worldClocks = payload.GetProperty("WorldClocks");
+        Assert.Equal(2, worldClocks.GetArrayLength());
+        Assert.Equal("TYO", worldClocks[1].GetProperty("Label").GetString());
     }
 
     [Fact]
@@ -59,8 +91,11 @@ public sealed class HomeHudSettingsJsonTests
         var home = new HomeHudSettings(
             HomeHudDesignVariant.FusionBalanced,
             HomeHudTimeFormat.System,
-            new HomeWorldClockSettings("NYC", "Eastern Standard Time"),
-            new HomeWorldClockSettings("LON", "GMT Standard Time"),
+            new[]
+            {
+                new HomeWorldClockEntry("NYC", "Eastern Standard Time"),
+                new HomeWorldClockEntry("LON", "GMT Standard Time")
+            },
             null,
             950,
             450);
@@ -70,5 +105,6 @@ public sealed class HomeHudSettingsJsonTests
 
         Assert.Equal(950, reloaded.MaxWidgetWidth);
         Assert.Equal(450, reloaded.MaxWidgetHeight);
+        Assert.Equal(2, reloaded.EffectiveWorldClocks.Count);
     }
 }
