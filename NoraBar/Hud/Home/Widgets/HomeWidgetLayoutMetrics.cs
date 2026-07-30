@@ -51,6 +51,8 @@ internal static class HomeWidgetLayoutMetrics
     internal static HomeWidgetLayoutSize GetSize(HomeWidgetStyle style) => style switch
     {
         HomeWidgetStyle.ClockMinimal => new HomeWidgetLayoutSize(160, 40),
+        HomeWidgetStyle.WorldClockMinimal => new HomeWidgetLayoutSize(200, 50),
+        HomeWidgetStyle.WorldClockList => new HomeWidgetLayoutSize(210, 120),
         HomeWidgetStyle.MediaCompact => new HomeWidgetLayoutSize(236, 40),
         HomeWidgetStyle.MediaArtworkHoverSmall => new HomeWidgetLayoutSize(158, 89),
         HomeWidgetStyle.MediaArtworkHover => new HomeWidgetLayoutSize(198, 109),

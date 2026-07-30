@@ -113,6 +113,8 @@ public sealed class HomeHudLayoutTests
 
     [Theory]
     [InlineData(HomeWidgetStyle.ClockMinimal, 160, 40)]
+    [InlineData(HomeWidgetStyle.WorldClockMinimal, 200, 50)]
+    [InlineData(HomeWidgetStyle.WorldClockList, 210, 120)]
     [InlineData(HomeWidgetStyle.MediaCompact, 236, 40)]
     [InlineData(HomeWidgetStyle.MediaArtworkHoverSmall, 158, 89)]
     [InlineData(HomeWidgetStyle.MediaArtworkHoverMedium, 198, 109)]
