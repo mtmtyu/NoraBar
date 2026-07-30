@@ -625,6 +625,13 @@ public partial class MainWindow : Window
         {
             await navigation.NavigateRelativeAsync(e.Delta < 0 ? 1 : -1);
         }
+        catch (OperationCanceledException) when (IsShutdownRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            Trace.TraceError(exception.ToString());
+        }
         finally
         {
             Volatile.Write(ref _navigationInFlight, 0);
