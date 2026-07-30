@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
+using NoraBar.Hud.Home.Widgets;
 
 namespace NoraBar.Views.Helpers;
 
@@ -184,22 +185,14 @@ public sealed class WrapPanelAnimatedReorderHelper
 
     private void AnimateShiftPositions()
     {
+        IReadOnlyList<Point> reorderedPositions = CalculateReorderedPositions();
+
         for (int i = 0; i < _items.Count; i++)
         {
             if (i == _initialIndex) continue;
 
-            int effectiveIndex = i;
-            if (_initialIndex < _targetIndex && i > _initialIndex && i <= _targetIndex)
-            {
-                effectiveIndex = i - 1;
-            }
-            else if (_initialIndex > _targetIndex && i >= _targetIndex && i < _initialIndex)
-            {
-                effectiveIndex = i + 1;
-            }
-
             Point originPos = _initialPositions[i];
-            Point targetPos = _initialPositions[Math.Clamp(effectiveIndex, 0, _items.Count - 1)];
+            Point targetPos = reorderedPositions[i];
 
             double targetShiftX = targetPos.X - originPos.X;
             double targetShiftY = targetPos.Y - originPos.Y;
@@ -211,6 +204,33 @@ public sealed class WrapPanelAnimatedReorderHelper
             tt.BeginAnimation(TranslateTransform.XProperty, animX);
             tt.BeginAnimation(TranslateTransform.YProperty, animY);
         }
+    }
+
+    private IReadOnlyList<Point> CalculateReorderedPositions()
+    {
+        var reorderedIndices = Enumerable.Range(0, _items.Count).ToList();
+        int draggedIndex = reorderedIndices[_initialIndex];
+        reorderedIndices.RemoveAt(_initialIndex);
+        reorderedIndices.Insert(_targetIndex, draggedIndex);
+
+        HomeWidgetLayoutSize[] reorderedSizes = reorderedIndices
+            .Select(index => new HomeWidgetLayoutSize(
+                _items[index].ActualWidth,
+                _items[index].ActualHeight))
+            .ToArray();
+        HomeWidgetLayoutPlan plan = HomeWidgetLayoutMetrics.CreatePlan(
+            reorderedSizes,
+            _containerPanel.ActualWidth);
+
+        var positions = new Point[_items.Count];
+        for (int reorderedIndex = 0; reorderedIndex < reorderedIndices.Count; reorderedIndex++)
+        {
+            int originalIndex = reorderedIndices[reorderedIndex];
+            HomeWidgetLayoutPlacement placement = plan.Placements[reorderedIndex];
+            positions[originalIndex] = new Point(placement.X, placement.Y);
+        }
+
+        return positions;
     }
 
     private static TranslateTransform EnsureTranslateTransform(FrameworkElement element)
