@@ -1256,7 +1256,7 @@
 
                                                         <TextBox Grid.Column="1" Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}"
                                                                  Height="32" Margin="0,0,8,0" MaxLength="12"
-                                                                 ToolTip="Clock Label (e.g. NYC, LON)"/>
+                                                                 ToolTip="{Binding DataContext.WorldClockLabelHintText, RelativeSource={RelativeSource AncestorType=Window}}"/>
 
                                                         <ComboBox Grid.Column="2"
                                                                   ItemsSource="{Binding DataContext.AvailableTimeZones, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -1266,11 +1266,17 @@
                                                                   Height="32" Margin="0,0,8,0"/>
 
                                                         <StackPanel Grid.Column="3" Orientation="Horizontal">
-                                                            <Button Content="↑" Click="WorldClockMoveUp_Click" ToolTip="Move Up" AutomationProperties.Name="Move Up"
+                                                            <Button Content="↑" Click="WorldClockMoveUp_Click"
+                                                                    ToolTip="{Binding DataContext.MoveUpText, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    AutomationProperties.Name="{Binding DataContext.MoveUpText, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                     Style="{StaticResource SettingSquareButtonStyle}" Margin="0,0,4,0"/>
-                                                            <Button Content="↓" Click="WorldClockMoveDown_Click" ToolTip="Move Down" AutomationProperties.Name="Move Down"
+                                                            <Button Content="↓" Click="WorldClockMoveDown_Click"
+                                                                    ToolTip="{Binding DataContext.MoveDownText, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    AutomationProperties.Name="{Binding DataContext.MoveDownText, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                     Style="{StaticResource SettingSquareButtonStyle}" Margin="0,0,4,0"/>
-                                                            <Button Content="✕" ToolTip="Remove" AutomationProperties.Name="Remove"
+                                                            <Button Content="✕"
+                                                                    ToolTip="{Binding DataContext.RemoveWorldClockText, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    AutomationProperties.Name="{Binding DataContext.RemoveWorldClockText, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                     Command="{Binding DataContext.RemoveWorldClockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                     CommandParameter="{Binding}"
                                                                     Style="{StaticResource SettingSquareButtonStyle}"/>

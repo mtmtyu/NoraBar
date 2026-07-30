@@ -36,6 +36,47 @@ public sealed class SettingsWindowTemplateTests
             (string?)contentHost.Attribute("VerticalScrollBarVisibility"));
     }
 
+    [Fact]
+    public void WorldClockEditor_UsesLocalizedTooltipsAndAutomationNames()
+    {
+        XDocument document = XDocument.Load(GetSettingsWindowXamlPath());
+        XElement window = Assert.IsType<XElement>(document.Root);
+        XElement editor = Assert.Single(
+            window.Descendants(PresentationNamespace + "ItemsControl"),
+            element => string.Equals(
+                (string?)element.Attribute(XName.Get("Name", XamlNamespaceName)),
+                "WorldClocksItemsControl",
+                StringComparison.Ordinal));
+        XElement label = Assert.Single(editor.Descendants(PresentationNamespace + "TextBox"));
+        Assert.Equal(
+            "{Binding DataContext.WorldClockLabelHintText, RelativeSource={RelativeSource AncestorType=Window}}",
+            (string?)label.Attribute("ToolTip"));
+
+        AssertLocalizedButton("↑", "MoveUpText");
+        AssertLocalizedButton("↓", "MoveDownText");
+        AssertLocalizedButton("✕", "RemoveWorldClockText");
+
+        void AssertLocalizedButton(string content, string propertyName)
+        {
+            XElement button = Assert.Single(
+                editor.Descendants(PresentationNamespace + "Button"),
+                element => string.Equals(
+                    (string?)element.Attribute("Content"),
+                    content,
+                    StringComparison.Ordinal));
+            string expected =
+                $"{{Binding DataContext.{propertyName}, RelativeSource={{RelativeSource AncestorType=Window}}}}";
+            Assert.Equal(expected, (string?)button.Attribute("ToolTip"));
+            Assert.Equal(
+                expected,
+                (string?)button.Attributes().Single(attribute =>
+                    string.Equals(
+                        attribute.Name.LocalName,
+                        "AutomationProperties.Name",
+                        StringComparison.Ordinal)));
+        }
+    }
+
     private const string XamlNamespaceName =
         "http://schemas.microsoft.com/winfx/2006/xaml";
 
