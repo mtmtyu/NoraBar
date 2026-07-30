@@ -153,6 +153,11 @@
                                             <Trigger Property="IsMouseOver" Value="True">
                                                 <Setter TargetName="TabBackground" Property="Background" Value="#1AFFFFFF"/>
                                             </Trigger>
+                                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                                <Setter TargetName="TabBackground" Property="BorderBrush"
+                                                        Value="{StaticResource RightRailNavigationFocusBorderBrush}"/>
+                                                <Setter TargetName="TabBackground" Property="BorderThickness" Value="2"/>
+                                            </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
                                 </Button.Template>

@@ -10,6 +10,38 @@ public sealed class MainWindowNavigationAccessibilityTests
         "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
 
     [Fact]
+    public void TopTabNavigationButton_ProvidesVisibleKeyboardFocusBorder()
+    {
+        XDocument document = XDocument.Load(GetMainWindowXamlPath());
+        XElement window = Assert.IsType<XElement>(document.Root);
+        XElement button = Assert.Single(
+            window.Descendants(PresentationNamespace + "Button"),
+            element => string.Equals(
+                (string?)element.Attribute("ToolTip"),
+                "{Binding DisplayName}",
+                StringComparison.Ordinal));
+        XElement template = Assert.Single(
+            button.Descendants(PresentationNamespace + "ControlTemplate"));
+        XElement keyboardFocusTrigger = Assert.Single(
+            template.Descendants(PresentationNamespace + "Trigger"),
+            trigger => string.Equals(
+                (string?)trigger.Attribute("Property"),
+                "IsKeyboardFocused",
+                StringComparison.Ordinal));
+
+        AssertSetter(
+            keyboardFocusTrigger,
+            "TabBackground",
+            "BorderBrush",
+            "{StaticResource RightRailNavigationFocusBorderBrush}");
+        AssertSetter(
+            keyboardFocusTrigger,
+            "TabBackground",
+            "BorderThickness",
+            "2");
+    }
+
+    [Fact]
     public void RightRailNavigationButton_ProvidesVisibleAccessibleTooltipStates()
     {
         XDocument document = XDocument.Load(GetMainWindowXamlPath());
