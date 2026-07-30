@@ -35,35 +35,42 @@ public sealed class MusicViewModelTests
             RunWithApplication(() =>
             {
                 var viewModel = new MusicViewModel();
-                viewModel.ShowLyrics = true;
-                (FieldInfo lyricsField, MethodInfo updateMethod) = GetLyricsMembers();
-                FieldInfo requestIdField = Assert.IsAssignableFrom<FieldInfo>(
-                    typeof(MusicViewModel).GetField(
-                        "_lyricsRequestId",
-                        BindingFlags.NonPublic | BindingFlags.Instance));
-                lyricsField.SetValue(
-                    viewModel,
-                    new List<LyricLine>
-                    {
-                        new() { StartTime = TimeSpan.FromSeconds(1), Text = "Track A line 1" },
-                        new() { StartTime = TimeSpan.FromSeconds(5), Text = "Track A line 2" }
-                    });
+                try
+                {
+                    viewModel.ShowLyrics = true;
+                    (FieldInfo lyricsField, MethodInfo updateMethod) = GetLyricsMembers();
+                    FieldInfo requestIdField = Assert.IsAssignableFrom<FieldInfo>(
+                        typeof(MusicViewModel).GetField(
+                            "_lyricsRequestId",
+                            BindingFlags.NonPublic | BindingFlags.Instance));
+                    lyricsField.SetValue(
+                        viewModel,
+                        new List<LyricLine>
+                        {
+                            new() { StartTime = TimeSpan.FromSeconds(1), Text = "Track A line 1" },
+                            new() { StartTime = TimeSpan.FromSeconds(5), Text = "Track A line 2" }
+                        });
 
-                updateMethod.Invoke(viewModel, [TimeSpan.FromSeconds(6)]);
-                requestIdField.SetValue(viewModel, 1);
-                lyricsField.SetValue(
-                    viewModel,
-                    new List<LyricLine>
-                    {
-                        new() { StartTime = TimeSpan.FromSeconds(1), Text = "Track B line 1" },
-                        new() { StartTime = TimeSpan.FromSeconds(5), Text = "Track B line 2" }
-                    });
-                viewModel.CurrentLyric = "Track B current";
+                    updateMethod.Invoke(viewModel, [TimeSpan.FromSeconds(6)]);
+                    requestIdField.SetValue(viewModel, 1);
+                    lyricsField.SetValue(
+                        viewModel,
+                        new List<LyricLine>
+                        {
+                            new() { StartTime = TimeSpan.FromSeconds(1), Text = "Track B line 1" },
+                            new() { StartTime = TimeSpan.FromSeconds(5), Text = "Track B line 2" }
+                        });
+                    viewModel.CurrentLyric = "Track B current";
 
-                DrainDispatcher(cancellationToken);
+                    DrainDispatcher(cancellationToken);
 
-                Assert.Equal("Track B current", viewModel.CurrentLyric);
-                Assert.Equal(-1, viewModel.CurrentLyricIndex);
+                    Assert.Equal("Track B current", viewModel.CurrentLyric);
+                    Assert.Equal(-1, viewModel.CurrentLyricIndex);
+                }
+                finally
+                {
+                    viewModel.Cleanup();
+                }
             });
         }, StaTimeout);
     }
@@ -72,44 +79,58 @@ public sealed class MusicViewModelTests
         CancellationToken cancellationToken)
     {
         var viewModel = new MusicViewModel();
-        (FieldInfo lyricsField, MethodInfo updateMethod) = GetLyricsMembers();
-        lyricsField.SetValue(
-            viewModel,
-            new List<LyricLine>
-            {
-                new() { StartTime = TimeSpan.FromSeconds(1), Text = "Line 1" },
-                new() { StartTime = TimeSpan.FromSeconds(5), Text = "Line 2" }
-            });
+        try
+        {
+            (FieldInfo lyricsField, MethodInfo updateMethod) = GetLyricsMembers();
+            lyricsField.SetValue(
+                viewModel,
+                new List<LyricLine>
+                {
+                    new() { StartTime = TimeSpan.FromSeconds(1), Text = "Line 1" },
+                    new() { StartTime = TimeSpan.FromSeconds(5), Text = "Line 2" }
+                });
 
-        updateMethod.Invoke(viewModel, [TimeSpan.FromSeconds(2)]);
-        lyricsField.SetValue(viewModel, null);
+            updateMethod.Invoke(viewModel, [TimeSpan.FromSeconds(2)]);
+            lyricsField.SetValue(viewModel, null);
 
-        DrainDispatcher(cancellationToken);
+            DrainDispatcher(cancellationToken);
+        }
+        finally
+        {
+            viewModel.Cleanup();
+        }
     }
 
     private static void VerifyShrunkLyricsRemainSafe(
         CancellationToken cancellationToken)
     {
         var viewModel = new MusicViewModel();
-        (FieldInfo lyricsField, MethodInfo updateMethod) = GetLyricsMembers();
-        lyricsField.SetValue(
-            viewModel,
-            new List<LyricLine>
-            {
-                new() { StartTime = TimeSpan.FromSeconds(1), Text = "Line 1" },
-                new() { StartTime = TimeSpan.FromSeconds(5), Text = "Line 2" },
-                new() { StartTime = TimeSpan.FromSeconds(10), Text = "Line 3" }
-            });
+        try
+        {
+            (FieldInfo lyricsField, MethodInfo updateMethod) = GetLyricsMembers();
+            lyricsField.SetValue(
+                viewModel,
+                new List<LyricLine>
+                {
+                    new() { StartTime = TimeSpan.FromSeconds(1), Text = "Line 1" },
+                    new() { StartTime = TimeSpan.FromSeconds(5), Text = "Line 2" },
+                    new() { StartTime = TimeSpan.FromSeconds(10), Text = "Line 3" }
+                });
 
-        updateMethod.Invoke(viewModel, [TimeSpan.FromSeconds(12)]);
-        lyricsField.SetValue(
-            viewModel,
-            new List<LyricLine>
-            {
-                new() { StartTime = TimeSpan.FromSeconds(1), Text = "Short Line 1" }
-            });
+            updateMethod.Invoke(viewModel, [TimeSpan.FromSeconds(12)]);
+            lyricsField.SetValue(
+                viewModel,
+                new List<LyricLine>
+                {
+                    new() { StartTime = TimeSpan.FromSeconds(1), Text = "Short Line 1" }
+                });
 
-        DrainDispatcher(cancellationToken);
+            DrainDispatcher(cancellationToken);
+        }
+        finally
+        {
+            viewModel.Cleanup();
+        }
     }
 
     private static (FieldInfo LyricsField, MethodInfo UpdateMethod) GetLyricsMembers()
