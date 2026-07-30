@@ -35,6 +35,7 @@ public partial class MainWindow : Window
     private readonly MainViewModel _viewModel;
     private readonly HudRouter _hudRouter;
     private readonly Func<Task> _requestShutdownAsync;
+    private readonly HudOpacityTransitionState _opacityTransitionState = new();
     private Views.SettingsWindow? _settingsWindow;
     private HwndSource? _windowSource;
     private NotifyIcon? _notifyIcon;
@@ -506,13 +507,6 @@ public partial class MainWindow : Window
         {
             EasingFunction = easing
         };
-        var opacityAnimation = new DoubleAnimation(
-            collapseContent ? 0.0 : 1.0,
-            duration)
-        {
-            EasingFunction = easing
-        };
-
         if (collapseContent)
         {
             widthAnimation.Completed += (_, _) =>
@@ -523,14 +517,29 @@ public partial class MainWindow : Window
                 }
             };
         }
-        else
+        if (_opacityTransitionState.TryTransition(collapseContent))
+        {
+            double currentOpacity = HudPresentationHost.Opacity;
+            bool transitionWasInterrupted = HudPresentationHost.HasAnimatedProperties;
+            HudPresentationHost.BeginAnimation(OpacityProperty, null);
+            HudPresentationHost.Opacity = !collapseContent && !transitionWasInterrupted
+                ? 0.0
+                : currentOpacity;
+            var opacityAnimation = new DoubleAnimation(
+                collapseContent ? 0.0 : 1.0,
+                duration)
+            {
+                EasingFunction = easing
+            };
+            HudPresentationHost.BeginAnimation(OpacityProperty, opacityAnimation);
+        }
+        else if (collapseContent && !HudPresentationHost.HasAnimatedProperties)
         {
             HudPresentationHost.Opacity = 0.0;
         }
 
         HudBorder.BeginAnimation(WidthProperty, widthAnimation);
         HudBorder.BeginAnimation(HeightProperty, heightAnimation);
-        HudPresentationHost.BeginAnimation(OpacityProperty, opacityAnimation);
     }
 
     private void HudBorder_MouseEnter(object sender, MouseEventArgs e)
