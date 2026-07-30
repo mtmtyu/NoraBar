@@ -127,7 +127,7 @@ namespace NoraBar.ViewModels
                 {
                     if (value && _currentLyrics == null && !string.IsNullOrEmpty(_currentTrackName))
                     {
-                        int currentRequestId = ++_lyricsRequestId;
+                        int currentRequestId = System.Threading.Interlocked.Increment(ref _lyricsRequestId);
                         System.Windows.Application.Current.Dispatcher.Invoke(() =>
                         {
                             CurrentLyric = LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LoadingLyrics);
@@ -189,7 +189,7 @@ namespace NoraBar.ViewModels
                     return;
                 }
 
-                int currentRequestId = ++_lyricsRequestId;
+                int currentRequestId = System.Threading.Interlocked.Increment(ref _lyricsRequestId);
 
                 _currentTrackName = newTrackName;
                 _currentArtistName = newArtistName;
@@ -358,6 +358,7 @@ namespace NoraBar.ViewModels
         private void UpdateCurrentLyric(TimeSpan position)
         {
             var lyrics = _currentLyrics;
+            int lyricsRequestId = System.Threading.Volatile.Read(ref _lyricsRequestId);
             if (lyrics == null || lyrics.Count == 0 || !ShowLyrics)
             {
                 return;
@@ -378,6 +379,12 @@ namespace NoraBar.ViewModels
 
             System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
+                if (lyricsRequestId != System.Threading.Volatile.Read(ref _lyricsRequestId)
+                    || !ReferenceEquals(lyrics, _currentLyrics))
+                {
+                    return;
+                }
+
                 if (newIndex != _currentLyricIndex)
                 {
                     if (_currentLyricIndex >= 0 && _currentLyricIndex < LyricsList.Count)
@@ -392,9 +399,8 @@ namespace NoraBar.ViewModels
                         LyricsList[_currentLyricIndex].IsCurrent = true;
                     }
 
-                    var currentLyrics = _currentLyrics;
-                    string currentText = (currentLyrics != null && _currentLyricIndex >= 0 && _currentLyricIndex < currentLyrics.Count)
-                        ? currentLyrics[_currentLyricIndex].Text
+                    string currentText = (_currentLyricIndex >= 0 && _currentLyricIndex < lyrics.Count)
+                        ? lyrics[_currentLyricIndex].Text
                         : "";
                     if (CurrentLyric != currentText)
                     {
@@ -406,7 +412,7 @@ namespace NoraBar.ViewModels
 
         private async System.Threading.Tasks.Task FetchLyricsAsync(int currentRequestId, string tTitle, string tArtist, string tAlbum)
         {
-            if (currentRequestId != _lyricsRequestId)
+            if (currentRequestId != System.Threading.Volatile.Read(ref _lyricsRequestId))
             {
                 return;
             }
@@ -418,7 +424,7 @@ namespace NoraBar.ViewModels
 
             var result = await _lyricsService.GetLyricsAsync(tTitle, tArtist, tAlbum, _lastDurationSeconds);
             
-            if (currentRequestId != _lyricsRequestId)
+            if (currentRequestId != System.Threading.Volatile.Read(ref _lyricsRequestId))
             {
                 return;
             }

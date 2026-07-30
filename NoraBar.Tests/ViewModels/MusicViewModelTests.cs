@@ -26,6 +26,47 @@ public sealed class MusicViewModelTests
         }, StaTimeout);
     }
 
+    [Fact]
+    public void UpdateCurrentLyric_WhenTrackChangesBeforeDispatcherExecution_IgnoresStaleResult()
+    {
+        StaTestRunner.Run(cancellationToken =>
+        {
+            RunWithApplication(() =>
+            {
+                var viewModel = new MusicViewModel();
+                viewModel.ShowLyrics = true;
+                (FieldInfo lyricsField, MethodInfo updateMethod) = GetLyricsMembers();
+                FieldInfo requestIdField = Assert.IsAssignableFrom<FieldInfo>(
+                    typeof(MusicViewModel).GetField(
+                        "_lyricsRequestId",
+                        BindingFlags.NonPublic | BindingFlags.Instance));
+                lyricsField.SetValue(
+                    viewModel,
+                    new List<LyricLine>
+                    {
+                        new() { StartTime = TimeSpan.FromSeconds(1), Text = "Track A line 1" },
+                        new() { StartTime = TimeSpan.FromSeconds(5), Text = "Track A line 2" }
+                    });
+
+                updateMethod.Invoke(viewModel, [TimeSpan.FromSeconds(6)]);
+                requestIdField.SetValue(viewModel, 1);
+                lyricsField.SetValue(
+                    viewModel,
+                    new List<LyricLine>
+                    {
+                        new() { StartTime = TimeSpan.FromSeconds(1), Text = "Track B line 1" },
+                        new() { StartTime = TimeSpan.FromSeconds(5), Text = "Track B line 2" }
+                    });
+                viewModel.CurrentLyric = "Track B current";
+
+                DrainDispatcher(cancellationToken);
+
+                Assert.Equal("Track B current", viewModel.CurrentLyric);
+                Assert.Equal(-1, viewModel.CurrentLyricIndex);
+            });
+        }, StaTimeout);
+    }
+
     private static void VerifyClearedLyricsRemainSafe(
         CancellationToken cancellationToken)
     {
