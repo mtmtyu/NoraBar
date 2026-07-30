@@ -282,4 +282,37 @@ public class MainViewModelSettingsTests
         Assert.Equal("LON", viewModel.WorldClockEntries[0].Label);
         Assert.Equal("NYC", viewModel.WorldClockEntries[1].Label);
     }
+
+    [Fact]
+    public void AddWorldClock_UsesSelectedTimeZoneLabel_NotNew()
+    {
+        var viewModel = new MainViewModel();
+        viewModel.WorldClockEntries.Clear();
+
+        viewModel.AddWorldClockCommand.Execute(null);
+
+        Assert.Single(viewModel.WorldClockEntries);
+        Assert.NotEqual("NEW", viewModel.WorldClockEntries[0].Label);
+        Assert.Equal("UTC", viewModel.WorldClockEntries[0].Label);
+    }
+
+    [Fact]
+    public void WorldClockEntry_ChangingTimeZoneId_UpdatesLabelToMatchTimeZoneAbbreviation()
+    {
+        var item = new WorldClockEntryViewModel("UTC", "UTC", () => { });
+
+        item.TimeZoneId = "Tokyo Standard Time";
+
+        Assert.Equal("JST", item.Label);
+    }
+
+    [Fact]
+    public void GetDefaultLabelForTimeZone_ReturnsExpectedAbbreviations()
+    {
+        Assert.Equal("UTC", WorldClockEntryViewModel.GetDefaultLabelForTimeZone("UTC"));
+        Assert.Equal("JST", WorldClockEntryViewModel.GetDefaultLabelForTimeZone("Tokyo Standard Time"));
+        Assert.Equal("EST", WorldClockEntryViewModel.GetDefaultLabelForTimeZone("Eastern Standard Time"));
+        Assert.Equal("PST", WorldClockEntryViewModel.GetDefaultLabelForTimeZone("Pacific Standard Time"));
+        Assert.Equal("GMT", WorldClockEntryViewModel.GetDefaultLabelForTimeZone("GMT Standard Time"));
+    }
 }

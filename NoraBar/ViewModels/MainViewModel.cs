@@ -639,7 +639,8 @@ namespace NoraBar.ViewModels
             {
                 if (WorldClockEntries.Count < 3)
                 {
-                    WorldClockEntries.Add(new WorldClockEntryViewModel("NEW", "UTC", OnWorldClockChanged));
+                    string defaultTimeZoneId = "UTC";
+                    WorldClockEntries.Add(new WorldClockEntryViewModel(WorldClockEntryViewModel.GetDefaultLabelForTimeZone(defaultTimeZoneId), defaultTimeZoneId, OnWorldClockChanged));
                     OnWorldClockChanged();
                 }
             });
@@ -1285,8 +1286,191 @@ namespace NoraBar.ViewModels
             {
                 if (!string.IsNullOrWhiteSpace(value) && SetProperty(ref _timeZoneId, value))
                 {
+                    Label = GetDefaultLabelForTimeZone(value);
                     _onChanged();
                 }
+            }
+        }
+
+        public static string GetDefaultLabelForTimeZone(string timeZoneId)
+        {
+            if (string.IsNullOrWhiteSpace(timeZoneId))
+            {
+                return "UTC";
+            }
+
+            if (string.Equals(timeZoneId, "Local", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    timeZoneId = TimeZoneInfo.Local.Id;
+                }
+                catch
+                {
+                    return "LOCAL";
+                }
+            }
+
+            return GetAbbreviationForTimeZoneId(timeZoneId);
+        }
+
+        private static string GetAbbreviationForTimeZoneId(string timeZoneId)
+        {
+            switch (timeZoneId)
+            {
+                case "UTC":
+                case "Coordinated Universal Time":
+                case "Etc/UTC":
+                case "Etc/GMT":
+                    return "UTC";
+
+                case "Tokyo Standard Time":
+                case "Asia/Tokyo":
+                    return "JST";
+
+                case "Eastern Standard Time":
+                case "America/New_York":
+                    return "EST";
+
+                case "Pacific Standard Time":
+                case "America/Los_Angeles":
+                    return "PST";
+
+                case "Central Standard Time":
+                case "America/Chicago":
+                    return "CST";
+
+                case "Mountain Standard Time":
+                case "America/Denver":
+                    return "MST";
+
+                case "GMT Standard Time":
+                case "Greenwich Standard Time":
+                case "Europe/London":
+                    return "GMT";
+
+                case "W. Europe Standard Time":
+                case "Central Europe Standard Time":
+                case "Romance Standard Time":
+                case "Central European Standard Time":
+                case "Europe/Paris":
+                case "Europe/Berlin":
+                case "Europe/Rome":
+                    return "CET";
+
+                case "E. Europe Standard Time":
+                case "Europe/Bucharest":
+                case "Europe/Athens":
+                    return "EET";
+
+                case "China Standard Time":
+                case "Asia/Shanghai":
+                    return "CST";
+
+                case "Korea Standard Time":
+                case "Asia/Seoul":
+                    return "KST";
+
+                case "Singapore Standard Time":
+                case "Asia/Singapore":
+                    return "SGT";
+
+                case "Taipei Standard Time":
+                case "Asia/Taipei":
+                    return "CST";
+
+                case "India Standard Time":
+                case "Asia/Kolkata":
+                case "Asia/Calcutta":
+                    return "IST";
+
+                case "AUS Eastern Standard Time":
+                case "Australia/Sydney":
+                case "Australia/Melbourne":
+                    return "AEST";
+
+                case "AUS Central Standard Time":
+                case "Australia/Adelaide":
+                    return "ACST";
+
+                case "W. Australia Standard Time":
+                case "Australia/Perth":
+                    return "AWST";
+
+                case "Tasmania Standard Time":
+                case "Australia/Hobart":
+                    return "AEST";
+
+                case "New Zealand Standard Time":
+                case "Pacific/Auckland":
+                    return "NZST";
+
+                case "Hawaiian Standard Time":
+                case "Pacific/Honolulu":
+                    return "HST";
+
+                case "Alaskan Standard Time":
+                case "America/Anchorage":
+                    return "AKST";
+
+                case "Atlantic Standard Time":
+                case "America/Halifax":
+                    return "AST";
+
+                case "Argentina Standard Time":
+                case "America/Buenos_Aires":
+                    return "ART";
+
+                case "E. South America Standard Time":
+                case "America/Sao_Paulo":
+                    return "BRT";
+
+                case "SA Pacific Standard Time":
+                case "America/Lima":
+                    return "PET";
+
+                case "Arabian Standard Time":
+                case "Asia/Dubai":
+                    return "GST";
+
+                case "Arabic Standard Time":
+                case "Asia/Riyadh":
+                    return "AST";
+
+                case "Israel Standard Time":
+                case "Asia/Jerusalem":
+                    return "IST";
+
+                case "Turkey Standard Time":
+                case "Europe/Istanbul":
+                    return "TRT";
+
+                case "Russian Standard Time":
+                case "Moscow Standard Time":
+                case "Europe/Moscow":
+                    return "MSK";
+            }
+
+            try
+            {
+                TimeZoneInfo zone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+                string standardName = zone.StandardName;
+                string initials = string.Concat(
+                    standardName.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                               .Where(w => w.Length > 0 && char.IsLetter(w[0]) && char.IsUpper(w[0]))
+                               .Select(w => w[0]));
+
+                if (!string.IsNullOrWhiteSpace(initials) && initials.Length >= 2 && initials.Length <= 6)
+                {
+                    return initials;
+                }
+
+                TimeSpan offset = zone.BaseUtcOffset;
+                return offset >= TimeSpan.Zero ? $"UTC+{(int)offset.TotalHours}" : $"UTC{(int)offset.TotalHours}";
+            }
+            catch
+            {
+                return timeZoneId.Length <= 6 ? timeZoneId.ToUpperInvariant() : "UTC";
             }
         }
     }
