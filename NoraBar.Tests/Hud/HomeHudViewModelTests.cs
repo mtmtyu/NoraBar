@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Reflection;
 using System.Windows.Threading;
 using NoraBar.Hud.Home;
 using NoraBar.ViewModels;
@@ -8,6 +9,46 @@ namespace NoraBar.Tests.Hud;
 
 public sealed class HomeHudViewModelTests
 {
+    [Fact]
+    public void WorldClockItems_RepeatedClockRefreshesReuseCollectionWithoutReplacementNotification()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var source = new TestMainViewModel();
+            DateTimeOffset now = new(2026, 1, 1, 12, 0, 0, TimeSpan.Zero);
+            var viewModel = new HomeHudViewModel(
+                source,
+                new DispatcherTimer(DispatcherPriority.Background),
+                () => now);
+            var changedProperties = new List<string?>();
+            viewModel.PropertyChanged += (_, args) => changedProperties.Add(args.PropertyName);
+
+            try
+            {
+                viewModel.Initialize();
+                IReadOnlyList<HomeWorldClockItemViewModel> boundCollection = viewModel.WorldClockItems;
+                MethodInfo refreshClock = typeof(HomeHudViewModel).GetMethod(
+                    "RefreshClock",
+                    BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?? throw new InvalidOperationException("RefreshClock was not found.");
+                changedProperties.Clear();
+
+                now = now.AddSeconds(1);
+                refreshClock.Invoke(viewModel, null);
+                now = now.AddSeconds(1);
+                refreshClock.Invoke(viewModel, null);
+
+                Assert.Same(boundCollection, viewModel.WorldClockItems);
+                Assert.DoesNotContain(nameof(HomeHudViewModel.WorldClockItems), changedProperties);
+            }
+            finally
+            {
+                viewModel.Dispose();
+                source.Music.Cleanup();
+            }
+        });
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]
@@ -45,7 +86,7 @@ public sealed class HomeHudViewModelTests
                 Assert.Contains(nameof(HomeHudViewModel.MediaTitle), changedProperties);
                 Assert.Contains(nameof(HomeHudViewModel.FirstWorldClockLabel), changedProperties);
                 Assert.Contains(nameof(HomeHudViewModel.SecondWorldClockLabel), changedProperties);
-                Assert.Contains(nameof(HomeHudViewModel.WorldClockItems), changedProperties);
+                Assert.DoesNotContain(nameof(HomeHudViewModel.WorldClockItems), changedProperties);
                 Assert.Equal(1, invalidationCount);
             }
             finally
@@ -71,6 +112,7 @@ public sealed class HomeHudViewModelTests
             try
             {
                 viewModel.Initialize();
+                IReadOnlyList<HomeWorldClockItemViewModel> boundCollection = viewModel.WorldClockItems;
 
                 // Setup deterministic 3 entries
                 while (source.WorldClockEntries.Count < 3)
@@ -107,6 +149,7 @@ public sealed class HomeHudViewModelTests
                 string secondLabel = secondItem.Label;
 
                 source.MoveWorldClockDownCommand.Execute(firstItem);
+                Assert.Same(boundCollection, viewModel.WorldClockItems);
                 Assert.Equal(secondLabel.ToUpperInvariant(), viewModel.WorldClockItems[0].Label);
                 Assert.Equal(firstLabel.ToUpperInvariant(), viewModel.WorldClockItems[1].Label);
             }

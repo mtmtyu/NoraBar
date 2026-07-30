@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Windows.Threading;
 using NoraBar.Models;
@@ -14,6 +15,9 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
     private readonly MainViewModel _viewModel;
     private readonly DispatcherTimer _clockTimer;
     private readonly Func<DateTimeOffset> _getNow;
+    private readonly List<HomeWorldClockItemViewModel> _worldClockItems = new();
+    private readonly ReadOnlyCollection<HomeWorldClockItemViewModel> _worldClockItemsReadOnly;
+    private readonly List<WorldClockEntryViewModel> _worldClockSources = new();
     private bool _isInitialized;
     private bool _isDisposed;
 
@@ -39,6 +43,7 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
         _viewModel = viewModel;
         _clockTimer = clockTimer;
         _getNow = getNow;
+        _worldClockItemsReadOnly = _worldClockItems.AsReadOnly();
     }
 
     public HomeHudDesignVariant DesignVariant => _viewModel.HomeHudDesignVariant;
@@ -95,8 +100,7 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
 
     public string SecondWorldClockTimeText => WorldClockItems.Count > 1 ? WorldClockItems[1].TimeText : string.Empty;
 
-    private readonly List<HomeWorldClockItemViewModel> _worldClockItems = new();
-    public IReadOnlyList<HomeWorldClockItemViewModel> WorldClockItems => _worldClockItems.AsReadOnly();
+    public IReadOnlyList<HomeWorldClockItemViewModel> WorldClockItems => _worldClockItemsReadOnly;
 
     public event EventHandler? PresentationInvalidated;
 
@@ -154,6 +158,19 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
         LocalDateText = HomeHudClockFormatter.FormatDate(now, _viewModel.SelectedLanguage);
 
         var entries = _viewModel.WorldClockEntries;
+        bool collectionChanged = entries.Count != _worldClockSources.Count;
+        if (!collectionChanged)
+        {
+            for (int i = 0; i < entries.Count; i++)
+            {
+                if (!ReferenceEquals(entries[i], _worldClockSources[i]))
+                {
+                    collectionChanged = true;
+                    break;
+                }
+            }
+        }
+
         // Synchronize _worldClockItems length with entries
         while (_worldClockItems.Count < entries.Count)
         {
@@ -162,6 +179,11 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
         while (_worldClockItems.Count > entries.Count)
         {
             _worldClockItems.RemoveAt(_worldClockItems.Count - 1);
+        }
+        if (collectionChanged)
+        {
+            _worldClockSources.Clear();
+            _worldClockSources.AddRange(entries);
         }
 
         for (int i = 0; i < entries.Count; i++)
@@ -179,7 +201,10 @@ internal sealed class HomeHudViewModel : ViewModelBase, IHomeHudPresentationSour
         OnPropertyChanged(nameof(SecondWorldClockLabel));
         OnPropertyChanged(nameof(FirstWorldClockTimeText));
         OnPropertyChanged(nameof(SecondWorldClockTimeText));
-        OnPropertyChanged(nameof(WorldClockItems));
+        if (collectionChanged)
+        {
+            OnPropertyChanged(nameof(WorldClockItems));
+        }
     }
 
     private static DateTimeOffset ConvertTime(DateTimeOffset value, string timeZoneId)
