@@ -10,6 +10,13 @@ using NoraBar.Views.Helpers;
 
 namespace NoraBar.Views.Home;
 
+public enum HomeWidgetCustomizerResult
+{
+    None,
+    Applied,
+    Cancelled
+}
+
 public partial class HomeWidgetCustomizerWindow : Window
 {
     private DynamicWidgetHomeView? _previewView;
@@ -17,6 +24,7 @@ public partial class HomeWidgetCustomizerWindow : Window
     private readonly AnimatedReorderHelper _reorderHelper;
 
     public MainViewModel? MainViewModel { get; set; }
+    public HomeWidgetCustomizerResult Result { get; private set; }
 
     public HomeWidgetCustomizerWindow()
     {
@@ -164,13 +172,13 @@ public partial class HomeWidgetCustomizerWindow : Window
 
     private void CancelAndClose()
     {
-        DialogResult = false;
+        Result = HomeWidgetCustomizerResult.Cancelled;
         Close();
     }
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
-        DialogResult = true;
+        Result = HomeWidgetCustomizerResult.Applied;
         Close();
     }
 

@@ -248,6 +248,39 @@ public sealed class HomeWidgetViewLifecycleTests
     }
 
     [Fact]
+    public void CustomizerCloseActions_AreSafeForNonModalWindowsAndExposeResult()
+    {
+        StaTestRunner.Run(() =>
+        {
+            AssertCloseResult("CancelButton_Click", "Cancelled");
+            AssertCloseResult("SaveButton_Click", "Applied");
+
+            var normallyClosedWindow = new HomeWidgetCustomizerWindow();
+            normallyClosedWindow.Show();
+            normallyClosedWindow.Close();
+            Assert.Equal("None", GetResult(normallyClosedWindow));
+        });
+
+        static void AssertCloseResult(string handlerName, string expectedResult)
+        {
+            var window = new HomeWidgetCustomizerWindow();
+            window.Show();
+            MethodInfo handler = typeof(HomeWidgetCustomizerWindow).GetMethod(
+                handlerName,
+                BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException($"{handlerName} was not found.");
+
+            handler.Invoke(window, new object[] { window, new RoutedEventArgs() });
+
+            Assert.False(window.IsVisible);
+            Assert.Equal(expectedResult, GetResult(window));
+        }
+
+        static string? GetResult(HomeWidgetCustomizerWindow window) =>
+            typeof(HomeWidgetCustomizerWindow).GetProperty("Result")?.GetValue(window)?.ToString();
+    }
+
+    [Fact]
     public void WidgetCatalogPreview_UnloadedDisposesViewAndClearsContent()
     {
         StaTestRunner.Run(() =>
