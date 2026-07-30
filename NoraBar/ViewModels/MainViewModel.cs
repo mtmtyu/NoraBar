@@ -752,6 +752,17 @@ namespace NoraBar.ViewModels
             RestartVisualizerCommand = new RelayCommand(_ => Music.RestartVisualizer());
         }
 
+        public void ReorderWorldClock(int fromIndex, int toIndex)
+        {
+            if (fromIndex >= 0 && fromIndex < WorldClockEntries.Count &&
+                toIndex >= 0 && toIndex < WorldClockEntries.Count &&
+                fromIndex != toIndex)
+            {
+                WorldClockEntries.Move(fromIndex, toIndex);
+                OnWorldClockChanged();
+            }
+        }
+
         private async Task ResetAllSettingsAsync()
         {
             IsResetDialogOpen = false;

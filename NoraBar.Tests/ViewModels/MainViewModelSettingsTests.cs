@@ -266,4 +266,20 @@ public class MainViewModelSettingsTests
         Assert.Equal(BuiltInHudIds.Home, router.CurrentHudId);
         Assert.True(viewModel.IsWidgetEditMode);
     }
+
+    [Fact]
+    public void ReorderWorldClock_MovesWorldClockEntriesCorrectly()
+    {
+        var viewModel = new MainViewModel();
+        viewModel.WorldClockEntries.Clear();
+        var item1 = new WorldClockEntryViewModel("NYC", "UTC", () => { });
+        var item2 = new WorldClockEntryViewModel("LON", "UTC", () => { });
+        viewModel.WorldClockEntries.Add(item1);
+        viewModel.WorldClockEntries.Add(item2);
+
+        viewModel.ReorderWorldClock(0, 1);
+
+        Assert.Equal("LON", viewModel.WorldClockEntries[0].Label);
+        Assert.Equal("NYC", viewModel.WorldClockEntries[1].Label);
+    }
 }

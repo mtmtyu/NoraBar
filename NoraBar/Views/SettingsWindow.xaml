@@ -217,6 +217,75 @@
             </Setter>
         </Style>
 
+        <!-- TextBox Dark Theme Style -->
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#1AFFFFFF"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="CaretBrush" Value="White"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="BorderBrush" Value="#20FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="FontFamily" Value="Segoe UI, Yu Gothic UI, Meiryo"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="Brd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4"
+                                SnapsToDevicePixels="True">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          Focusable="False"
+                                          HorizontalScrollBarVisibility="Hidden"
+                                          VerticalScrollBarVisibility="Hidden"
+                                          Margin="{TemplateBinding Padding}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Brd" Property="Background" Value="#25FFFFFF"/>
+                                <Setter TargetName="Brd" Property="BorderBrush" Value="#30FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Brd" Property="Background" Value="#25FFFFFF"/>
+                                <Setter TargetName="Brd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Brd" Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Square Action Button Style (used for item reorder/remove buttons) -->
+        <Style x:Key="SettingSquareButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#1AFFFFFF"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Brd" Background="{TemplateBinding Background}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Brd" Property="Background" Value="#25FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Setting Card Border Style -->
         <Style x:Key="SettingCardStyle" TargetType="Border">
             <Setter Property="Background" Value="#0DFFFFFF" />
@@ -818,11 +887,9 @@
                                                     <TextBlock Grid.Column="2" Text="{Binding DisplayName}" Foreground="White"
                                                                VerticalAlignment="Center"/>
                                                     <Button Grid.Column="3" Content="↑" Click="HudModuleMoveUp_Click" ToolTip="{Binding MoveUpText}" AutomationProperties.Name="{Binding MoveUpText}"
-                                                            Width="28" Height="26" Margin="4,0" Background="#1AFFFFFF"
-                                                            Foreground="White" BorderThickness="0"/>
+                                                            Style="{StaticResource SettingSquareButtonStyle}" Margin="4,0"/>
                                                     <Button Grid.Column="4" Content="↓" Click="HudModuleMoveDown_Click" ToolTip="{Binding MoveDownText}" AutomationProperties.Name="{Binding MoveDownText}"
-                                                            Width="28" Height="26" Background="#1AFFFFFF"
-                                                            Foreground="White" BorderThickness="0"/>
+                                                            Style="{StaticResource SettingSquareButtonStyle}"/>
                                                 </Grid>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
@@ -1171,40 +1238,42 @@
                                             <TextBlock Text="{Binding WorldClocksDescriptionText}" Style="{StaticResource CardSubHeaderStyle}"/>
                                         </StackPanel>
 
-                                        <ItemsControl ItemsSource="{Binding WorldClockEntries}">
+                                        <ItemsControl x:Name="WorldClocksItemsControl" ItemsSource="{Binding WorldClockEntries}"
+                                                      PreviewMouseLeftButtonDown="WorldClocks_PreviewMouseLeftButtonDown"
+                                                      PreviewMouseMove="WorldClocks_PreviewMouseMove"
+                                                      PreviewMouseLeftButtonUp="WorldClocks_PreviewMouseLeftButtonUp">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
                                                     <Grid Margin="0,0,0,8">
                                                         <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="110"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="120"/>
                                                             <ColumnDefinition Width="*"/>
                                                             <ColumnDefinition Width="Auto"/>
                                                         </Grid.ColumnDefinitions>
 
-                                                        <TextBox Grid.Column="0" Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}"
+                                                        <TextBlock Grid.Column="0" Text="&#xE700;" FontFamily="Segoe Fluent Icons" Foreground="#8AFFFFFF" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0" Cursor="SizeAll"/>
+
+                                                        <TextBox Grid.Column="1" Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}"
                                                                  Height="32" Margin="0,0,8,0" MaxLength="12"
                                                                  ToolTip="Clock Label (e.g. NYC, LON)"/>
 
-                                                        <ComboBox Grid.Column="1"
+                                                        <ComboBox Grid.Column="2"
                                                                   ItemsSource="{Binding DataContext.AvailableTimeZones, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                   DisplayMemberPath="DisplayName"
                                                                   SelectedValuePath="Id"
                                                                   SelectedValue="{Binding TimeZoneId}"
                                                                   Height="32" Margin="0,0,8,0"/>
 
-                                                        <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                                            <Button Content="▲" Height="32" Width="30" Margin="0,0,4,0"
-                                                                    ToolTip="Move Up"
-                                                                    Command="{Binding DataContext.MoveWorldClockUpCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                    CommandParameter="{Binding}"/>
-                                                            <Button Content="▼" Height="32" Width="30" Margin="0,0,4,0"
-                                                                    ToolTip="Move Down"
-                                                                    Command="{Binding DataContext.MoveWorldClockDownCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                    CommandParameter="{Binding}"/>
-                                                            <Button Content="✕" Height="32" Width="30"
-                                                                    ToolTip="Remove"
+                                                        <StackPanel Grid.Column="3" Orientation="Horizontal">
+                                                            <Button Content="↑" Click="WorldClockMoveUp_Click" ToolTip="Move Up" AutomationProperties.Name="Move Up"
+                                                                    Style="{StaticResource SettingSquareButtonStyle}" Margin="0,0,4,0"/>
+                                                            <Button Content="↓" Click="WorldClockMoveDown_Click" ToolTip="Move Down" AutomationProperties.Name="Move Down"
+                                                                    Style="{StaticResource SettingSquareButtonStyle}" Margin="0,0,4,0"/>
+                                                            <Button Content="✕" ToolTip="Remove" AutomationProperties.Name="Remove"
                                                                     Command="{Binding DataContext.RemoveWorldClockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                    CommandParameter="{Binding}"/>
+                                                                    CommandParameter="{Binding}"
+                                                                    Style="{StaticResource SettingSquareButtonStyle}"/>
                                                         </StackPanel>
                                                     </Grid>
                                                 </DataTemplate>
@@ -1214,7 +1283,21 @@
                                         <Button Command="{Binding AddWorldClockCommand}"
                                                 Content="{Binding AddClockButtonText}"
                                                 HorizontalAlignment="Left"
-                                                Margin="0,4,0,0" Padding="12,6"/>
+                                                Margin="0,6,0,0" Padding="12,5" Height="32"
+                                                Background="#1AFFFFFF" Foreground="White" BorderBrush="#20FFFFFF" BorderThickness="1">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="Brd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="Brd" Property="Background" Value="#25FFFFFF"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>

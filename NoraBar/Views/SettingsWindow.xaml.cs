@@ -20,6 +20,7 @@ namespace NoraBar.Views
         private bool _isCloseAnimationCompleted = false;
         private bool _isClosingApp = false;
         private readonly AnimatedReorderHelper _hudModulesReorderHelper;
+        private readonly AnimatedReorderHelper _worldClocksReorderHelper;
 
         public void ForceClose()
         {
@@ -57,6 +58,10 @@ namespace NoraBar.Views
                 {
                     _ = _viewModel.HudNavigation.ReorderAsync(fromIdx, toIdx);
                 }
+            });
+            _worldClocksReorderHelper = new AnimatedReorderHelper(WorldClocksItemsControl, (fromIdx, toIdx) =>
+            {
+                _viewModel?.ReorderWorldClock(fromIdx, toIdx);
             });
             
             // Clean up event handler on unload to prevent memory leaks
@@ -380,6 +385,45 @@ namespace NoraBar.Views
                 if (index >= 0 && index < _viewModel.HudNavigation.Items.Count - 1)
                 {
                     _hudModulesReorderHelper.AnimateSwap(index, index + 1);
+                }
+            }
+        }
+
+        private void WorldClocks_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _worldClocksReorderHelper.HandlePreviewMouseLeftButtonDown(sender, e);
+        }
+
+        private void WorldClocks_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            _worldClocksReorderHelper.HandlePreviewMouseMove(sender, e);
+        }
+
+        private void WorldClocks_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            _worldClocksReorderHelper.HandlePreviewMouseLeftButtonUp(sender, e);
+        }
+
+        private void WorldClockMoveUp_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.DataContext is WorldClockEntryViewModel item && _viewModel != null)
+            {
+                int index = _viewModel.WorldClockEntries.IndexOf(item);
+                if (index > 0)
+                {
+                    _worldClocksReorderHelper.AnimateSwap(index, index - 1);
+                }
+            }
+        }
+
+        private void WorldClockMoveDown_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.DataContext is WorldClockEntryViewModel item && _viewModel != null)
+            {
+                int index = _viewModel.WorldClockEntries.IndexOf(item);
+                if (index >= 0 && index < _viewModel.WorldClockEntries.Count - 1)
+                {
+                    _worldClocksReorderHelper.AnimateSwap(index, index + 1);
                 }
             }
         }
