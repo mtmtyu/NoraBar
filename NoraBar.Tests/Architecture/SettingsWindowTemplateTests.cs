@@ -77,8 +77,65 @@ public sealed class SettingsWindowTemplateTests
         }
     }
 
+    [Fact]
+    public void SettingSquareButtonStyle_ProvidesVisibleKeyboardFocusBorder()
+    {
+        XDocument document = XDocument.Load(GetSettingsWindowXamlPath());
+        XElement window = Assert.IsType<XElement>(document.Root);
+        
+        XElement buttonStyle = Assert.Single(
+            window.Descendants(PresentationNamespace + "Style"),
+            element => string.Equals(
+                (string?)element.Attribute(XName.Get("Key", XamlNamespaceName)),
+                "SettingSquareButtonStyle",
+                StringComparison.Ordinal));
+        
+        AssertSetter(
+            buttonStyle,
+            null,
+            "FocusVisualStyle",
+            "{x:Null}");
+
+        XElement template = Assert.Single(
+            buttonStyle.Descendants(PresentationNamespace + "ControlTemplate"));
+        XElement keyboardFocusTrigger = Assert.Single(
+            template.Descendants(PresentationNamespace + "Trigger"),
+            trigger => string.Equals(
+                (string?)trigger.Attribute("Property"),
+                "IsKeyboardFocused",
+                StringComparison.Ordinal));
+        
+        AssertSetter(
+            keyboardFocusTrigger,
+            "Brd",
+            "BorderBrush",
+            "{StaticResource AccentBrush}");
+    }
+
     private const string XamlNamespaceName =
         "http://schemas.microsoft.com/winfx/2006/xaml";
+
+    private static void AssertSetter(
+        XElement setterOwner,
+        string? targetName,
+        string property,
+        string value)
+    {
+        Assert.Contains(
+            setterOwner.Elements(PresentationNamespace + "Setter"),
+            setter => string.Equals(
+                    (string?)setter.Attribute("TargetName"),
+                    targetName,
+                    StringComparison.Ordinal)
+                && string.Equals(
+                    (string?)setter.Attribute("Property"),
+                    property,
+                    StringComparison.Ordinal)
+                && string.Equals(
+                    (string?)setter.Attribute("Value"),
+                    value,
+                    StringComparison.Ordinal));
+    }
 
     private static string GetSettingsWindowXamlPath()
     {
