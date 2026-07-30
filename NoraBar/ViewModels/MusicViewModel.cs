@@ -136,6 +136,7 @@ namespace NoraBar.ViewModels
                     }
                     else if (!value)
                     {
+                        System.Threading.Interlocked.Increment(ref _lyricsRequestId);
                         CurrentLyric = string.Empty;
                     }
                 }
@@ -439,6 +440,11 @@ namespace NoraBar.ViewModels
             {
                 _ = System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                 {
+                    if (currentRequestId != System.Threading.Volatile.Read(ref _lyricsRequestId) || !ShowLyrics)
+                    {
+                        return;
+                    }
+
                     if (result.Error == LyricsResultError.NotFound)
                     {
                         CurrentLyric = LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LyricsNotFound);
