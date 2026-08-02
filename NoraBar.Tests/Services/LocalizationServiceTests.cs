@@ -190,6 +190,50 @@ public class LocalizationServiceTests
         Assert.Equal(expectedWhitelisted, isWhitelisted);
     }
 
+    [Theory]
+    [InlineData("yyyy/MM/dd")]
+    [InlineData("HH:mm:ss")]
+    [InlineData("ddd, MMM dd")]
+    [InlineData("MM-dd HH:mm")]
+    [InlineData("yyyy年MM月dd日")]
+    [InlineData("HH時mm分ss秒")]
+    [InlineData(" yyyy / MM / dd ")]
+    public void IsWhitelistedText_AcceptsCompleteDateTimeFormats(string text)
+    {
+        Assert.True(IsWhitelistedText(text));
+    }
+
+    [Theory]
+    [InlineData("ddisabled")]
+    [InlineData("MModern View")]
+    [InlineData("MMMModern View")]
+    [InlineData("yyyySettings")]
+    [InlineData("HHHello")]
+    [InlineData("yyyy-MM-dd Settings")]
+    [InlineData("Date: yyyy/MM/dd")]
+    [InlineData("HH:mm enabled")]
+    [InlineData("prefix yyyy/MM/dd")]
+    [InlineData("yyyy/MM/dd suffix")]
+    [InlineData("yyyy/MM/dd!")]
+    public void IsWhitelistedText_RejectsDateTokensEmbeddedInLocalizedText(string text)
+    {
+        Assert.False(IsWhitelistedText(text));
+    }
+
+    [Theory]
+    [InlineData("", true)]
+    [InlineData("   ", true)]
+    [InlineData("-", true)]
+    [InlineData("...", true)]
+    [InlineData("!", true)]
+    [InlineData("Settings", false)]
+    public void IsWhitelistedText_HandlesEmptyAndPunctuationValues(
+        string text,
+        bool expectedWhitelisted)
+    {
+        Assert.Equal(expectedWhitelisted, IsWhitelistedText(text));
+    }
+
     private static bool IsWhitelistedText(string text)
     {
         if (string.IsNullOrWhiteSpace(text)) return true;
