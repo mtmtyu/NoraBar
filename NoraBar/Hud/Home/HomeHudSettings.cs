@@ -28,7 +28,8 @@ internal sealed record HomeHudSettings(
         new("LON", "GMT Standard Time")
     }.AsReadOnly();
 
-    public IReadOnlyList<HomeWidgetConfig> EffectiveWidgets => Widgets is { Count: > 0 } ? Widgets : DefaultWidgetsList;
+    public IReadOnlyList<HomeWidgetConfig> EffectiveWidgets =>
+        Widgets ?? DefaultWidgetsList;
 
     public IReadOnlyList<HomeWorldClockEntry> EffectiveWorldClocks => WorldClocks is { Count: > 0 } ? WorldClocks : DefaultWorldClocksList;
 

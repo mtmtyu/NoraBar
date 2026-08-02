@@ -53,6 +53,23 @@ public sealed class HomeWidgetSettingsTests
     }
 
     [Fact]
+    public void WriteAndRead_PreservesEmptyWidgetList()
+    {
+        UserSettings settings = new UserSettings();
+        HomeHudSettings defaults = HomeHudSettings.Default;
+        var customSettings = new HomeHudSettings(
+            defaults.DesignVariant,
+            defaults.TimeFormat,
+            defaults.EffectiveWorldClocks,
+            []);
+
+        HomeHudSettingsJson.Write(settings, customSettings);
+        HomeHudSettings reloaded = HomeHudSettingsJson.Read(settings);
+
+        Assert.Empty(reloaded.EffectiveWidgets);
+    }
+
+    [Fact]
     public void WriteAndRead_PreservesMediaArtworkHoverStyle()
     {
         UserSettings settings = new UserSettings();

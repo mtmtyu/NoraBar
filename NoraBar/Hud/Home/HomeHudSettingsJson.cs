@@ -181,7 +181,9 @@ internal static class HomeHudSettingsJson
             list.Add(new HomeWidgetConfig(id, type, style));
         }
 
-        return list.Count > 0 ? list.AsReadOnly() : null;
+        return list.Count > 0 || widgetsElement.GetArrayLength() == 0
+            ? list.AsReadOnly()
+            : null;
     }
 
     private static JsonObject ReadExistingObject(UserSettings settings)
