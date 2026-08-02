@@ -29,4 +29,28 @@ internal static class BestEffortResourceReleaser
                 exceptions);
         }
     }
+
+    internal static void ReleaseAllAndReport(
+        Action<Exception> reportFailure,
+        params Action[] operations)
+    {
+        ArgumentNullException.ThrowIfNull(reportFailure);
+
+        try
+        {
+            ReleaseAll(operations);
+        }
+        catch (AggregateException exception)
+        {
+            try
+            {
+                reportFailure(exception);
+            }
+            catch (Exception reportingException)
+            {
+                System.Diagnostics.Trace.TraceError(
+                    $"Resource cleanup failure reporting failed: {reportingException}");
+            }
+        }
+    }
 }

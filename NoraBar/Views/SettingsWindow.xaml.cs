@@ -1,16 +1,26 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using NoraBar.Hud.Music;
+using NoraBar.Hud;
+using NoraBar.Hud.Home;
+using NoraBar.Services;
+using NoraBar.Views.Home;
 using NoraBar.ViewModels;
+using NoraBar.Views.Helpers;
 
 namespace NoraBar.Views
 {
     public partial class SettingsWindow : Window
     {
         private MainViewModel? _viewModel;
+        private readonly HomePreviewSession _homePreviewSession = new();
         private bool _isCloseAnimationCompleted = false;
         private bool _isClosingApp = false;
+        private readonly AnimatedReorderHelper _hudModulesReorderHelper;
+        private readonly AnimatedReorderHelper _worldClocksReorderHelper;
 
         public void ForceClose()
         {
@@ -21,6 +31,7 @@ namespace NoraBar.Views
         public void ShowWindow()
         {
             this.Show();
+            UpdatePreview();
             this.Activate();
             if (this.WindowState == WindowState.Minimized)
             {
@@ -41,6 +52,17 @@ namespace NoraBar.Views
         public SettingsWindow()
         {
             InitializeComponent();
+            _hudModulesReorderHelper = new AnimatedReorderHelper(HudModulesItemsControl, (fromIdx, toIdx) =>
+            {
+                if (_viewModel?.HudNavigation != null)
+                {
+                    _ = _viewModel.HudNavigation.ReorderAsync(fromIdx, toIdx);
+                }
+            });
+            _worldClocksReorderHelper = new AnimatedReorderHelper(WorldClocksItemsControl, (fromIdx, toIdx) =>
+            {
+                _viewModel?.ReorderWorldClock(fromIdx, toIdx);
+            });
             
             // Clean up event handler on unload to prevent memory leaks
             this.Unloaded += (s, e) =>
@@ -49,7 +71,12 @@ namespace NoraBar.Views
                 {
                     _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
                     _viewModel.Music.PropertyChanged -= MusicViewModel_PropertyChanged;
+                    if (_viewModel.HudNavigation is not null)
+                    {
+                        _viewModel.HudNavigation.PropertyChanged -= HudNavigation_PropertyChanged;
+                    }
                 }
+                SuspendPreview();
             };
         }
 
@@ -106,13 +133,13 @@ namespace NoraBar.Views
                     sb = sb.Clone();
                     sb.Completed += (s, ev) =>
                     {
-                        this.Hide();
+                        SuspendPreviewAndHide();
                     };
                     sb.Begin(this);
                 }
                 else
                 {
-                    this.Hide();
+                    SuspendPreviewAndHide();
                 }
             }
         }
@@ -123,12 +150,20 @@ namespace NoraBar.Views
             {
                 oldVm.PropertyChanged -= ViewModel_PropertyChanged;
                 oldVm.Music.PropertyChanged -= MusicViewModel_PropertyChanged;
+                if (oldVm.HudNavigation is not null)
+                {
+                    oldVm.HudNavigation.PropertyChanged -= HudNavigation_PropertyChanged;
+                }
             }
             if (e.NewValue is MainViewModel newVm)
             {
                 _viewModel = newVm;
                 _viewModel.PropertyChanged += ViewModel_PropertyChanged;
                 _viewModel.Music.PropertyChanged += MusicViewModel_PropertyChanged;
+                if (_viewModel.HudNavigation is not null)
+                {
+                    _viewModel.HudNavigation.PropertyChanged += HudNavigation_PropertyChanged;
+                }
                 UpdatePreview();
                 UpdateOverlayVisibilities();
             }
@@ -142,11 +177,29 @@ namespace NoraBar.Views
             {
                 Dispatcher.Invoke(UpdatePreview);
             }
+            else if (e.PropertyName is nameof(MainViewModel.HomeHudDesignVariant)
+                or nameof(MainViewModel.HomeHudTimeFormat)
+                or nameof(MainViewModel.FirstWorldClockLabel)
+                or nameof(MainViewModel.FirstWorldClockTimeZoneId)
+                or nameof(MainViewModel.SecondWorldClockLabel)
+                or nameof(MainViewModel.SecondWorldClockTimeZoneId)
+                or nameof(MainViewModel.SelectedLanguage))
+            {
+                Dispatcher.Invoke(UpdatePreview);
+            }
             else if (e.PropertyName == nameof(MainViewModel.IsLicenseDialogOpen) || 
                      e.PropertyName == nameof(MainViewModel.IsUpdateDialogOpen) ||
                      e.PropertyName == nameof(MainViewModel.IsResetDialogOpen))
             {
                 Dispatcher.Invoke(UpdateOverlayVisibilities);
+            }
+        }
+
+        private void HudNavigation_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(HudNavigationViewModel.SelectedSettingsHudId))
+            {
+                Dispatcher.Invoke(UpdatePreview);
             }
         }
 
@@ -227,9 +280,45 @@ namespace NoraBar.Views
             }
         }
 
+        private void SuspendPreviewAndHide() =>
+            BestEffortResourceReleaser.ReleaseAllAndReport(
+                ReportCleanupFailure,
+                SuspendPreview,
+                Hide);
+        internal void SuspendPreview()
+        {
+            _homePreviewSession.Suspend(
+                () => PreviewHost.Content = null,
+                ReportCleanupFailure);
+        }
+
         private void UpdatePreview()
         {
             if (_viewModel == null) return;
+
+            SuspendPreview();
+            if (!IsVisible)
+            {
+                return;
+            }
+
+            if (string.Equals(
+                    _viewModel.HudNavigation?.SelectedSettingsHudId,
+                    BuiltInHudIds.Home,
+                    StringComparison.Ordinal))
+            {
+                _homePreviewSession.Show(
+                    () => HomeHudPreviewFactory.Create(_viewModel),
+                    preview =>
+                    {
+                        PreviewHost.Content = preview.View;
+                        PreviewHost.Width = preview.PreferredSize.Width;
+                        PreviewHost.Height = preview.PreferredSize.Height;
+                    },
+                    () => PreviewHost.Content = null,
+                    ReportCleanupFailure);
+                return;
+            }
 
             MusicHudPreview preview = MusicHudPreviewFactory.Create(
                 _viewModel.CurrentVariant,
@@ -241,6 +330,102 @@ namespace NoraBar.Views
             PreviewHost.Content = preview.View;
             PreviewHost.Width = preview.PreferredSize.Width;
             PreviewHost.Height = preview.PreferredSize.Height;
+        }
+
+        private static void ReportCleanupFailure(Exception exception) =>
+            Trace.TraceError($"Settings preview cleanup failed: {exception}");
+
+        private async void OpenWidgetCustomizer_Click(object sender, RoutedEventArgs e)
+        {
+            if (_viewModel is null) return;
+
+            try
+            {
+                await _viewModel.EnterWidgetEditModeAsync();
+                WindowState = WindowState.Minimized;
+            }
+            catch (Exception exception)
+            {
+                Trace.TraceError(exception.ToString());
+            }
+        }
+
+        private void HudModules_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _hudModulesReorderHelper.HandlePreviewMouseLeftButtonDown(sender, e);
+        }
+
+        private void HudModules_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            _hudModulesReorderHelper.HandlePreviewMouseMove(sender, e);
+        }
+
+        private void HudModules_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            _hudModulesReorderHelper.HandlePreviewMouseLeftButtonUp(sender, e);
+        }
+
+        private void HudModuleMoveUp_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.DataContext is HudNavigationItemViewModel item && _viewModel?.HudNavigation != null)
+            {
+                int index = _viewModel.HudNavigation.Items.IndexOf(item);
+                if (index > 0)
+                {
+                    _hudModulesReorderHelper.AnimateSwap(index, index - 1);
+                }
+            }
+        }
+
+        private void HudModuleMoveDown_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.DataContext is HudNavigationItemViewModel item && _viewModel?.HudNavigation != null)
+            {
+                int index = _viewModel.HudNavigation.Items.IndexOf(item);
+                if (index >= 0 && index < _viewModel.HudNavigation.Items.Count - 1)
+                {
+                    _hudModulesReorderHelper.AnimateSwap(index, index + 1);
+                }
+            }
+        }
+
+        private void WorldClocks_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _worldClocksReorderHelper.HandlePreviewMouseLeftButtonDown(sender, e);
+        }
+
+        private void WorldClocks_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            _worldClocksReorderHelper.HandlePreviewMouseMove(sender, e);
+        }
+
+        private void WorldClocks_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            _worldClocksReorderHelper.HandlePreviewMouseLeftButtonUp(sender, e);
+        }
+
+        private void WorldClockMoveUp_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.DataContext is WorldClockEntryViewModel item && _viewModel != null)
+            {
+                int index = _viewModel.WorldClockEntries.IndexOf(item);
+                if (index > 0)
+                {
+                    _worldClocksReorderHelper.AnimateSwap(index, index - 1);
+                }
+            }
+        }
+
+        private void WorldClockMoveDown_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.DataContext is WorldClockEntryViewModel item && _viewModel != null)
+            {
+                int index = _viewModel.WorldClockEntries.IndexOf(item);
+                if (index >= 0 && index < _viewModel.WorldClockEntries.Count - 1)
+                {
+                    _worldClocksReorderHelper.AnimateSwap(index, index + 1);
+                }
+            }
         }
     }
 }

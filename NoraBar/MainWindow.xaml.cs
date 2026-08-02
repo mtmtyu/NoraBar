@@ -2,14 +2,17 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using NoraBar.Hud;
 using NoraBar.Services;
 using NoraBar.ViewModels;
+using NoraBar.Models;
 
 using ContextMenuStrip = System.Windows.Forms.ContextMenuStrip;
 using NotifyIcon = System.Windows.Forms.NotifyIcon;
@@ -24,11 +27,17 @@ public partial class MainWindow : Window
     private const double CollapsedHeight = 2;
     private const int AnimationDurationMilliseconds = 400;
     private const double ExitOffset = -150;
+    private const double RightRailNavigationWidth = 48;
+    private const double TopTabNavigationHeight = 40;
+    private const int WindowNonClientHitTestMessage = 0x0084;
+    private static readonly IntPtr TransparentHitTestResult = new(-1);
 
     private readonly MainViewModel _viewModel;
     private readonly HudRouter _hudRouter;
     private readonly Func<Task> _requestShutdownAsync;
+    private readonly HudOpacityTransitionState _opacityTransitionState = new();
     private Views.SettingsWindow? _settingsWindow;
+    private HwndSource? _windowSource;
     private NotifyIcon? _notifyIcon;
     private ToolStripMenuItem? _settingsTrayMenuItem;
     private ToolStripMenuItem? _exitTrayMenuItem;
@@ -41,6 +50,7 @@ public partial class MainWindow : Window
     private int _hudRouterDetached;
     private int _shellResourcesReleased;
     private int _presentationRevision;
+    private int _navigationInFlight;
 
     public MainWindow(
         MainViewModel viewModel,
@@ -65,6 +75,13 @@ public partial class MainWindow : Window
         ApplyWindowPosition();
         InitializeSystemTray();
         UpdateLocalizedShellText();
+    }
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        _windowSource = PresentationSource.FromVisual(this) as HwndSource;
+        _windowSource?.AddHook(WindowMessageHook);
     }
 
     protected override async void OnContentRendered(EventArgs e)
@@ -122,9 +139,18 @@ public partial class MainWindow : Window
         }
 
         IslandHost.Content = evaluation.View;
+        var desiredContainerSize = new HudSize(
+            GetPresentationWidth(evaluation.PreferredSize.Width),
+            GetPresentationHeight(evaluation.PreferredSize.Height));
+        HudInteractiveSizeTargets sizeTargets = HudInteractiveSizePolicy.ResolveTargets(
+            evaluation.PreferredSize,
+            desiredContainerSize,
+            new HudSize(HudBorder.ActualWidth, HudBorder.ActualHeight),
+            HudBorder.IsMouseOver);
+        HudInteractiveSizePolicy.ApplyContentLayout(IslandHost, sizeTargets);
         AnimateSize(
-            evaluation.PreferredSize.Width,
-            evaluation.PreferredSize.Height,
+            sizeTargets.ContainerSize.Width,
+            sizeTargets.ContainerSize.Height,
             collapseContent: false);
     }
 
@@ -186,12 +212,72 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _windowSource?.RemoveHook(WindowMessageHook);
+        _windowSource = null;
         DetachHudRouter();
         ReleaseShellResources();
         base.OnClosed(e);
     }
 
     internal bool IsShutdownRequested => Volatile.Read(ref _shutdownRequested) != 0;
+
+    private IntPtr WindowMessageHook(
+        IntPtr hwnd,
+        int message,
+        IntPtr wParam,
+        IntPtr lParam,
+        ref bool handled)
+    {
+        if (message != WindowNonClientHitTestMessage
+            || !NativeMethods.GetCursorPos(out NativePoint cursorPosition))
+        {
+            return IntPtr.Zero;
+        }
+
+        Point windowPoint;
+        try
+        {
+            windowPoint = PointFromScreen(
+                new Point(cursorPosition.X, cursorPosition.Y));
+        }
+        catch (InvalidOperationException)
+        {
+            return IntPtr.Zero;
+        }
+
+        Rect hudBounds = GetElementBounds(HudBorder) ?? Rect.Empty;
+        Rect? paletteBounds = GetElementBounds(WidgetPaletteOverlay);
+        if (HudInputHitTestPolicy.IsInteractive(
+                windowPoint,
+                hudBounds,
+                paletteBounds))
+        {
+            return IntPtr.Zero;
+        }
+
+        handled = true;
+        return TransparentHitTestResult;
+    }
+
+    private Rect? GetElementBounds(FrameworkElement element)
+    {
+        if (!element.IsVisible
+            || element.ActualWidth <= 0
+            || element.ActualHeight <= 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            GeneralTransform transform = element.TransformToAncestor(this);
+            return transform.TransformBounds(new Rect(element.RenderSize));
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
 
     private void HudRouter_PresentationChanged(object? sender, EventArgs e)
     {
@@ -214,9 +300,13 @@ public partial class MainWindow : Window
         {
             Dispatcher.Invoke(ApplyWindowPosition);
         }
-        else if (e.PropertyName == nameof(MainViewModel.IsPositionEditMode))
+        else if (e.PropertyName is nameof(MainViewModel.IsPositionEditMode) or nameof(MainViewModel.IsWidgetEditMode))
         {
             Dispatcher.Invoke(UpdateEditModeVisuals);
+        }
+        else if (e.PropertyName == nameof(MainViewModel.HudNavigationPlacement))
+        {
+            Dispatcher.Invoke(RefreshHudPresentation);
         }
         else
         {
@@ -302,6 +392,15 @@ public partial class MainWindow : Window
                 Color.FromArgb(0x40, 0x00, 0xFF, 0x00));
             HudBorder.Cursor = Cursors.SizeAll;
             _hudRouter.SetPresentationState(HudPresentationState.Expanded);
+            return;
+        }
+
+        if (_viewModel.IsWidgetEditMode)
+        {
+            HudBorder.Background = new SolidColorBrush(
+                Color.FromArgb(0x20, 0x64, 0xB5, 0xF6));
+            HudBorder.Cursor = Cursors.Arrow;
+            _hudRouter.SetPresentationState(HudPresentationState.Pinned);
             return;
         }
 
@@ -408,13 +507,6 @@ public partial class MainWindow : Window
         {
             EasingFunction = easing
         };
-        var opacityAnimation = new DoubleAnimation(
-            collapseContent ? 0.0 : 1.0,
-            duration)
-        {
-            EasingFunction = easing
-        };
-
         if (collapseContent)
         {
             widthAnimation.Completed += (_, _) =>
@@ -425,19 +517,34 @@ public partial class MainWindow : Window
                 }
             };
         }
-        else
+        if (_opacityTransitionState.TryTransition(collapseContent))
         {
-            IslandHost.Opacity = 0.0;
+            double currentOpacity = HudPresentationHost.Opacity;
+            bool transitionWasInterrupted = HudPresentationHost.HasAnimatedProperties;
+            HudPresentationHost.BeginAnimation(OpacityProperty, null);
+            HudPresentationHost.Opacity = !collapseContent && !transitionWasInterrupted
+                ? 0.0
+                : currentOpacity;
+            var opacityAnimation = new DoubleAnimation(
+                collapseContent ? 0.0 : 1.0,
+                duration)
+            {
+                EasingFunction = easing
+            };
+            HudPresentationHost.BeginAnimation(OpacityProperty, opacityAnimation);
+        }
+        else if (collapseContent && !HudPresentationHost.HasAnimatedProperties)
+        {
+            HudPresentationHost.Opacity = 0.0;
         }
 
         HudBorder.BeginAnimation(WidthProperty, widthAnimation);
         HudBorder.BeginAnimation(HeightProperty, heightAnimation);
-        IslandHost.BeginAnimation(OpacityProperty, opacityAnimation);
     }
 
     private void HudBorder_MouseEnter(object sender, MouseEventArgs e)
     {
-        if (IsShutdownRequested || _viewModel.IsPositionEditMode)
+        if (IsShutdownRequested || _viewModel.IsPositionEditMode || _viewModel.IsWidgetEditMode)
         {
             return;
         }
@@ -447,7 +554,7 @@ public partial class MainWindow : Window
 
     private void HudBorder_MouseLeave(object sender, MouseEventArgs e)
     {
-        if (IsShutdownRequested || _viewModel.IsPositionEditMode)
+        if (IsShutdownRequested || _viewModel.IsPositionEditMode || _viewModel.IsWidgetEditMode)
         {
             return;
         }
@@ -498,6 +605,60 @@ public partial class MainWindow : Window
         _viewModel.WindowLeft = Left;
         _viewModel.WindowTop = Top;
         _viewModel.HasCustomPosition = true;
+    }
+
+    private async void HudNavigation_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        HudNavigationViewModel? navigation = _viewModel.HudNavigation;
+        if (navigation is null || e.Delta == 0)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        if (Interlocked.Exchange(ref _navigationInFlight, 1) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await navigation.NavigateRelativeAsync(e.Delta < 0 ? 1 : -1);
+        }
+        catch (OperationCanceledException) when (IsShutdownRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            Trace.TraceError(exception.ToString());
+        }
+        finally
+        {
+            Volatile.Write(ref _navigationInFlight, 0);
+        }
+    }
+
+    private double GetPresentationWidth(double moduleWidth)
+    {
+        return UsesRightRailNavigation()
+                ? moduleWidth + RightRailNavigationWidth
+                : moduleWidth;
+    }
+
+    private double GetPresentationHeight(double moduleHeight)
+    {
+        HudNavigationViewModel? navigation = _viewModel.HudNavigation;
+        return navigation is { ShowNavigation: true }
+            && _viewModel.HudNavigationPlacement == HudNavigationPlacement.TopTabs
+                ? moduleHeight + TopTabNavigationHeight
+                : moduleHeight;
+    }
+
+    private bool UsesRightRailNavigation()
+    {
+        HudNavigationViewModel? navigation = _viewModel.HudNavigation;
+        return navigation is { ShowNavigation: true }
+            && _viewModel.HudNavigationPlacement == HudNavigationPlacement.RightRail;
     }
 
     private void OpenSettings_Click(object sender, RoutedEventArgs e)
@@ -557,5 +718,19 @@ public partial class MainWindow : Window
                     MessageBoxImage.Error);
             }
         }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private readonly struct NativePoint
+    {
+        internal readonly int X;
+        internal readonly int Y;
+    }
+
+    private static class NativeMethods
+    {
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool GetCursorPos(out NativePoint point);
     }
 }

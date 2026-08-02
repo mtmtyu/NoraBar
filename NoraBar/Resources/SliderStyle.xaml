@@ -1,0 +1,184 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- RepeatButton Style for Horizontal Slider Track -->
+    <Style x:Key="SliderTrackDecreaseButtonStyle" TargetType="{x:Type RepeatButton}">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type RepeatButton}">
+                    <Border Background="#FF64B5F6" Height="4" CornerRadius="2" VerticalAlignment="Center"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SliderTrackIncreaseButtonStyle" TargetType="{x:Type RepeatButton}">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type RepeatButton}">
+                    <Border Background="Transparent" Height="4" VerticalAlignment="Center"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- RepeatButton Style for Vertical Slider Track -->
+    <Style x:Key="SliderVerticalTrackDecreaseButtonStyle" TargetType="{x:Type RepeatButton}">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type RepeatButton}">
+                    <Border Background="#FF64B5F6" Width="4" CornerRadius="2" HorizontalAlignment="Center"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SliderVerticalTrackIncreaseButtonStyle" TargetType="{x:Type RepeatButton}">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type RepeatButton}">
+                    <Border Background="Transparent" Width="4" HorizontalAlignment="Center"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Slider Thumb Template -->
+    <ControlTemplate x:Key="SliderThumbTemplate" TargetType="{x:Type Thumb}">
+        <Grid x:Name="ThumbGrid" Width="18" Height="18" Background="Transparent">
+            <Ellipse x:Name="ThumbEllipse"
+                     Width="14" Height="14"
+                     Fill="#FFFFFF"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center">
+                <Ellipse.Effect>
+                    <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.45" Color="Black"/>
+                </Ellipse.Effect>
+            </Ellipse>
+            <Ellipse x:Name="ThumbCore"
+                     Width="6" Height="6"
+                     Fill="#FF64B5F6"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center"
+                     Opacity="0"/>
+        </Grid>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="ThumbEllipse" Property="Width" Value="16"/>
+                <Setter TargetName="ThumbEllipse" Property="Height" Value="16"/>
+                <Setter TargetName="ThumbCore" Property="Opacity" Value="1"/>
+            </Trigger>
+            <Trigger Property="IsDragging" Value="True">
+                <Setter TargetName="ThumbEllipse" Property="Width" Value="16"/>
+                <Setter TargetName="ThumbEllipse" Property="Height" Value="16"/>
+                <Setter TargetName="ThumbEllipse" Property="Fill" Value="#FF64B5F6"/>
+                <Setter TargetName="ThumbCore" Property="Fill" Value="#FFFFFF"/>
+                <Setter TargetName="ThumbCore" Property="Opacity" Value="1"/>
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
+    <!-- Horizontal Slider ControlTemplate -->
+    <ControlTemplate x:Key="HorizontalSliderTemplate" TargetType="{x:Type Slider}">
+        <Grid x:Name="GridRoot" SnapsToDevicePixels="True" VerticalAlignment="Center">
+            <Border x:Name="FocusRing" BorderBrush="#FF60CDFF" BorderThickness="2" CornerRadius="6" Opacity="0"/>
+            <!-- Background Track -->
+            <Border x:Name="TrackBackground"
+                    Height="4"
+                    Background="#30FFFFFF"
+                    CornerRadius="2"
+                    VerticalAlignment="Center"/>
+
+            <!-- Track Component -->
+            <Track x:Name="PART_Track" VerticalAlignment="Center">
+                <Track.DecreaseRepeatButton>
+                    <RepeatButton Command="{x:Static Slider.DecreaseLarge}" Style="{StaticResource SliderTrackDecreaseButtonStyle}"/>
+                </Track.DecreaseRepeatButton>
+                <Track.Thumb>
+                    <Thumb x:Name="Thumb" Style="{x:Null}" Template="{StaticResource SliderThumbTemplate}" Focusable="False"/>
+                </Track.Thumb>
+                <Track.IncreaseRepeatButton>
+                    <RepeatButton Command="{x:Static Slider.IncreaseLarge}" Style="{StaticResource SliderTrackIncreaseButtonStyle}"/>
+                </Track.IncreaseRepeatButton>
+            </Track>
+        </Grid>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                <Setter TargetName="FocusRing" Property="Opacity" Value="1"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="TrackBackground" Property="Background" Value="#15FFFFFF"/>
+                <Setter TargetName="GridRoot" Property="Opacity" Value="0.4"/>
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
+    <!-- Vertical Slider ControlTemplate -->
+    <ControlTemplate x:Key="VerticalSliderTemplate" TargetType="{x:Type Slider}">
+        <Grid x:Name="GridRoot" SnapsToDevicePixels="True" HorizontalAlignment="Center">
+            <Border x:Name="FocusRing" BorderBrush="#FF60CDFF" BorderThickness="2" CornerRadius="6" Opacity="0"/>
+            <!-- Background Track -->
+            <Border x:Name="TrackBackground"
+                    Width="4"
+                    Background="#30FFFFFF"
+                    CornerRadius="2"
+                    HorizontalAlignment="Center"/>
+
+            <!-- Track Component -->
+            <Track x:Name="PART_Track" HorizontalAlignment="Center">
+                <Track.DecreaseRepeatButton>
+                    <RepeatButton Command="{x:Static Slider.DecreaseLarge}" Style="{StaticResource SliderVerticalTrackDecreaseButtonStyle}"/>
+                </Track.DecreaseRepeatButton>
+                <Track.Thumb>
+                    <Thumb x:Name="Thumb" Style="{x:Null}" Template="{StaticResource SliderThumbTemplate}" Focusable="False"/>
+                </Track.Thumb>
+                <Track.IncreaseRepeatButton>
+                    <RepeatButton Command="{x:Static Slider.IncreaseLarge}" Style="{StaticResource SliderVerticalTrackIncreaseButtonStyle}"/>
+                </Track.IncreaseRepeatButton>
+            </Track>
+        </Grid>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                <Setter TargetName="FocusRing" Property="Opacity" Value="1"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="TrackBackground" Property="Background" Value="#15FFFFFF"/>
+                <Setter TargetName="GridRoot" Property="Opacity" Value="0.4"/>
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
+    <!-- Global implicit Slider Style -->
+    <Style TargetType="{x:Type Slider}">
+        <Setter Property="Stylus.IsPressAndHoldEnabled" Value="False"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="IsMoveToPointEnabled" Value="True"/>
+        <Setter Property="Height" Value="24"/>
+        <Setter Property="Template" Value="{StaticResource HorizontalSliderTemplate}"/>
+        <Style.Triggers>
+            <Trigger Property="Orientation" Value="Vertical">
+                <Setter Property="Height" Value="Auto"/>
+                <Setter Property="Width" Value="24"/>
+                <Setter Property="Template" Value="{StaticResource VerticalSliderTemplate}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+</ResourceDictionary>

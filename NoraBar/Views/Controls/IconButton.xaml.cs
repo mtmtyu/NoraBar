@@ -24,6 +24,13 @@ namespace NoraBar.Views.Controls
             set => SetValue(CommandProperty, value);
         }
 
+        static IconButton()
+        {
+            WidthProperty.OverrideMetadata(typeof(IconButton), new FrameworkPropertyMetadata(40.0));
+            HeightProperty.OverrideMetadata(typeof(IconButton), new FrameworkPropertyMetadata(40.0));
+            FontSizeProperty.OverrideMetadata(typeof(IconButton), new FrameworkPropertyMetadata(16.0));
+        }
+
         public IconButton()
         {
             InitializeComponent();

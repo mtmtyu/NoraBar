@@ -8,6 +8,15 @@ using System.Threading.Tasks;
 
 namespace NoraBar.Services
 {
+    public interface ILyricsService
+    {
+        Task<LyricsResult> GetLyricsAsync(
+            string trackName,
+            string artistName,
+            string? albumName,
+            double durationInSeconds);
+    }
+
     public class LyricLine
     {
         public TimeSpan StartTime { get; set; }
@@ -52,7 +61,7 @@ namespace NoraBar.Services
         public string PlainLyrics { get; set; } = string.Empty;
     }
 
-    public class LyricsService
+    public class LyricsService : ILyricsService
     {
         private readonly HttpClient _httpClient;
         private readonly Dictionary<string, List<LyricLine>> _cache = new();

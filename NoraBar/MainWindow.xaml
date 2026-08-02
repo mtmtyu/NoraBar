@@ -3,8 +3,11 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:models="clr-namespace:NoraBar.Models"
+        xmlns:homeViews="clr-namespace:NoraBar.Views.Home"
+        xmlns:system="clr-namespace:System;assembly=System.Runtime"
         mc:Ignorable="d"
-        Title="NoraBar" Height="250" Width="800"
+        Title="NoraBar" Height="650" Width="1200"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -13,7 +16,62 @@
         WindowStartupLocation="Manual"
         Icon="Assets/AppIcon.ico">
 
-    <Grid>
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <SolidColorBrush x:Key="HudNavigationToolTipBackgroundBrush" Color="#F0202020"/>
+        <SolidColorBrush x:Key="HudNavigationToolTipBorderBrush" Color="#66FFFFFF"/>
+        <SolidColorBrush x:Key="RightRailNavigationBackgroundBrush" Color="#D9202020"/>
+        <SolidColorBrush x:Key="RightRailNavigationBorderBrush" Color="#CCFFFFFF"/>
+        <SolidColorBrush x:Key="RightRailNavigationForegroundBrush" Color="#FFFFFFFF"/>
+        <SolidColorBrush x:Key="RightRailNavigationHoverBackgroundBrush" Color="#F2FFFFFF"/>
+        <SolidColorBrush x:Key="RightRailNavigationHoverBorderBrush" Color="#E6202020"/>
+        <SolidColorBrush x:Key="RightRailNavigationHoverForegroundBrush" Color="#FF202020"/>
+        <SolidColorBrush x:Key="RightRailNavigationCurrentBackgroundBrush" Color="#FFFFFFFF"/>
+        <SolidColorBrush x:Key="RightRailNavigationCurrentBorderBrush" Color="#FF202020"/>
+        <SolidColorBrush x:Key="RightRailNavigationCurrentForegroundBrush" Color="#FF202020"/>
+        <SolidColorBrush x:Key="RightRailNavigationFocusBorderBrush" Color="#FF60CDFF"/>
+        <system:Int32 x:Key="HudNavigationToolTipInitialShowDelay">250</system:Int32>
+        <system:Int32 x:Key="HudNavigationToolTipBetweenShowDelay">100</system:Int32>
+        <system:Int32 x:Key="HudNavigationToolTipShowDuration">5000</system:Int32>
+
+        <Style x:Key="HudNavigationToolTipStyle" TargetType="{x:Type ToolTip}">
+            <Setter Property="Placement" Value="Left"/>
+            <Setter Property="HorizontalOffset" Value="-8"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ToolTip}">
+                        <Border Background="{StaticResource HudNavigationToolTipBackgroundBrush}"
+                                BorderBrush="{StaticResource HudNavigationToolTipBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="10,6">
+                            <ContentPresenter Content="{TemplateBinding Content}"
+                                              TextElement.Foreground="White"
+                                              TextElement.FontSize="12"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="RightRailNavigationButtonStyle" TargetType="{x:Type Button}">
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Margin" Value="0,4"/>
+            <Setter Property="Background" Value="{StaticResource RightRailNavigationBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource RightRailNavigationBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="{StaticResource RightRailNavigationForegroundBrush}"/>
+            <Setter Property="ToolTipService.InitialShowDelay"
+                    Value="{StaticResource HudNavigationToolTipInitialShowDelay}"/>
+            <Setter Property="ToolTipService.BetweenShowDelay"
+                    Value="{StaticResource HudNavigationToolTipBetweenShowDelay}"/>
+            <Setter Property="ToolTipService.ShowDuration"
+                    Value="{StaticResource HudNavigationToolTipShowDuration}"/>
+        </Style>
+    </Window.Resources>
+
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Top">
         <!-- HudBorder is the main interactive container for the island. In idle, it's 200x2 and invisible. -->
         <Border x:Name="HudBorder"
                 HorizontalAlignment="Center"
@@ -39,9 +97,163 @@
                 </ContextMenu>
             </Border.ContextMenu>
 
-            <ContentControl x:Name="IslandHost"
-                            HorizontalAlignment="Stretch"
-                            VerticalAlignment="Stretch"/>
+            <Grid x:Name="HudPresentationHost">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <ItemsControl Grid.Row="0" Grid.ColumnSpan="2"
+                              ItemsSource="{Binding HudNavigation.EnabledItems}"
+                              PreviewMouseWheel="HudNavigation_PreviewMouseWheel"
+                              Margin="8,6,8,4">
+                    <ItemsControl.Style>
+                        <Style TargetType="ItemsControl">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding HudNavigation.ShowNavigation}" Value="True"/>
+                                        <Condition Binding="{Binding HudNavigationPlacement}" Value="{x:Static models:HudNavigationPlacement.TopTabs}"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ItemsControl.Style>
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Command="{Binding NavigateCommand}" AutomationProperties.Name="{Binding DisplayName}" Margin="3,0" Padding="12,5"
+                                    Background="Transparent" BorderThickness="0" Foreground="#A8FFFFFF"
+                                    ToolTip="{Binding DisplayName}">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="TabBackground" Background="{TemplateBinding Background}"
+                                                CornerRadius="12" Padding="{TemplateBinding Padding}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding IconText}" FontFamily="Segoe Fluent Icons"
+                                                           Margin="0,0,7,0"/>
+                                                <TextBlock Text="{Binding DisplayName}"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                <Setter TargetName="TabBackground" Property="Background" Value="#26FFFFFF"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                            </DataTrigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="TabBackground" Property="Background" Value="#1AFFFFFF"/>
+                                            </Trigger>
+                                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                                <Setter TargetName="TabBackground" Property="BorderBrush"
+                                                        Value="{StaticResource RightRailNavigationFocusBorderBrush}"/>
+                                                <Setter TargetName="TabBackground" Property="BorderThickness" Value="2"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <ContentControl x:Name="IslandHost"
+                                Grid.Row="1"
+                                Grid.Column="0"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                VerticalContentAlignment="Stretch"/>
+
+                <ItemsControl Grid.Row="1" Grid.Column="1"
+                              ItemsSource="{Binding HudNavigation.EnabledItems}"
+                              PreviewMouseWheel="HudNavigation_PreviewMouseWheel"
+                              Margin="6,8,8,8"
+                              VerticalAlignment="Center">
+                    <ItemsControl.Style>
+                        <Style TargetType="ItemsControl">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding HudNavigation.ShowNavigation}" Value="True"/>
+                                        <Condition Binding="{Binding HudNavigationPlacement}" Value="{x:Static models:HudNavigationPlacement.RightRail}"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ItemsControl.Style>
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Vertical"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Command="{Binding NavigateCommand}"
+                                    Style="{StaticResource RightRailNavigationButtonStyle}"
+                                    AutomationProperties.Name="{Binding DisplayName}">
+                                <Button.ToolTip>
+                                    <ToolTip Content="{Binding PlacementTarget.DataContext.DisplayName,
+                                                              RelativeSource={RelativeSource Self}}"
+                                             Style="{StaticResource HudNavigationToolTipStyle}"/>
+                                </Button.ToolTip>
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="IconBackground" Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="17">
+                                            <TextBlock Text="{Binding IconText}" FontFamily="Segoe Fluent Icons"
+                                                       FontSize="16" HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                <Setter TargetName="IconBackground" Property="Background"
+                                                        Value="{StaticResource RightRailNavigationCurrentBackgroundBrush}"/>
+                                                <Setter TargetName="IconBackground" Property="BorderBrush"
+                                                        Value="{StaticResource RightRailNavigationCurrentBorderBrush}"/>
+                                                <Setter Property="Foreground"
+                                                        Value="{StaticResource RightRailNavigationCurrentForegroundBrush}"/>
+                                            </DataTrigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="IconBackground" Property="Background"
+                                                        Value="{StaticResource RightRailNavigationHoverBackgroundBrush}"/>
+                                                <Setter TargetName="IconBackground" Property="BorderBrush"
+                                                        Value="{StaticResource RightRailNavigationHoverBorderBrush}"/>
+                                                <Setter Property="Foreground"
+                                                        Value="{StaticResource RightRailNavigationHoverForegroundBrush}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                                <Setter TargetName="IconBackground" Property="BorderBrush"
+                                                        Value="{StaticResource RightRailNavigationFocusBorderBrush}"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Grid>
         </Border>
-    </Grid>
+
+        <!-- Overlay Palette for Widget Edit Mode (Positioned clearly below the HUD with Margin="0,16,0,0") -->
+        <homeViews:WidgetPaletteOverlayView x:Name="WidgetPaletteOverlay"
+                                           VerticalAlignment="Top"
+                                           HorizontalAlignment="Center"
+                                           Margin="0,16,0,0"
+                                           Visibility="{Binding IsWidgetEditMode, Converter={StaticResource BoolToVis}}"/>
+    </StackPanel>
 </Window>

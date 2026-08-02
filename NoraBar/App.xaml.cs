@@ -3,6 +3,7 @@ using System.Threading;
 using System.Windows;
 using NoraBar.Hud;
 using NoraBar.Hud.Music;
+using NoraBar.Hud.Home;
 using NoraBar.Services;
 using NoraBar.ViewModels;
 
@@ -14,11 +15,15 @@ namespace NoraBar;
 public partial class App : Application
 {
     private const string AppMutexName = "NoraBar.AppMutex";
+    private static readonly TimeSpan HomeHudFinalCleanupTimeout =
+        TimeSpan.FromSeconds(5);
 
     private readonly ApplicationExitCoordinator _exitCoordinator;
     private Mutex? _appMutex;
     private MainViewModel? _viewModel;
     private MusicHudModule? _musicHudModule;
+    private HomeHudModule? _homeHudModule;
+    private HudNavigationViewModel? _hudNavigation;
     private HudRegistry? _hudRegistry;
     private HudRouter? _hudRouter;
     private MainWindow? _mainWindow;
@@ -46,14 +51,23 @@ public partial class App : Application
             {
                 _viewModel = new MainViewModel();
                 _musicHudModule = new MusicHudModule(_viewModel);
+                _homeHudModule = new HomeHudModule(_viewModel);
                 _hudRegistry = new HudRegistry();
                 _hudRegistry.Register(_musicHudModule);
+                _hudRegistry.Register(_homeHudModule);
 
                 UserSettings settings = _viewModel.SettingsSnapshot;
                 _hudRouter = new HudRouter(
                     _hudRegistry,
                     settings.DefaultHudId,
                     settings.EnabledHudModuleIds);
+                _hudNavigation = new HudNavigationViewModel(
+                    _hudRouter,
+                    _hudRegistry.Modules,
+                    settings,
+                    _viewModel.SelectedLanguage,
+                    () => SettingsService.Save(settings));
+                _viewModel.AttachHudNavigation(_hudNavigation);
 
                 _mainWindow = new MainWindow(_viewModel, _hudRouter, RequestShutdownAsync);
                 MainWindow = _mainWindow;
@@ -134,6 +148,8 @@ public partial class App : Application
             Capture(_mainWindow.DetachHudRouter, exceptions);
         }
 
+        Capture(() => _hudNavigation?.Dispose(), exceptions);
+
         if (_hudRouter is not null)
         {
             await CaptureAsync(
@@ -145,6 +161,16 @@ public partial class App : Application
         {
             await CaptureAsync(
                 async () => await _hudRegistry.DisposeAsync(),
+                exceptions);
+        }
+
+        if (_homeHudModule is not null)
+        {
+            using var finalCleanupCancellation = new CancellationTokenSource(
+                HomeHudFinalCleanupTimeout);
+            await CaptureAsync(
+                () => _homeHudModule.WaitForFinalCleanupAsync(
+                    finalCleanupCancellation.Token),
                 exceptions);
         }
 

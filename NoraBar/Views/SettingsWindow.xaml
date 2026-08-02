@@ -217,6 +217,80 @@
             </Setter>
         </Style>
 
+        <!-- TextBox Dark Theme Style -->
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#1AFFFFFF"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="CaretBrush" Value="White"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="BorderBrush" Value="#20FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="FontFamily" Value="Segoe UI, Yu Gothic UI, Meiryo"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="Brd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4"
+                                SnapsToDevicePixels="True">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          Focusable="False"
+                                          HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}"
+                                          VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}"
+                                          Margin="{TemplateBinding Padding}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Brd" Property="Background" Value="#25FFFFFF"/>
+                                <Setter TargetName="Brd" Property="BorderBrush" Value="#30FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Brd" Property="Background" Value="#25FFFFFF"/>
+                                <Setter TargetName="Brd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Brd" Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Square Action Button Style (used for item reorder/remove buttons) -->
+        <Style x:Key="SettingSquareButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#1AFFFFFF"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Brd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Brd" Property="Background" Value="#25FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Brd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Setting Card Border Style -->
         <Style x:Key="SettingCardStyle" TargetType="Border">
             <Setter Property="Background" Value="#0DFFFFFF" />
@@ -750,6 +824,84 @@
                             <!-- Shared Display Settings Section -->
                             <TextBlock Text="{Binding SharedDisplaySettingsText}" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,20" FontFamily="Segoe UI Variable, Segoe UI"/>
 
+                            <Border Style="{StaticResource SettingCardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,16,0">
+                                        <TextBlock Text="{Binding NavigationStyleText}" Style="{StaticResource CardHeaderStyle}"/>
+                                        <TextBlock Text="{Binding NavigationStyleDescriptionText}" Style="{StaticResource CardSubHeaderStyle}"/>
+                                    </StackPanel>
+                                    <ComboBox Grid.Column="1"
+                                              ItemsSource="{Binding AvailableNavigationPlacements}"
+                                              DisplayMemberPath="DisplayName"
+                                              SelectedValuePath="Placement"
+                                              SelectedValue="{Binding HudNavigationPlacement}"
+                                              Width="170" Height="32"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource SettingCardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,16,0">
+                                        <TextBlock Text="{Binding StartupHudText}" Style="{StaticResource CardHeaderStyle}"/>
+                                        <TextBlock Text="{Binding StartupHudDescriptionText}" Style="{StaticResource CardSubHeaderStyle}"/>
+                                    </StackPanel>
+                                    <ComboBox Grid.Column="1"
+                                              ItemsSource="{Binding HudNavigation.EnabledItems}"
+                                              DisplayMemberPath="DisplayName"
+                                              SelectedValuePath="Id"
+                                              SelectedValue="{Binding HudNavigation.DefaultHudId}"
+                                              Width="170" Height="32"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource SettingCardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="260"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,16,0">
+                                        <TextBlock Text="{Binding HudModulesText}" Style="{StaticResource CardHeaderStyle}"/>
+                                        <TextBlock Text="{Binding HudModulesDescriptionText}" Style="{StaticResource CardSubHeaderStyle}"/>
+                                    </StackPanel>
+                                     <ItemsControl x:Name="HudModulesItemsControl" Grid.Column="1" ItemsSource="{Binding HudNavigation.Items}"
+                                                   PreviewMouseLeftButtonDown="HudModules_PreviewMouseLeftButtonDown"
+                                                   PreviewMouseMove="HudModules_PreviewMouseMove"
+                                                   PreviewMouseLeftButtonUp="HudModules_PreviewMouseLeftButtonUp">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,3">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                     <TextBlock Grid.Column="0" Text="&#xE700;" FontFamily="Segoe Fluent Icons" Foreground="#8AFFFFFF" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0" Cursor="SizeAll"/>
+                                                     <CheckBox Grid.Column="1" IsChecked="{Binding IsEnabled}" Style="{StaticResource ToggleSwitchStyle}"
+                                                              Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="2" Text="{Binding DisplayName}" Foreground="White"
+                                                               VerticalAlignment="Center"/>
+                                                    <Button Grid.Column="3" Content="↑" Click="HudModuleMoveUp_Click" ToolTip="{Binding MoveUpText}" AutomationProperties.Name="{Binding MoveUpText}"
+                                                            Style="{StaticResource SettingSquareButtonStyle}" Margin="4,0"/>
+                                                    <Button Grid.Column="4" Content="↓" Click="HudModuleMoveDown_Click" ToolTip="{Binding MoveDownText}" AutomationProperties.Name="{Binding MoveDownText}"
+                                                            Style="{StaticResource SettingSquareButtonStyle}"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Grid>
+                            </Border>
+
                             <!-- Card 5: Window Position -->
                             <Border Style="{StaticResource SettingCardStyle}">
                                 <Grid>
@@ -867,8 +1019,10 @@
                                     </StackPanel>
 
                                     <ComboBox Grid.Column="1"
-                                              ItemsSource="{Binding AvailableHuds}"
-                                              SelectedValue="{Binding SelectedHud}"
+                                              ItemsSource="{Binding HudNavigation.Items}"
+                                              DisplayMemberPath="DisplayName"
+                                              SelectedValuePath="Id"
+                                              SelectedValue="{Binding HudNavigation.SelectedSettingsHudId}"
                                               Width="160"
                                               Height="32"
                                               VerticalAlignment="Center">
@@ -876,7 +1030,17 @@
                                 </Grid>
                             </Border>
 
-
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HudNavigation.IsMusicSettingsSelected}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
                             <!-- Card 1: Design Style -->
                             <Border Style="{StaticResource SettingCardStyle}">
                                 <Grid>
@@ -896,9 +1060,9 @@
                                               Width="160"
                                               Height="32"
                                               VerticalAlignment="Center">
-                                        <ComboBoxItem Content="Minimal (Design A)" Tag="{x:Static models:DesignVariant.MinimalFloatingPill}"/>
-                                        <ComboBoxItem Content="Productivity (Design B)" Tag="{x:Static models:DesignVariant.ProductivityCommandIsland}"/>
-                                        <ComboBoxItem Content="Lyrics focused (Design C)" Tag="{x:Static models:DesignVariant.LyricsFocusedSidebar}"/>
+                                        <ComboBoxItem Content="{Binding DesignMinimalText}" Tag="{x:Static models:DesignVariant.MinimalFloatingPill}"/>
+                                        <ComboBoxItem Content="{Binding DesignProductivityText}" Tag="{x:Static models:DesignVariant.ProductivityCommandIsland}"/>
+                                        <ComboBoxItem Content="{Binding DesignLyricsFocusText}" Tag="{x:Static models:DesignVariant.LyricsFocusedSidebar}"/>
                                     </ComboBox>
                                 </Grid>
                             </Border>
@@ -1007,6 +1171,147 @@
                                     </Button>
                                 </Grid>
                             </Border>
+                            </StackPanel>
+
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HudNavigation.IsHomeSettingsSelected}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+
+
+                                 <Border Style="{StaticResource SettingCardStyle}">
+                                     <Grid>
+                                         <Grid.ColumnDefinitions>
+                                             <ColumnDefinition Width="*"/>
+                                             <ColumnDefinition Width="Auto"/>
+                                         </Grid.ColumnDefinitions>
+                                         <StackPanel Margin="0,0,16,0">
+                                             <TextBlock Text="{Binding WidgetLayoutCustomizationText}" Style="{StaticResource CardHeaderStyle}"/>
+                                             <TextBlock Text="{Binding WidgetLayoutCustomizationDescriptionText}" Style="{StaticResource CardSubHeaderStyle}"/>
+                                         </StackPanel>
+                                         <Button Grid.Column="1"
+                                                 Click="OpenWidgetCustomizer_Click"
+                                                 Content="{Binding EditWidgetLayoutButtonText}"
+                                                 Background="#FF64B5F6" Foreground="Black" FontWeight="Bold"
+                                                 Padding="12,6" VerticalAlignment="Center" Height="32" BorderThickness="0" Cursor="Hand">
+                                             <Button.Template>
+                                                 <ControlTemplate TargetType="Button">
+                                                     <Border Background="{TemplateBinding Background}" CornerRadius="4" x:Name="Brd">
+                                                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                     </Border>
+                                                     <ControlTemplate.Triggers>
+                                                         <Trigger Property="IsMouseOver" Value="True">
+                                                             <Setter TargetName="Brd" Property="Background" Value="#FF90CAF9"/>
+                                                         </Trigger>
+                                                     </ControlTemplate.Triggers>
+                                                 </ControlTemplate>
+                                             </Button.Template>
+                                         </Button>
+                                     </Grid>
+                                 </Border>
+
+                                <Border Style="{StaticResource SettingCardStyle}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,16,0">
+                                            <TextBlock Text="{Binding TimeFormatText}" Style="{StaticResource CardHeaderStyle}"/>
+                                            <TextBlock Text="{Binding TimeFormatDescriptionText}" Style="{StaticResource CardSubHeaderStyle}"/>
+                                        </StackPanel>
+                                        <ComboBox Grid.Column="1"
+                                                  ItemsSource="{Binding AvailableHomeTimeFormats}"
+                                                  DisplayMemberPath="DisplayName"
+                                                  SelectedValuePath="Format"
+                                                  SelectedValue="{Binding HomeHudTimeFormat}"
+                                                  Width="190" Height="32"/>
+                                    </Grid>
+                                </Border>
+
+                                <Border Style="{StaticResource SettingCardStyle}">
+                                    <StackPanel>
+                                        <StackPanel Margin="0,0,0,12">
+                                            <TextBlock Text="{Binding WorldClocksText}" Style="{StaticResource CardHeaderStyle}"/>
+                                            <TextBlock Text="{Binding WorldClocksDescriptionText}" Style="{StaticResource CardSubHeaderStyle}"/>
+                                        </StackPanel>
+
+                                        <ItemsControl x:Name="WorldClocksItemsControl" ItemsSource="{Binding WorldClockEntries}"
+                                                      PreviewMouseLeftButtonDown="WorldClocks_PreviewMouseLeftButtonDown"
+                                                      PreviewMouseMove="WorldClocks_PreviewMouseMove"
+                                                      PreviewMouseLeftButtonUp="WorldClocks_PreviewMouseLeftButtonUp">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,0,0,8">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="120"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <TextBlock Grid.Column="0" Text="&#xE700;" FontFamily="Segoe Fluent Icons" Foreground="#8AFFFFFF" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0" Cursor="SizeAll"/>
+
+                                                        <TextBox Grid.Column="1" Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}"
+                                                                 Height="32" Margin="0,0,8,0" MaxLength="12"
+                                                                 ToolTip="{Binding DataContext.WorldClockLabelHintText, RelativeSource={RelativeSource AncestorType=Window}}"/>
+
+                                                        <ComboBox Grid.Column="2"
+                                                                  ItemsSource="{Binding DataContext.AvailableTimeZones, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                  DisplayMemberPath="DisplayName"
+                                                                  SelectedValuePath="Id"
+                                                                  SelectedValue="{Binding TimeZoneId}"
+                                                                  Height="32" Margin="0,0,8,0"/>
+
+                                                        <StackPanel Grid.Column="3" Orientation="Horizontal">
+                                                            <Button Content="↑" Click="WorldClockMoveUp_Click"
+                                                                    ToolTip="{Binding DataContext.MoveUpText, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    AutomationProperties.Name="{Binding DataContext.MoveUpText, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    Style="{StaticResource SettingSquareButtonStyle}" Margin="0,0,4,0"/>
+                                                            <Button Content="↓" Click="WorldClockMoveDown_Click"
+                                                                    ToolTip="{Binding DataContext.MoveDownText, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    AutomationProperties.Name="{Binding DataContext.MoveDownText, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    Style="{StaticResource SettingSquareButtonStyle}" Margin="0,0,4,0"/>
+                                                            <Button Content="✕"
+                                                                    ToolTip="{Binding DataContext.RemoveWorldClockText, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    AutomationProperties.Name="{Binding DataContext.RemoveWorldClockText, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    Command="{Binding DataContext.RemoveWorldClockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Style="{StaticResource SettingSquareButtonStyle}"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <Button Command="{Binding AddWorldClockCommand}"
+                                                Content="{Binding AddClockButtonText}"
+                                                HorizontalAlignment="Left"
+                                                Margin="0,6,0,0" Padding="12,5" Height="32"
+                                                Background="#1AFFFFFF" Foreground="White" BorderBrush="#20FFFFFF" BorderThickness="1">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="Brd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="Brd" Property="Background" Value="#25FFFFFF"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
 
                         </StackPanel>
                     </ScrollViewer>
@@ -1197,7 +1502,7 @@
                                 </Border.Background>
                             </Border>
 
-                            <TextBlock Text="PREVIEW" FontSize="10" FontWeight="Bold" Foreground="#44FFFFFF" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="16,16,0,0"/>
+                            <TextBlock Text="{Binding PreviewBadgeText}" FontSize="10" FontWeight="Bold" Foreground="#44FFFFFF" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="16,16,0,0"/>
 
                             <!-- Center Host for the Active HUD Music Control View -->
                             <Viewbox Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="16">

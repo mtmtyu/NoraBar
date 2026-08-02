@@ -44,12 +44,22 @@ Use Change Position to enter position edit mode, drag the HUD to the desired pos
 
 Disables HUD expansion while a fullscreen application is running on the HUD's screen. This prevents the HUD from opening accidentally during games or fullscreen videos.
 
+#### HUD Navigation Style
+
+Choose a right-side icon rail or top icon-and-name tabs. Navigation appears only while the HUD is expanded or pinned. Click an item or scroll over the navigation area to cycle through enabled HUDs.
+
+#### Startup HUD and Enabled Modules
+
+Choose which enabled HUD opens at startup. Each module can be enabled, disabled, and moved up or down; at least one module always remains enabled. Changes take effect immediately, and disabling the startup or current HUD selects the first remaining module.
+
 
 ### Selected HUD Settings
 
 #### HUD Selection
 
-Select the desktop HUD to configure. Currently, the "Music HUD" is available.
+Select Music or Home to configure it and update the live preview.
+
+### Music HUD
 
 #### Design Style
 
@@ -86,6 +96,20 @@ Controls how track titles and artist names scroll when they are too long to fit 
 #### Restart Audio Visualizer
 
 Resets the audio visualizer. If the waveform visualizer stops reacting or fails to initialize, you can restart only the visualizer component with this button without needing to restart the entire application.
+
+### Home HUD
+
+#### Design
+
+Choose Activity Modules, Classic System Overlay, Fusion Balanced, or Fusion Expressive. Fusion Balanced is the default.
+
+#### Time Format
+
+Use the Windows system format, force a 12-hour clock, or force a 24-hour clock. The date follows NoraBar's display language.
+
+#### World Clocks
+
+Home has two clock slots. Set an independent label and Windows time zone for each slot. The defaults are New York (`Eastern Standard Time`) and London (`GMT Standard Time`).
 
 
 ## About

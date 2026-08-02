@@ -11,8 +11,20 @@ internal static class UserSettingsJson
     {
         try
         {
-            return NormalizeStructure(
-                JsonSerializer.Deserialize<UserSettings>(json, SerializerOptions) ?? new UserSettings());
+            using JsonDocument document = JsonDocument.Parse(json);
+            bool introductionMarkerExists = document.RootElement.ValueKind == JsonValueKind.Object
+                && document.RootElement.TryGetProperty(
+                    nameof(UserSettings.HomeHudIntroductionCompleted),
+                    out _);
+            UserSettings settings =
+                JsonSerializer.Deserialize<UserSettings>(json, SerializerOptions)
+                ?? new UserSettings();
+            if (!introductionMarkerExists)
+            {
+                settings.HomeHudIntroductionCompleted = false;
+            }
+
+            return NormalizeStructure(settings);
         }
         catch (JsonException)
         {
@@ -40,15 +52,17 @@ internal static class UserSettingsJson
             DefaultHudId = string.IsNullOrWhiteSpace(settings.DefaultHudId)
                 ? BuiltInHudIds.Music
                 : settings.DefaultHudId,
-            EnabledHudModuleIds = settings.EnabledHudModuleIds is null
-                ? [BuiltInHudIds.Music]
-                : [.. settings.EnabledHudModuleIds],
+            EnabledHudModuleIds = NormalizeEnabledHudIds(
+                settings.EnabledHudModuleIds,
+                settings.HomeHudIntroductionCompleted),
             Modules = settings.Modules is null
                 ? new Dictionary<string, JsonElement>(StringComparer.Ordinal)
                 : settings.Modules.ToDictionary(
                     pair => pair.Key,
                     pair => pair.Value.Clone(),
                     StringComparer.Ordinal),
+            HudNavigationPlacement = settings.HudNavigationPlacement,
+            HomeHudIntroductionCompleted = true,
             AdditionalProperties = settings.AdditionalProperties is null
                 ? new Dictionary<string, JsonElement>(StringComparer.Ordinal)
                 : settings.AdditionalProperties.ToDictionary(
@@ -66,5 +80,24 @@ internal static class UserSettingsJson
             CheckUpdateOnStartup = settings.CheckUpdateOnStartup,
             DisableExpandOnFullscreen = settings.DisableExpandOnFullscreen
         };
+    }
+
+    private static List<string> NormalizeEnabledHudIds(
+        IEnumerable<string>? configuredIds,
+        bool introductionCompleted)
+    {
+        List<string> result = configuredIds is null
+            ? [BuiltInHudIds.Music, BuiltInHudIds.Home]
+            : [.. configuredIds];
+        if (introductionCompleted
+            || result.Contains(BuiltInHudIds.Home, StringComparer.Ordinal))
+        {
+            return result;
+        }
+
+        int musicIndex = result.FindIndex(
+            id => string.Equals(id, BuiltInHudIds.Music, StringComparison.Ordinal));
+        result.Insert(musicIndex >= 0 ? musicIndex + 1 : result.Count, BuiltInHudIds.Home);
+        return result;
     }
 }

@@ -1,7 +1,9 @@
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Net.Http.Json;
 using System.Windows.Input;
 using NoraBar.Hud;
+using NoraBar.Hud.Home;
 using NoraBar.Models;
 using NoraBar.Services;
 
@@ -10,8 +12,17 @@ namespace NoraBar.ViewModels
     public class MainViewModel : ViewModelBase
     {
         private readonly UserSettings _settings;
+        private readonly ISettingsStore _settingsStore;
+        private static readonly Lazy<IReadOnlyList<TimeZoneOption>> CachedTimeZones = new(
+            static () => Array.AsReadOnly(
+                TimeZoneInfo.GetSystemTimeZones()
+                    .Select(zone => new TimeZoneOption(zone.Id, zone.DisplayName))
+                    .ToArray()));
+        private int _settingsSaveSuppressionCount;
 
         internal UserSettings SettingsSnapshot => _settings;
+
+        public HudNavigationViewModel? HudNavigation { get; private set; }
 
         public sealed class LanguageOption
         {
@@ -40,6 +51,48 @@ namespace NoraBar.ViewModels
             {
                 get => _displayName;
                 set => SetProperty(ref _displayName, value);
+            }
+        }
+
+        public sealed record TimeZoneOption(string Id, string DisplayName);
+
+        public sealed class NavigationPlacementOption : ViewModelBase
+        {
+            internal NavigationPlacementOption(
+                HudNavigationPlacement placement,
+                string displayName)
+            {
+                Placement = placement;
+                _displayName = displayName;
+            }
+
+            public HudNavigationPlacement Placement { get; }
+
+            private string _displayName;
+            public string DisplayName
+            {
+                get => _displayName;
+                internal set => SetProperty(ref _displayName, value);
+            }
+        }
+
+        public sealed class HomeTimeFormatOption : ViewModelBase
+        {
+            internal HomeTimeFormatOption(
+                HomeHudTimeFormat format,
+                string displayName)
+            {
+                Format = format;
+                _displayName = displayName;
+            }
+
+            public HomeHudTimeFormat Format { get; }
+
+            private string _displayName;
+            public string DisplayName
+            {
+                get => _displayName;
+                internal set => SetProperty(ref _displayName, value);
             }
         }
 
@@ -157,8 +210,46 @@ namespace NoraBar.ViewModels
         public bool IsPositionEditMode
         {
             get => _isPositionEditMode;
-            set => SetProperty(ref _isPositionEditMode, value);
+            set
+            {
+                if (SetProperty(ref _isPositionEditMode, value) && value)
+                {
+                    IsWidgetEditMode = false;
+                }
+            }
         }
+
+        private bool _isWidgetEditMode;
+        public bool IsWidgetEditMode
+        {
+            get => _isWidgetEditMode;
+            set
+            {
+                if (SetProperty(ref _isWidgetEditMode, value) && value)
+                {
+                    IsPositionEditMode = false;
+                }
+            }
+        }
+
+        public async Task EnterWidgetEditModeAsync()
+        {
+            if (HudNavigation is not null)
+            {
+                HudNavigationItemViewModel? homeItem = HudNavigation.Items.FirstOrDefault(
+                    item => string.Equals(item.Id, BuiltInHudIds.Home, StringComparison.Ordinal));
+                if (homeItem is not null && !homeItem.IsEnabled)
+                {
+                    await HudNavigation.SetEnabledAsync(BuiltInHudIds.Home, true);
+                }
+
+                await HudNavigation.NavigateToAsync(BuiltInHudIds.Home);
+            }
+
+            IsWidgetEditMode = true;
+        }
+
+
 
         public IReadOnlyList<LanguageOption> AvailableLanguages { get; } =
         [
@@ -167,6 +258,12 @@ namespace NoraBar.ViewModels
         ];
 
         public IReadOnlyList<ScrollModeOption> AvailableScrollModes { get; }
+
+        public IReadOnlyList<TimeZoneOption> AvailableTimeZones => CachedTimeZones.Value;
+
+        public IReadOnlyList<NavigationPlacementOption> AvailableNavigationPlacements { get; }
+
+        public IReadOnlyList<HomeTimeFormatOption> AvailableHomeTimeFormats { get; }
 
         public bool IsMinimalVariant
         {
@@ -234,6 +331,109 @@ namespace NoraBar.ViewModels
             }
         }
 
+        private HomeHudDesignVariant _homeHudDesignVariant;
+        public HomeHudDesignVariant HomeHudDesignVariant
+        {
+            get => _homeHudDesignVariant;
+            set
+            {
+                if (SetProperty(ref _homeHudDesignVariant, value))
+                {
+                    SaveSettings();
+                }
+            }
+        }
+
+        private HomeHudTimeFormat _homeHudTimeFormat;
+        public HomeHudTimeFormat HomeHudTimeFormat
+        {
+            get => _homeHudTimeFormat;
+            set
+            {
+                if (SetProperty(ref _homeHudTimeFormat, value))
+                {
+                    SaveSettings();
+                }
+            }
+        }
+
+        public ObservableCollection<WorldClockEntryViewModel> WorldClockEntries { get; } = new();
+
+        public ICommand AddWorldClockCommand { get; }
+        public ICommand RemoveWorldClockCommand { get; }
+        public ICommand MoveWorldClockUpCommand { get; }
+        public ICommand MoveWorldClockDownCommand { get; }
+
+        private void OnWorldClockChanged()
+        {
+            OnPropertyChanged(nameof(FirstWorldClockLabel));
+            OnPropertyChanged(nameof(FirstWorldClockTimeZoneId));
+            OnPropertyChanged(nameof(SecondWorldClockLabel));
+            OnPropertyChanged(nameof(SecondWorldClockTimeZoneId));
+            SaveSettings();
+        }
+
+        public string FirstWorldClockLabel
+        {
+            get => WorldClockEntries.Count > 0 ? WorldClockEntries[0].Label : string.Empty;
+            set
+            {
+                if (WorldClockEntries.Count > 0 && !string.IsNullOrWhiteSpace(value))
+                {
+                    WorldClockEntries[0].Label = value;
+                }
+            }
+        }
+
+        public string FirstWorldClockTimeZoneId
+        {
+            get => WorldClockEntries.Count > 0 ? WorldClockEntries[0].TimeZoneId : string.Empty;
+            set
+            {
+                if (WorldClockEntries.Count > 0 && !string.IsNullOrWhiteSpace(value))
+                {
+                    WorldClockEntries[0].TimeZoneId = value;
+                }
+            }
+        }
+
+        public string SecondWorldClockLabel
+        {
+            get => WorldClockEntries.Count > 1 ? WorldClockEntries[1].Label : string.Empty;
+            set
+            {
+                if (WorldClockEntries.Count > 1 && !string.IsNullOrWhiteSpace(value))
+                {
+                    WorldClockEntries[1].Label = value;
+                }
+            }
+        }
+
+        public string SecondWorldClockTimeZoneId
+        {
+            get => WorldClockEntries.Count > 1 ? WorldClockEntries[1].TimeZoneId : string.Empty;
+            set
+            {
+                if (WorldClockEntries.Count > 1 && !string.IsNullOrWhiteSpace(value))
+                {
+                    WorldClockEntries[1].TimeZoneId = value;
+                }
+            }
+        }
+
+        private HudNavigationPlacement _hudNavigationPlacement;
+        public HudNavigationPlacement HudNavigationPlacement
+        {
+            get => _hudNavigationPlacement;
+            set
+            {
+                if (SetProperty(ref _hudNavigationPlacement, value))
+                {
+                    SaveSettings();
+                }
+            }
+        }
+
         private string _currentPage = "General";
         public string CurrentPage
         {
@@ -252,8 +452,34 @@ namespace NoraBar.ViewModels
         public string HudSelectionDescriptionText => T(LocalizationKey.HudSelectionDescription);
         public string SharedDisplaySettingsText => T(LocalizationKey.SharedDisplaySettings);
         public string SelectedHudSettingsText => T(LocalizationKey.SelectedHudSettings);
+        public string NavigationStyleText => T(LocalizationKey.NavigationStyle);
+        public string NavigationStyleDescriptionText => T(LocalizationKey.NavigationStyleDescription);
+        public string StartupHudText => T(LocalizationKey.StartupHud);
+        public string StartupHudDescriptionText => T(LocalizationKey.StartupHudDescription);
+        public string HudModulesText => T(LocalizationKey.HudModules);
+        public string HudModulesDescriptionText => T(LocalizationKey.HudModulesDescription);
+        public string HomeDesignText => T(LocalizationKey.HomeDesign);
+        public string HomeDesignDescriptionText => T(LocalizationKey.HomeDesignDescription);
+        public string WidgetLayoutCustomizationText => T(LocalizationKey.WidgetLayoutCustomization);
+        public string WidgetLayoutCustomizationDescriptionText => T(LocalizationKey.WidgetLayoutCustomizationDescription);
+        public string EditWidgetLayoutButtonText => T(LocalizationKey.EditWidgetLayoutButton);
+        public string TimeFormatText => T(LocalizationKey.TimeFormat);
+        public string TimeFormatDescriptionText => T(LocalizationKey.TimeFormatDescription);
+        public string WorldClocksText => T(LocalizationKey.WorldClocks);
+        public string WorldClocksDescriptionText => T(LocalizationKey.WorldClocksDescription);
+        public string ClockLabelText => T(LocalizationKey.ClockLabel);
+        public string WorldClockLabelHintText => T(LocalizationKey.WorldClockLabelHint);
+        public string TimeZoneText => T(LocalizationKey.TimeZone);
+        public string AddClockButtonText => T(LocalizationKey.AddClockButton);
+        public string MoveUpText => T(LocalizationKey.MoveUp);
+        public string MoveDownText => T(LocalizationKey.MoveDown);
+        public string RemoveWorldClockText => T(LocalizationKey.RemoveWorldClock);
         public string DesignStyleText => T(LocalizationKey.DesignStyle);
         public string DesignStyleDescriptionText => T(LocalizationKey.DesignStyleDescription);
+        public string DesignMinimalText => T(LocalizationKey.DesignMinimal);
+        public string DesignProductivityText => T(LocalizationKey.DesignProductivity);
+        public string DesignLyricsFocusText => T(LocalizationKey.DesignLyricsFocus);
+        public string PreviewBadgeText => T(LocalizationKey.PreviewBadge);
         public string ProgressBarText => T(LocalizationKey.ProgressBar);
         public string ProgressBarDescriptionText => T(LocalizationKey.ProgressBarDescription);
         public string ShowLyricsText => T(LocalizationKey.ShowLyrics);
@@ -269,6 +495,10 @@ namespace NoraBar.ViewModels
         public string LanguageText => T(LocalizationKey.Language);
         public string LanguageDescriptionText => T(LocalizationKey.LanguageDescription);
         public string VersionText => T(LocalizationKey.Version);
+        public string DoneText => T(LocalizationKey.Done);
+        public string DragToArrangeHintText => T(LocalizationKey.DragToArrangeHint);
+        public string MaxWidgetWidthLabelText => T(LocalizationKey.MaxWidgetWidthLabel);
+        public string MaxWidgetHeightLabelText => T(LocalizationKey.MaxWidgetHeightLabel);
         public string CheckUpdatesText => T(LocalizationKey.CheckUpdates);
         public string CheckUpdatesDescriptionText => T(LocalizationKey.CheckUpdatesDescription);
         public string CheckUpdatesButtonText => T(LocalizationKey.CheckUpdatesButton);
@@ -381,13 +611,28 @@ namespace NoraBar.ViewModels
         public ICommand CloseResetDialogCommand { get; }
         public ICommand RestartVisualizerCommand { get; }
 
-        public MusicViewModel Music { get; } = new MusicViewModel();
+        public MusicViewModel Music { get; }
 
         public ICommand SetVariantCommand { get; }
 
         public MainViewModel()
+            : this(SettingsService.Store, startRuntimeServices: true)
         {
-            _settings = SettingsService.Load();
+        }
+
+        internal MainViewModel(ISettingsStore settingsStore)
+            : this(settingsStore, startRuntimeServices: false)
+        {
+        }
+
+        private MainViewModel(
+            ISettingsStore settingsStore,
+            bool startRuntimeServices)
+        {
+            ArgumentNullException.ThrowIfNull(settingsStore);
+            _settingsStore = settingsStore;
+            _settings = settingsStore.Load();
+            Music = new MusicViewModel(_settings.ShowLyrics, startRuntimeServices);
             _currentVariant = _settings.Variant;
             _showProgressBar = _settings.ShowProgressBar;
             _showLyrics = _settings.ShowLyrics;
@@ -398,6 +643,61 @@ namespace NoraBar.ViewModels
             _windowTop = _settings.WindowTop;
             _checkUpdateOnStartup = _settings.CheckUpdateOnStartup;
             _disableExpandOnFullscreen = _settings.DisableExpandOnFullscreen;
+            HomeHudSettings homeSettings = HomeHudSettingsJson.Read(_settings);
+            _homeHudDesignVariant = homeSettings.DesignVariant;
+            _homeHudTimeFormat = homeSettings.TimeFormat;
+            foreach (HomeWorldClockEntry clock in homeSettings.EffectiveWorldClocks)
+            {
+                WorldClockEntries.Add(new WorldClockEntryViewModel(clock.Label, clock.TimeZoneId, OnWorldClockChanged));
+            }
+            _activeHomeWidgets = homeSettings.EffectiveWidgets;
+            _maxWidgetWidth = homeSettings.MaxWidgetWidth;
+            _maxWidgetHeight = homeSettings.MaxWidgetHeight;
+            _hudNavigationPlacement = _settings.HudNavigationPlacement;
+
+            AddWorldClockCommand = new RelayCommand(_ =>
+            {
+                if (WorldClockEntries.Count < HomeHudSettings.MaximumWorldClockCount)
+                {
+                    string defaultTimeZoneId = "UTC";
+                    WorldClockEntries.Add(new WorldClockEntryViewModel(WorldClockEntryViewModel.GetDefaultLabelForTimeZone(defaultTimeZoneId), defaultTimeZoneId, OnWorldClockChanged));
+                    OnWorldClockChanged();
+                }
+            });
+
+            RemoveWorldClockCommand = new RelayCommand(p =>
+            {
+                if (WorldClockEntries.Count > 1 && p is WorldClockEntryViewModel item && WorldClockEntries.Remove(item))
+                {
+                    OnWorldClockChanged();
+                }
+            });
+
+            MoveWorldClockUpCommand = new RelayCommand(p =>
+            {
+                if (p is WorldClockEntryViewModel item)
+                {
+                    int index = WorldClockEntries.IndexOf(item);
+                    if (index > 0)
+                    {
+                        WorldClockEntries.Move(index, index - 1);
+                        OnWorldClockChanged();
+                    }
+                }
+            });
+
+            MoveWorldClockDownCommand = new RelayCommand(p =>
+            {
+                if (p is WorldClockEntryViewModel item)
+                {
+                    int index = WorldClockEntries.IndexOf(item);
+                    if (index >= 0 && index < WorldClockEntries.Count - 1)
+                    {
+                        WorldClockEntries.Move(index, index + 1);
+                        OnWorldClockChanged();
+                    }
+                }
+            });
 
             AvailableScrollModes = new[]
             {
@@ -405,13 +705,32 @@ namespace NoraBar.ViewModels
                 new ScrollModeOption(Models.TextScrollMode.Always, T(LocalizationKey.TextScrollAlways)),
                 new ScrollModeOption(Models.TextScrollMode.HoverOnly, T(LocalizationKey.TextScrollHoverOnly))
             };
+            AvailableNavigationPlacements =
+            [
+                new NavigationPlacementOption(
+                    HudNavigationPlacement.RightRail,
+                    T(LocalizationKey.NavigationRightRail)),
+                new NavigationPlacementOption(
+                    HudNavigationPlacement.TopTabs,
+                    T(LocalizationKey.NavigationTopTabs))
+            ];
+            AvailableHomeTimeFormats =
+            [
+                new HomeTimeFormatOption(
+                    HomeHudTimeFormat.System,
+                    T(LocalizationKey.TimeFormatSystem)),
+                new HomeTimeFormatOption(
+                    HomeHudTimeFormat.TwelveHour,
+                    T(LocalizationKey.TimeFormatTwelveHour)),
+                new HomeTimeFormatOption(
+                    HomeHudTimeFormat.TwentyFourHour,
+                    T(LocalizationKey.TimeFormatTwentyFourHour))
+            ];
 
             Music.ShowLyrics = _showLyrics;
             Music.TextScrollMode = _textScrollMode;
 
             SetVariantCommand = new RelayCommand(ExecuteSetVariant);
-
-            _availableHuds = new[] { T(LocalizationKey.MusicHudName) };
 
             NavigateCommand = new RelayCommand(p => CurrentPage = p as string ?? "General");
             CheckUpdateCommand = new RelayCommand(async _ => await CheckForUpdatesAsync());
@@ -450,42 +769,72 @@ namespace NoraBar.ViewModels
             });
             ShowResetDialogCommand = new RelayCommand(_ => IsResetDialogOpen = true);
             CloseResetDialogCommand = new RelayCommand(_ => IsResetDialogOpen = false);
-            ResetAllSettingsCommand = new RelayCommand(_ => ResetAllSettings());
+            ResetAllSettingsCommand = new RelayCommand(async _ => await ResetAllSettingsAsync());
             RestartVisualizerCommand = new RelayCommand(_ => Music.RestartVisualizer());
         }
 
-        private void ResetAllSettings()
+        public void ReorderWorldClock(int fromIndex, int toIndex)
+        {
+            if (fromIndex >= 0 && fromIndex < WorldClockEntries.Count &&
+                toIndex >= 0 && toIndex < WorldClockEntries.Count &&
+                fromIndex != toIndex)
+            {
+                WorldClockEntries.Move(fromIndex, toIndex);
+                OnWorldClockChanged();
+            }
+        }
+
+        private async Task ResetAllSettingsAsync()
         {
             IsResetDialogOpen = false;
-            
             var defaultSettings = new UserSettings();
+            HomeHudSettings homeDefaults = HomeHudSettings.Default;
 
-            // Notify UI by setting properties
-            CurrentVariant = defaultSettings.Variant;
-            ShowProgressBar = defaultSettings.ShowProgressBar;
-            ShowLyrics = defaultSettings.ShowLyrics;
-            TextScrollMode = defaultSettings.TextScrollMode;
-            SelectedLanguage = defaultSettings.Language;
-            CheckUpdateOnStartup = defaultSettings.CheckUpdateOnStartup;
-            DisableExpandOnFullscreen = defaultSettings.DisableExpandOnFullscreen;
-            
-            // Explicitly set startup to true as requested
-            IsStartupEnabled = true;
+            _settingsSaveSuppressionCount++;
+            try
+            {
+                CurrentVariant = defaultSettings.Variant;
+                ShowProgressBar = defaultSettings.ShowProgressBar;
+                ShowLyrics = defaultSettings.ShowLyrics;
+                TextScrollMode = defaultSettings.TextScrollMode;
+                SelectedLanguage = defaultSettings.Language;
+                CheckUpdateOnStartup = defaultSettings.CheckUpdateOnStartup;
+                DisableExpandOnFullscreen = defaultSettings.DisableExpandOnFullscreen;
+                HomeHudDesignVariant = homeDefaults.DesignVariant;
+                HomeHudTimeFormat = homeDefaults.TimeFormat;
+                WorldClockEntries.Clear();
+                foreach (HomeWorldClockEntry clock in homeDefaults.EffectiveWorldClocks)
+                {
+                    WorldClockEntries.Add(new WorldClockEntryViewModel(clock.Label, clock.TimeZoneId, OnWorldClockChanged));
+                }
+                HudNavigationPlacement = defaultSettings.HudNavigationPlacement;
+                IsStartupEnabled = true;
+                HasCustomPosition = false;
+                WindowLeft = 0;
+                WindowTop = 0;
+                IsPositionEditMode = false;
+                ResetKnownSettings(_settings);
 
-            // Reset positions
-            HasCustomPosition = false;
-            WindowLeft = 0;
-            WindowTop = 0;
-            IsPositionEditMode = false;
+                if (HudNavigation is not null)
+                {
+                    await HudNavigation.ResetToDefaultsFromBindingAsync();
+                }
+            }
+            finally
+            {
+                _settingsSaveSuppressionCount--;
+            }
 
-            ResetKnownSettings(_settings);
-
-            // Save current settings correctly
             SaveSettings();
         }
 
         private void SaveSettings()
         {
+            if (_settingsSaveSuppressionCount > 0)
+            {
+                return;
+            }
+
             UpdateKnownSettings(
                 _settings,
                 CurrentVariant,
@@ -498,9 +847,71 @@ namespace NoraBar.ViewModels
                 WindowTop,
                 CheckUpdateOnStartup,
                 DisableExpandOnFullscreen);
+            _settings.HudNavigationPlacement = HudNavigationPlacement;
+            HomeHudSettingsJson.Write(_settings, GetHomeHudSettings());
 
-            SettingsService.Save(_settings);
+            _settingsStore.Save(_settings);
         }
+
+        public string AddWidgetsHeaderText => T(LocalizationKey.AddWidgetsHeader);
+
+        public IReadOnlyList<HomeWidgetCustomizerItemViewModel> CatalogWidgets { get; } =
+        [
+            new("catalog_clock", NoraBar.Hud.Home.Widgets.HomeWidgetType.DigitalClock, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.ClockMinimal),
+            new("catalog_world_clock_list", NoraBar.Hud.Home.Widgets.HomeWidgetType.WorldClock, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.WorldClockList),
+            new("catalog_media", NoraBar.Hud.Home.Widgets.HomeWidgetType.MediaControls, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.MediaCompact),
+            new("catalog_media_artwork_sm", NoraBar.Hud.Home.Widgets.HomeWidgetType.MediaControls, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.MediaArtworkHoverSmall),
+            new("catalog_media_artwork_md", NoraBar.Hud.Home.Widgets.HomeWidgetType.MediaControls, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.MediaArtworkHoverMedium),
+            new("catalog_media_artwork_lg", NoraBar.Hud.Home.Widgets.HomeWidgetType.MediaControls, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.MediaArtworkHoverLarge),
+            new("catalog_media_blur_lyrics", NoraBar.Hud.Home.Widgets.HomeWidgetType.MediaControls, NoraBar.Hud.Home.Widgets.HomeWidgetStyle.MediaBlurLyrics)
+        ];
+
+        private IReadOnlyList<NoraBar.Hud.Home.Widgets.HomeWidgetConfig> _activeHomeWidgets = NoraBar.Hud.Home.HomeHudSettings.Default.EffectiveWidgets;
+        public IReadOnlyList<NoraBar.Hud.Home.Widgets.HomeWidgetConfig> ActiveHomeWidgets
+        {
+            get => _activeHomeWidgets;
+            set
+            {
+                if (SetProperty(ref _activeHomeWidgets, value))
+                {
+                    SaveSettings();
+                }
+            }
+        }
+
+        private double _maxWidgetWidth = NoraBar.Hud.Home.HomeHudSettings.Default.MaxWidgetWidth;
+        public double MaxWidgetWidth
+        {
+            get => _maxWidgetWidth;
+            set
+            {
+                if (SetProperty(ref _maxWidgetWidth, value))
+                {
+                    SaveSettings();
+                }
+            }
+        }
+
+        private double _maxWidgetHeight = NoraBar.Hud.Home.HomeHudSettings.Default.MaxWidgetHeight;
+        public double MaxWidgetHeight
+        {
+            get => _maxWidgetHeight;
+            set
+            {
+                if (SetProperty(ref _maxWidgetHeight, value))
+                {
+                    SaveSettings();
+                }
+            }
+        }
+
+        internal HomeHudSettings GetHomeHudSettings() => new(
+            HomeHudDesignVariant,
+            HomeHudTimeFormat,
+            WorldClockEntries.Select(e => new HomeWorldClockEntry(e.Label.Trim(), e.TimeZoneId)).ToList(),
+            ActiveHomeWidgets,
+            MaxWidgetWidth,
+            MaxWidgetHeight);
 
         internal static void UpdateKnownSettings(
             UserSettings settings,
@@ -536,7 +947,9 @@ namespace NoraBar.ViewModels
             var defaults = new UserSettings();
             settings.SchemaVersion = UserSettings.CurrentSchemaVersion;
             settings.DefaultHudId = BuiltInHudIds.Music;
-            settings.EnabledHudModuleIds = [BuiltInHudIds.Music];
+            settings.EnabledHudModuleIds = [BuiltInHudIds.Music, BuiltInHudIds.Home];
+            settings.HudNavigationPlacement = defaults.HudNavigationPlacement;
+            HomeHudSettingsJson.Write(settings, HomeHudSettings.Default);
             UpdateKnownSettings(
                 settings,
                 defaults.Variant,
@@ -724,24 +1137,44 @@ namespace NoraBar.ViewModels
             return LocalizationService.GetText(SelectedLanguage, key);
         }
 
+        private static LocalizationKey GetScrollModeLocalizationKey(TextScrollMode mode) =>
+            mode switch
+            {
+                Models.TextScrollMode.Disabled => LocalizationKey.TextScrollDisabled,
+                Models.TextScrollMode.Always => LocalizationKey.TextScrollAlways,
+                Models.TextScrollMode.HoverOnly => LocalizationKey.TextScrollHoverOnly,
+                _ => throw new ArgumentOutOfRangeException(nameof(mode))
+            };
+
+        private static LocalizationKey GetNavigationPlacementLocalizationKey(
+            HudNavigationPlacement placement) =>
+            placement switch
+            {
+                HudNavigationPlacement.RightRail => LocalizationKey.NavigationRightRail,
+                HudNavigationPlacement.TopTabs => LocalizationKey.NavigationTopTabs,
+                _ => throw new ArgumentOutOfRangeException(nameof(placement))
+            };
+
+        private static LocalizationKey GetHomeTimeFormatLocalizationKey(
+            HomeHudTimeFormat format) =>
+            format switch
+            {
+                HomeHudTimeFormat.System => LocalizationKey.TimeFormatSystem,
+                HomeHudTimeFormat.TwelveHour => LocalizationKey.TimeFormatTwelveHour,
+                HomeHudTimeFormat.TwentyFourHour => LocalizationKey.TimeFormatTwentyFourHour,
+                _ => throw new ArgumentOutOfRangeException(nameof(format))
+            };
+
+        internal void AttachHudNavigation(HudNavigationViewModel navigation)
+        {
+            ArgumentNullException.ThrowIfNull(navigation);
+            HudNavigation = navigation;
+            OnPropertyChanged(nameof(HudNavigation));
+        }
+
         private void RefreshLocalizedText()
         {
-            var oldSelectedHudIndex = -1;
-            if (AvailableHuds != null && SelectedHud != null)
-            {
-                oldSelectedHudIndex = Array.IndexOf(_availableHuds, SelectedHud);
-            }
-
-            AvailableHuds = new[] { T(LocalizationKey.MusicHudName) };
-
-            if (oldSelectedHudIndex >= 0 && oldSelectedHudIndex < _availableHuds.Length)
-            {
-                SelectedHud = _availableHuds[oldSelectedHudIndex];
-            }
-            else if (_availableHuds.Length > 0)
-            {
-                SelectedHud = _availableHuds[0];
-            }
+            HudNavigation?.RefreshLocalizedText(SelectedLanguage);
 
             OnPropertyChanged(nameof(SettingsWindowTitle));
             OnPropertyChanged(nameof(AppSubtitleText));
@@ -751,20 +1184,54 @@ namespace NoraBar.ViewModels
             OnPropertyChanged(nameof(HudSettingsText));
             OnPropertyChanged(nameof(SharedDisplaySettingsText));
             OnPropertyChanged(nameof(SelectedHudSettingsText));
+            OnPropertyChanged(nameof(NavigationStyleText));
+            OnPropertyChanged(nameof(NavigationStyleDescriptionText));
+            OnPropertyChanged(nameof(StartupHudText));
+            OnPropertyChanged(nameof(StartupHudDescriptionText));
+            OnPropertyChanged(nameof(HudModulesText));
+            OnPropertyChanged(nameof(HudModulesDescriptionText));
+            OnPropertyChanged(nameof(HomeDesignText));
+            OnPropertyChanged(nameof(HomeDesignDescriptionText));
+            OnPropertyChanged(nameof(WidgetLayoutCustomizationText));
+            OnPropertyChanged(nameof(WidgetLayoutCustomizationDescriptionText));
+            OnPropertyChanged(nameof(EditWidgetLayoutButtonText));
+            OnPropertyChanged(nameof(TimeFormatText));
+            OnPropertyChanged(nameof(TimeFormatDescriptionText));
+            OnPropertyChanged(nameof(WorldClocksText));
+            OnPropertyChanged(nameof(WorldClocksDescriptionText));
+            OnPropertyChanged(nameof(ClockLabelText));
+            OnPropertyChanged(nameof(WorldClockLabelHintText));
+            OnPropertyChanged(nameof(TimeZoneText));
+            OnPropertyChanged(nameof(AddClockButtonText));
+            OnPropertyChanged(nameof(MoveUpText));
+            OnPropertyChanged(nameof(MoveDownText));
+            OnPropertyChanged(nameof(RemoveWorldClockText));
             OnPropertyChanged(nameof(AboutText));
             OnPropertyChanged(nameof(DesignStyleText));
             OnPropertyChanged(nameof(DesignStyleDescriptionText));
+            OnPropertyChanged(nameof(DesignMinimalText));
+            OnPropertyChanged(nameof(DesignProductivityText));
+            OnPropertyChanged(nameof(DesignLyricsFocusText));
+            OnPropertyChanged(nameof(PreviewBadgeText));
             OnPropertyChanged(nameof(ProgressBarText));
             OnPropertyChanged(nameof(ProgressBarDescriptionText));
             OnPropertyChanged(nameof(ShowLyricsText));
             OnPropertyChanged(nameof(ShowLyricsDescriptionText));
             OnPropertyChanged(nameof(TextScrollModeText));
             OnPropertyChanged(nameof(TextScrollModeDescriptionText));
-            if (AvailableScrollModes != null)
+            foreach (ScrollModeOption option in AvailableScrollModes)
             {
-                AvailableScrollModes[0].DisplayName = T(LocalizationKey.TextScrollDisabled);
-                AvailableScrollModes[1].DisplayName = T(LocalizationKey.TextScrollAlways);
-                AvailableScrollModes[2].DisplayName = T(LocalizationKey.TextScrollHoverOnly);
+                option.DisplayName = T(GetScrollModeLocalizationKey(option.Mode));
+            }
+
+            foreach (NavigationPlacementOption option in AvailableNavigationPlacements)
+            {
+                option.DisplayName = T(GetNavigationPlacementLocalizationKey(option.Placement));
+            }
+
+            foreach (HomeTimeFormatOption option in AvailableHomeTimeFormats)
+            {
+                option.DisplayName = T(GetHomeTimeFormatLocalizationKey(option.Format));
             }
             OnPropertyChanged(nameof(StartupText));
             OnPropertyChanged(nameof(StartupDescriptionText));
@@ -809,29 +1276,226 @@ namespace NoraBar.ViewModels
             OnPropertyChanged(nameof(RestartVisualizerButtonText));
         }
 
-        private string[] _availableHuds;
-        public IReadOnlyList<string> AvailableHuds
+    }
+
+    public sealed class WorldClockEntryViewModel : ViewModelBase
+    {
+        private readonly Action _onChanged;
+        private string _label;
+        private string _timeZoneId;
+
+        public WorldClockEntryViewModel(string label, string timeZoneId, Action onChanged)
         {
-            get => _availableHuds;
-            private set => SetProperty(ref _availableHuds, value as string[]);
+            _label = label;
+            _timeZoneId = timeZoneId;
+            _onChanged = onChanged;
         }
-        
-        private string _selectedHud;
-        public string SelectedHud
+
+        public string Label
         {
-            get
-            {
-                if (!string.IsNullOrEmpty(_selectedHud)) return _selectedHud;
-                if (_availableHuds != null && _availableHuds.Length > 0) return _availableHuds[0];
-                return "音楽HUD";
-            }
+            get => _label;
             set
             {
-                if (string.IsNullOrEmpty(value)) return;
-                if (SetProperty(ref _selectedHud, value))
+                if (!string.IsNullOrWhiteSpace(value) && SetProperty(ref _label, value))
                 {
-                    SaveSettings();
+                    _onChanged();
                 }
+            }
+        }
+
+        public string TimeZoneId
+        {
+            get => _timeZoneId;
+            set
+            {
+                if (!string.IsNullOrWhiteSpace(value) && SetProperty(ref _timeZoneId, value))
+                {
+                    string label = GetDefaultLabelForTimeZone(value);
+                    SetProperty(ref _label, label, nameof(Label));
+                    _onChanged();
+                }
+            }
+        }
+
+        public static string GetDefaultLabelForTimeZone(string timeZoneId)
+        {
+            if (string.IsNullOrWhiteSpace(timeZoneId))
+            {
+                return "UTC";
+            }
+
+            if (string.Equals(timeZoneId, "Local", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    timeZoneId = TimeZoneInfo.Local.Id;
+                }
+                catch
+                {
+                    return "LOCAL";
+                }
+            }
+
+            return GetAbbreviationForTimeZoneId(timeZoneId);
+        }
+
+        private static string GetAbbreviationForTimeZoneId(string timeZoneId)
+        {
+            switch (timeZoneId)
+            {
+                case "UTC":
+                case "Coordinated Universal Time":
+                case "Etc/UTC":
+                case "Etc/GMT":
+                    return "UTC";
+
+                case "Tokyo Standard Time":
+                case "Asia/Tokyo":
+                    return "JST";
+
+                case "Eastern Standard Time":
+                case "America/New_York":
+                    return "EST";
+
+                case "Pacific Standard Time":
+                case "America/Los_Angeles":
+                    return "PST";
+
+                case "Central Standard Time":
+                case "America/Chicago":
+                    return "CST";
+
+                case "Mountain Standard Time":
+                case "America/Denver":
+                    return "MST";
+
+                case "GMT Standard Time":
+                case "Greenwich Standard Time":
+                case "Europe/London":
+                    return "GMT";
+
+                case "W. Europe Standard Time":
+                case "Central Europe Standard Time":
+                case "Romance Standard Time":
+                case "Central European Standard Time":
+                case "Europe/Paris":
+                case "Europe/Berlin":
+                case "Europe/Rome":
+                    return "CET";
+
+                case "E. Europe Standard Time":
+                case "Europe/Bucharest":
+                case "Europe/Athens":
+                    return "EET";
+
+                case "China Standard Time":
+                case "Asia/Shanghai":
+                    return "CST";
+
+                case "Korea Standard Time":
+                case "Asia/Seoul":
+                    return "KST";
+
+                case "Singapore Standard Time":
+                case "Asia/Singapore":
+                    return "SGT";
+
+                case "Taipei Standard Time":
+                case "Asia/Taipei":
+                    return "CST";
+
+                case "India Standard Time":
+                case "Asia/Kolkata":
+                case "Asia/Calcutta":
+                    return "IST";
+
+                case "AUS Eastern Standard Time":
+                case "Australia/Sydney":
+                case "Australia/Melbourne":
+                    return "AEST";
+
+                case "AUS Central Standard Time":
+                case "Australia/Adelaide":
+                    return "ACST";
+
+                case "W. Australia Standard Time":
+                case "Australia/Perth":
+                    return "AWST";
+
+                case "Tasmania Standard Time":
+                case "Australia/Hobart":
+                    return "AEST";
+
+                case "New Zealand Standard Time":
+                case "Pacific/Auckland":
+                    return "NZST";
+
+                case "Hawaiian Standard Time":
+                case "Pacific/Honolulu":
+                    return "HST";
+
+                case "Alaskan Standard Time":
+                case "America/Anchorage":
+                    return "AKST";
+
+                case "Atlantic Standard Time":
+                case "America/Halifax":
+                    return "AST";
+
+                case "Argentina Standard Time":
+                case "America/Buenos_Aires":
+                    return "ART";
+
+                case "E. South America Standard Time":
+                case "America/Sao_Paulo":
+                    return "BRT";
+
+                case "SA Pacific Standard Time":
+                case "America/Lima":
+                    return "PET";
+
+                case "Arabian Standard Time":
+                case "Asia/Dubai":
+                    return "GST";
+
+                case "Arabic Standard Time":
+                case "Asia/Riyadh":
+                    return "AST";
+
+                case "Israel Standard Time":
+                case "Asia/Jerusalem":
+                    return "IST";
+
+                case "Turkey Standard Time":
+                case "Europe/Istanbul":
+                    return "TRT";
+
+                case "Russian Standard Time":
+                case "Moscow Standard Time":
+                case "Europe/Moscow":
+                    return "MSK";
+            }
+
+            try
+            {
+                TimeZoneInfo zone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+                string standardName = zone.StandardName;
+                string initials = string.Concat(
+                    standardName.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                               .Where(w => w.Length > 0 && char.IsLetter(w[0]) && char.IsUpper(w[0]))
+                               .Select(w => w[0]));
+
+                if (!string.IsNullOrWhiteSpace(initials) && initials.Length >= 2 && initials.Length <= 6)
+                {
+                    return initials;
+                }
+
+                TimeSpan offset = zone.BaseUtcOffset;
+                return offset >= TimeSpan.Zero ? $"UTC+{(int)offset.TotalHours}" : $"UTC{(int)offset.TotalHours}";
+            }
+            catch
+            {
+                return timeZoneId.Length <= 6 ? timeZoneId.ToUpperInvariant() : "UTC";
             }
         }
     }

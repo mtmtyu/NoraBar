@@ -6,6 +6,38 @@ namespace NoraBar.Tests.Hud;
 public sealed class HudRouterTests
 {
     [Fact]
+    public async Task ApplyConfigurationAsync_ReordersEnabledModulesAndChangesDefault()
+    {
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var home = new FakeHudModule(BuiltInHudIds.Home);
+        HudRouter router = await CreateInitializedRouterAsync(music, home);
+
+        await router.ApplyConfigurationAsync(
+            BuiltInHudIds.Home,
+            [BuiltInHudIds.Home, BuiltInHudIds.Music],
+            CancellationToken.None);
+
+        Assert.Equal([BuiltInHudIds.Home, BuiltInHudIds.Music], router.EnabledHudModuleIds);
+        Assert.Equal(BuiltInHudIds.Home, router.EffectiveDefaultHudId);
+        Assert.Same(music, router.CurrentModule);
+    }
+
+    [Fact]
+    public async Task ApplyConfigurationAsync_WhenCurrentIsDisabledNavigatesToFirstEnabledModule()
+    {
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var home = new FakeHudModule(BuiltInHudIds.Home);
+        HudRouter router = await CreateInitializedRouterAsync(music, home);
+
+        await router.ApplyConfigurationAsync(
+            BuiltInHudIds.Home,
+            [BuiltInHudIds.Home],
+            CancellationToken.None);
+
+        Assert.Same(home, router.CurrentModule);
+        Assert.Equal(BuiltInHudIds.Home, router.CurrentHudId);
+    }
+    [Fact]
     public async Task InitializeAsync_SelectsMusicCollapsedAndActivatesOnce()
     {
         var music = new FakeHudModule(BuiltInHudIds.Music);

@@ -14,8 +14,12 @@ namespace NoraBar.Services
 
         public int SchemaVersion { get; set; } = CurrentSchemaVersion;
         public string DefaultHudId { get; set; } = BuiltInHudIds.Music;
-        public List<string> EnabledHudModuleIds { get; set; } = [BuiltInHudIds.Music];
+        public List<string> EnabledHudModuleIds { get; set; } =
+            [BuiltInHudIds.Music, BuiltInHudIds.Home];
         public Dictionary<string, JsonElement> Modules { get; set; } = new(StringComparer.Ordinal);
+        public HudNavigationPlacement HudNavigationPlacement { get; set; } =
+            HudNavigationPlacement.RightRail;
+        public bool HomeHudIntroductionCompleted { get; set; } = true;
 
         [JsonExtensionData]
         public Dictionary<string, JsonElement> AdditionalProperties { get; set; } = new(StringComparer.Ordinal);
@@ -32,68 +36,115 @@ namespace NoraBar.Services
         public bool DisableExpandOnFullscreen { get; set; } = true;
     }
 
-    public static class SettingsService
+    internal interface ISettingsStore
     {
-        private const string SettingsDirectoryName = "NoraBar";
+        UserSettings Load();
+        void Save(UserSettings settings);
+    }
+
+    internal sealed class FileSettingsStore : ISettingsStore
+    {
         private const string SettingsFileName = "settings.json";
+        private readonly object _operationLock = new();
+        private readonly string _settingsDirectoryPath;
+        private readonly string _legacyFilePath;
+        private readonly bool _enableFirstRunStartup;
 
-        private static readonly string SettingsDirectoryPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            SettingsDirectoryName);
-        private static readonly string FilePath = Path.Combine(SettingsDirectoryPath, SettingsFileName);
-        private static readonly string LegacyFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, SettingsFileName);
-
-        public static UserSettings Load()
+        internal FileSettingsStore(
+            string settingsDirectoryPath,
+            string legacyFilePath,
+            bool enableFirstRunStartup)
         {
-            try
-            {
-                bool isFirstRun = !File.Exists(FilePath) && !File.Exists(LegacyFilePath);
-
-                MigrateLegacySettingsIfNeeded();
-
-                if (File.Exists(FilePath))
-                {
-                    string json = File.ReadAllText(FilePath);
-                    return UserSettingsJson.DeserializeOrDefault(json);
-                }
-                
-                if (isFirstRun)
-                {
-                    StartupService.SetStartup(true);
-                }
-            }
-            catch (Exception)
-            {
-                // Return default settings if loading fails
-            }
-            return new UserSettings();
+            ArgumentException.ThrowIfNullOrWhiteSpace(settingsDirectoryPath);
+            ArgumentException.ThrowIfNullOrWhiteSpace(legacyFilePath);
+            _settingsDirectoryPath = Path.GetFullPath(settingsDirectoryPath);
+            _legacyFilePath = Path.GetFullPath(legacyFilePath);
+            _enableFirstRunStartup = enableFirstRunStartup;
         }
 
-        public static void Save(UserSettings settings)
-        {
-            try
-            {
-                MigrateLegacySettingsIfNeeded();
-                Directory.CreateDirectory(SettingsDirectoryPath);
+        internal string SettingsFilePath =>
+            Path.Combine(_settingsDirectoryPath, SettingsFileName);
 
-                string json = UserSettingsJson.Serialize(settings);
-                File.WriteAllText(FilePath, json);
-            }
-            catch (Exception)
+        public UserSettings Load()
+        {
+            lock (_operationLock)
             {
-                // Fail silently or handle accordingly
+                try
+                {
+                    bool isFirstRun =
+                        !File.Exists(SettingsFilePath)
+                        && !File.Exists(_legacyFilePath);
+
+                    MigrateLegacySettingsIfNeeded();
+
+                    if (File.Exists(SettingsFilePath))
+                    {
+                        string json = File.ReadAllText(SettingsFilePath);
+                        return UserSettingsJson.DeserializeOrDefault(json);
+                    }
+
+                    if (isFirstRun && _enableFirstRunStartup)
+                    {
+                        StartupService.SetStartup(true);
+                    }
+                }
+                catch (Exception)
+                {
+                    // Return default settings if loading fails
+                }
+
+                return new UserSettings();
             }
         }
 
-        private static void MigrateLegacySettingsIfNeeded()
+        public void Save(UserSettings settings)
         {
-            if (File.Exists(FilePath) || !File.Exists(LegacyFilePath))
+            lock (_operationLock)
+            {
+                try
+                {
+                    MigrateLegacySettingsIfNeeded();
+                    Directory.CreateDirectory(_settingsDirectoryPath);
+
+                    string json = UserSettingsJson.Serialize(settings);
+                    File.WriteAllText(SettingsFilePath, json);
+                }
+                catch (Exception)
+                {
+                    // Fail silently or handle accordingly
+                }
+            }
+        }
+
+        private void MigrateLegacySettingsIfNeeded()
+        {
+            if (File.Exists(SettingsFilePath) || !File.Exists(_legacyFilePath))
             {
                 return;
             }
 
-            Directory.CreateDirectory(SettingsDirectoryPath);
-            File.Move(LegacyFilePath, FilePath);
+            Directory.CreateDirectory(_settingsDirectoryPath);
+            File.Move(_legacyFilePath, SettingsFilePath);
+        }
+    }
+
+    public static class SettingsService
+    {
+        private const string SettingsDirectoryName = "NoraBar";
+        private static readonly ISettingsStore DefaultStore = new FileSettingsStore(
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                SettingsDirectoryName),
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json"),
+            enableFirstRunStartup: true);
+
+        internal static ISettingsStore Store => DefaultStore;
+
+        public static UserSettings Load() => DefaultStore.Load();
+
+        public static void Save(UserSettings settings)
+        {
+            DefaultStore.Save(settings);
         }
     }
 }

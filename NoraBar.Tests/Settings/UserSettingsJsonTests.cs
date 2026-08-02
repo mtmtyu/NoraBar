@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using NoraBar.Models;
 using NoraBar.Services;
+using NoraBar.Hud;
 using Xunit;
 
 namespace NoraBar.Tests.Settings;
@@ -24,6 +25,8 @@ public class UserSettingsJsonTests
                 "music": { "accent": "violet", "opacity": 0.75 },
                 "com.example.weather": { "city": "Sapporo" }
               },
+              "HudNavigationPlacement": 0,
+              "HomeHudIntroductionCompleted": true,
               "Variant": 2,
               "ShowProgressBar": false,
               "Language": {{(int)expectedLanguage}},
@@ -93,7 +96,7 @@ public class UserSettingsJsonTests
 
         Assert.Equal(UserSettings.CurrentSchemaVersion, result.SchemaVersion);
         Assert.Equal("music", result.DefaultHudId);
-        Assert.Equal(new[] { "music" }, result.EnabledHudModuleIds);
+        Assert.Equal(new[] { BuiltInHudIds.Music, BuiltInHudIds.Home }, result.EnabledHudModuleIds);
         Assert.Equal(DesignVariant.ProductivityCommandIsland, result.Variant);
         Assert.False(result.ShowProgressBar);
         Assert.True(result.ShowLyrics);
@@ -119,7 +122,7 @@ public class UserSettingsJsonTests
         UserSettings result = UserSettingsJson.DeserializeOrDefault(UserSettingsJson.Serialize(loaded));
 
         Assert.Equal("com.example.weather", result.DefaultHudId);
-        Assert.Equal(new[] { "com.example.weather" }, result.EnabledHudModuleIds);
+        Assert.Equal(new[] { "com.example.weather", BuiltInHudIds.Home }, result.EnabledHudModuleIds);
         Assert.Equal("Tokyo", result.Modules["com.example.weather"].GetProperty("city").GetString());
         Assert.True(result.AdditionalProperties["FutureSetting"].GetProperty("enabled").GetBoolean());
     }
@@ -130,7 +133,7 @@ public class UserSettingsJsonTests
         UserSettings result = UserSettingsJson.DeserializeOrDefault("{ broken");
 
         Assert.Equal("music", result.DefaultHudId);
-        Assert.Equal(new[] { "music" }, result.EnabledHudModuleIds);
+        Assert.Equal(new[] { BuiltInHudIds.Music, BuiltInHudIds.Home }, result.EnabledHudModuleIds);
     }
 
     [Fact]
@@ -176,6 +179,39 @@ public class UserSettingsJsonTests
 
         Assert.Equal(futureVariantValue, (int)loaded.Variant);
         Assert.Equal(futureVariantValue, (int)result.Variant);
+    }
+
+    [Fact]
+    public void DeserializeOrDefault_AddsHomeAfterMusicWithoutChangingDefaultHud()
+    {
+        const string json = """
+            {
+              "DefaultHudId": "music",
+              "EnabledHudModuleIds": ["com.example.weather", "music"]
+            }
+            """;
+
+        UserSettings result = UserSettingsJson.DeserializeOrDefault(json);
+
+        Assert.Equal(BuiltInHudIds.Music, result.DefaultHudId);
+        Assert.Equal(
+            ["com.example.weather", BuiltInHudIds.Music, BuiltInHudIds.Home],
+            result.EnabledHudModuleIds);
+    }
+
+    [Fact]
+    public void Serialize_AfterIntroductionAllowsHomeToRemainDisabled()
+    {
+        var settings = new UserSettings
+        {
+            EnabledHudModuleIds = [BuiltInHudIds.Music],
+            HomeHudIntroductionCompleted = true
+        };
+
+        UserSettings result = UserSettingsJson.DeserializeOrDefault(
+            UserSettingsJson.Serialize(settings));
+
+        Assert.Equal([BuiltInHudIds.Music], result.EnabledHudModuleIds);
     }
 
     [Fact]

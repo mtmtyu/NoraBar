@@ -7,19 +7,23 @@ using NoraBar.Models;
 
 namespace NoraBar.ViewModels
 {
-    public class MusicViewModel : ViewModelBase
+    public class MusicViewModel : ViewModelBase, IMusicChangeSource
     {
         private readonly MediaControlService _mediaService;
         private readonly AudioVisualizerService _audioVisualizerService;
-        private readonly LyricsService _lyricsService;
+        private readonly ILyricsService _lyricsService;
+        private readonly Func<System.Threading.Tasks.Task> _lyricsRequestDelay;
+        private readonly System.Windows.Threading.Dispatcher _dispatcher;
+        private readonly object _lyricsRequestLock = new();
         private System.Collections.Generic.List<LyricLine>? _currentLyrics;
+        private LyricsRequestSnapshot? _currentLyricsRequest;
         private double _lastDurationSeconds = 0;
         private TimeSpan _lastPosition = TimeSpan.Zero;
         private string _currentTrackName = "";
         private string _currentArtistName = "";
         private string _currentAlbumName = "";
 
-        private readonly System.Collections.Generic.Dictionary<string, Services.LyricsResult> _lyricsCache = new();
+        private readonly System.Collections.Generic.Dictionary<LyricsCacheKey, LyricsResult> _lyricsCache = new();
 
         private string _title = "Not Playing";
         public string Title
@@ -99,6 +103,13 @@ namespace NoraBar.ViewModels
             set => SetProperty(ref _hasMultipleSessions, value);
         }
 
+        private bool _hasActiveSession;
+        public bool HasActiveSession
+        {
+            get => _hasActiveSession;
+            private set => SetProperty(ref _hasActiveSession, value);
+        }
+
         public ObservableCollection<DotItem> SessionDots { get; } = new ObservableCollection<DotItem>();
 
         public ObservableCollection<LyricLineViewModel> LyricsList { get; } = new ObservableCollection<LyricLineViewModel>();
@@ -116,20 +127,27 @@ namespace NoraBar.ViewModels
             get => _showLyrics;
             set
             {
+                if (_showLyrics == value)
+                {
+                    return;
+                }
+
+                if (!value)
+                {
+                    InvalidateLyricsRequests();
+                }
+
                 if (SetProperty(ref _showLyrics, value))
                 {
-                    if (value && _currentLyrics == null && !string.IsNullOrEmpty(_currentTrackName))
+                    if (value && !string.IsNullOrEmpty(_currentTrackName))
                     {
-                        int currentRequestId = ++_lyricsRequestId;
-                        System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                        {
-                            CurrentLyric = LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LoadingLyrics);
-                        });
-                        _ = FetchLyricsAsync(currentRequestId, _currentTrackName, _currentArtistName, _currentAlbumName);
+                        LyricsRequestSnapshot request = CreateRequestForCurrentTrack();
+                        QueueLoadingState(request);
+                        _ = FetchOrApplyCachedLyricsAsync(request, applyDelay: false);
                     }
                     else if (!value)
                     {
-                        CurrentLyric = string.Empty;
+                        RunOnDispatcher(ClearLyricsState);
                     }
                 }
             }
@@ -143,15 +161,44 @@ namespace NoraBar.ViewModels
         public ICommand SwitchToPreviousSessionCommand { get; }
         public ICommand SwitchToSessionCommand { get; }
 
-        private int _lyricsRequestId = 0;
+        private int _lyricsRequestId;
 
         public MusicViewModel()
+            : this(SettingsService.Load().ShowLyrics)
+        {
+        }
+
+        internal MusicViewModel(bool initialShowLyrics)
+            : this(initialShowLyrics, startRuntimeServices: true)
+        {
+        }
+
+        internal MusicViewModel(
+            bool initialShowLyrics,
+            bool startRuntimeServices)
+            : this(
+                new LyricsService(),
+                static () => System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(2)),
+                startRuntimeServices,
+                initialShowLyrics: initialShowLyrics)
+        {
+        }
+
+        internal MusicViewModel(
+            ILyricsService lyricsService,
+            Func<System.Threading.Tasks.Task> lyricsRequestDelay,
+            bool startRuntimeServices,
+            bool initialShowLyrics)
         {
             _mediaService = new MediaControlService();
             _audioVisualizerService = new AudioVisualizerService();
-            _lyricsService = new LyricsService();
-
-            ShowLyrics = SettingsService.Load().ShowLyrics;
+            _lyricsService = lyricsService;
+            _lyricsRequestDelay = lyricsRequestDelay;
+            _dispatcher = startRuntimeServices
+                ? System.Windows.Application.Current?.Dispatcher
+                    ?? System.Windows.Threading.Dispatcher.CurrentDispatcher
+                : System.Windows.Threading.Dispatcher.CurrentDispatcher;
+            _showLyrics = initialShowLyrics;
 
             PlayPauseCommand = new RelayCommand(async _ => await _mediaService.PlayPauseAsync());
             NextCommand = new RelayCommand(async _ => await _mediaService.NextAsync());
@@ -165,115 +212,24 @@ namespace NoraBar.ViewModels
                 }
             });
 
-            _mediaService.MediaInfoChanged += async (s, e) =>
-            {
-                string newTrackName = e.Title ?? "";
-                string newArtistName = e.Artist ?? "";
-                string newAlbumName = e.AlbumTitle ?? "";
-
-                if (_currentTrackName == newTrackName && _currentArtistName == newArtistName)
-                {
-                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        Title = string.IsNullOrEmpty(_currentTrackName) ? "Unknown" : _currentTrackName;
-                        Artist = string.IsNullOrEmpty(_currentArtistName) ? "Unknown" : _currentArtistName;
-                        AlbumArt = e.AlbumArt;
-                    });
-                    return;
-                }
-
-                int currentRequestId = ++_lyricsRequestId;
-
-                _currentTrackName = newTrackName;
-                _currentArtistName = newArtistName;
-                _currentAlbumName = newAlbumName;
-                
-                string cacheKey = $"{_currentTrackName}|{_currentArtistName}";
-
-                if (_lyricsCache.TryGetValue(cacheKey, out var cachedResult))
-                {
-                    _currentLyrics = cachedResult.Lyrics;
-                    RebuildLyricsList();
-                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        Title = string.IsNullOrEmpty(_currentTrackName) ? "Unknown" : _currentTrackName;
-                        Artist = string.IsNullOrEmpty(_currentArtistName) ? "Unknown" : _currentArtistName;
-                        AlbumArt = e.AlbumArt;
-
-                        if (_currentLyrics == null || _currentLyrics.Count == 0)
-                        {
-                            if (cachedResult.Error == Services.LyricsResultError.NotFound)
-                            {
-                                CurrentLyric = LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LyricsNotFound);
-                            }
-                            else if (cachedResult.Error == Services.LyricsResultError.NetworkError)
-                            {
-                                CurrentLyric = LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LyricsNetworkError);
-                            }
-                            else
-                            {
-                                CurrentLyric = "";
-                            }
-                        }
-                    });
-
-                    if (_currentLyrics != null && _currentLyrics.Count > 0)
-                    {
-                        UpdateCurrentLyric(_lastPosition);
-                    }
-                    return;
-                }
-
-                _currentLyrics = null;
-                RebuildLyricsList();
-
-                System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                {
-                    Title = string.IsNullOrEmpty(_currentTrackName) ? "Unknown" : _currentTrackName;
-                    Artist = string.IsNullOrEmpty(_currentArtistName) ? "Unknown" : _currentArtistName;
-                    AlbumArt = e.AlbumArt;
-                    CurrentLyric = SettingsService.Load().ShowLyrics ? LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LoadingLyrics) : "";
-                });
-
-                // Wait for 2 seconds (to reduce API requests during consecutive skips)
-                await System.Threading.Tasks.Task.Delay(2000);
-
-                await FetchLyricsAsync(currentRequestId, _currentTrackName, _currentArtistName, _currentAlbumName);
-            };
+            _mediaService.MediaInfoChanged += async (_, e) =>
+                await ProcessMediaInfoChangedAsync(e);
             _mediaService.PlaybackStateChanged += (s, e) =>
             {
-                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                _dispatcher.Invoke(() =>
                 {
                     IsPlaying = e.IsPlaying;
                 });
             };
 
-            _mediaService.MediaTimelineChanged += (s, e) =>
-            {
-                _lastPosition = e.Position;
-                _lastDurationSeconds = e.EndTime.TotalSeconds;
-
-                UpdateCurrentLyric(e.Position);
-
-                System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    PositionText = e.Position.ToString(@"m\:ss");
-                    DurationText = e.EndTime.ToString(@"m\:ss");
-                    if (e.EndTime.TotalSeconds > 0)
-                    {
-                        ProgressValue = (e.Position.TotalSeconds / e.EndTime.TotalSeconds) * 100.0;
-                    }
-                    else
-                    {
-                        ProgressValue = 0;
-                    }
-                }, System.Windows.Threading.DispatcherPriority.Render);
-            };
+            _mediaService.MediaTimelineChanged += (_, e) =>
+                ProcessMediaTimelineChanged(e.Position, e.EndTime);
 
             _mediaService.SessionsInfoChanged += (s, e) =>
             {
-                System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                _dispatcher.InvokeAsync(() =>
                 {
+                    HasActiveSession = e.SessionCount > 0;
                     HasMultipleSessions = e.SessionCount > 1;
                     
                     if (SessionDots.Count != e.SessionCount)
@@ -294,20 +250,35 @@ namespace NoraBar.ViewModels
                 }, System.Windows.Threading.DispatcherPriority.Render);
             };
             
-            _ = _mediaService.InitializeAsync();
-
-            _audioVisualizerService.SpectrumDataUpdated += (s, data) =>
+            if (startRuntimeServices)
             {
-                System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    SpectrumData = data;
-                }, System.Windows.Threading.DispatcherPriority.Render);
-            };
-            _audioVisualizerService.Start();
+                _ = _mediaService.InitializeAsync();
+                _audioVisualizerService.SpectrumDataUpdated += AudioVisualizerService_SpectrumDataUpdated;
+                _audioVisualizerService.Start();
+            }
+        }
+
+        private void AudioVisualizerService_SpectrumDataUpdated(
+            object? sender,
+            float[] data)
+        {
+            System.Windows.Threading.Dispatcher? dispatcher =
+                System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher is null
+                || dispatcher.HasShutdownStarted
+                || dispatcher.HasShutdownFinished)
+            {
+                return;
+            }
+
+            dispatcher.InvokeAsync(
+                () => SpectrumData = data,
+                System.Windows.Threading.DispatcherPriority.Render);
         }
 
         public void Cleanup()
         {
+            _audioVisualizerService.SpectrumDataUpdated -= AudioVisualizerService_SpectrumDataUpdated;
             _audioVisualizerService.Stop();
             _audioVisualizerService.Dispose();
         }
@@ -318,33 +289,71 @@ namespace NoraBar.ViewModels
             _audioVisualizerService.Start();
         }
 
-        private void RebuildLyricsList()
+        internal async System.Threading.Tasks.Task ProcessMediaInfoChangedAsync(
+            MediaInfoChangedEventArgs mediaInfo)
         {
-            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            var track = new LyricsTrackIdentity(
+                mediaInfo.Title ?? string.Empty,
+                mediaInfo.Artist ?? string.Empty,
+                mediaInfo.AlbumTitle ?? string.Empty);
+
+            lock (_lyricsRequestLock)
             {
-                LyricsList.Clear();
-                CurrentLyricIndex = -1;
-                if (_currentLyrics != null)
+                if (track.Matches(_currentTrackName, _currentArtistName, _currentAlbumName))
                 {
-                    foreach (var line in _currentLyrics)
-                    {
-                        LyricsList.Add(new LyricLineViewModel(line));
-                    }
+                    QueueTrackState(track, mediaInfo.AlbumArt);
+                    return;
                 }
-            });
+
+                _lyricsRequestId++;
+                _currentTrackName = track.Title;
+                _currentArtistName = track.Artist;
+                _currentAlbumName = track.Album;
+                _lastPosition = TimeSpan.Zero;
+                _lastDurationSeconds = 0;
+            }
+
+            QueueTrackState(track, mediaInfo.AlbumArt);
+            if (!ShowLyrics)
+            {
+                RunOnDispatcher(ClearLyricsState);
+                return;
+            }
+
+            LyricsRequestSnapshot request = CreateRequestForCurrentTrack();
+            QueueLoadingState(request);
+            await FetchOrApplyCachedLyricsAsync(request, applyDelay: true);
+        }
+
+        internal void ProcessMediaTimelineChanged(TimeSpan position, TimeSpan endTime)
+        {
+            _lastPosition = position;
+            _lastDurationSeconds = endTime.TotalSeconds;
+            UpdateCurrentLyric(position);
+
+            _dispatcher.InvokeAsync(() =>
+            {
+                PositionText = position.ToString(@"m\:ss");
+                DurationText = endTime.ToString(@"m\:ss");
+                ProgressValue = endTime.TotalSeconds > 0
+                    ? (position.TotalSeconds / endTime.TotalSeconds) * 100.0
+                    : 0;
+            }, System.Windows.Threading.DispatcherPriority.Render);
         }
 
         private void UpdateCurrentLyric(TimeSpan position)
         {
-            if (_currentLyrics == null || _currentLyrics.Count == 0 || !ShowLyrics)
+            LyricsRequestSnapshot? request = _currentLyricsRequest;
+            System.Collections.Generic.List<LyricLine>? lyrics = _currentLyrics;
+            if (request is null || lyrics is null || lyrics.Count == 0 || !ShowLyrics)
             {
                 return;
             }
 
             int newIndex = -1;
-            for (int i = 0; i < _currentLyrics.Count; i++)
+            for (int i = 0; i < lyrics.Count; i++)
             {
-                if (position >= _currentLyrics[i].StartTime)
+                if (position >= lyrics[i].StartTime)
                 {
                     newIndex = i;
                 }
@@ -354,79 +363,286 @@ namespace NoraBar.ViewModels
                 }
             }
 
-            System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            _dispatcher.InvokeAsync(() =>
             {
-                if (newIndex != _currentLyricIndex)
+                if (!IsLyricsRequestCurrent(request.Value)
+                    || !Equals(request, _currentLyricsRequest)
+                    || !ReferenceEquals(lyrics, _currentLyrics))
                 {
-                    if (_currentLyricIndex >= 0 && _currentLyricIndex < LyricsList.Count)
-                    {
-                        LyricsList[_currentLyricIndex].IsCurrent = false;
-                    }
-
-                    CurrentLyricIndex = newIndex;
-
-                    if (_currentLyricIndex >= 0 && _currentLyricIndex < LyricsList.Count)
-                    {
-                        LyricsList[_currentLyricIndex].IsCurrent = true;
-                    }
-
-                    string currentText = _currentLyricIndex >= 0 ? _currentLyrics[_currentLyricIndex].Text : "";
-                    if (CurrentLyric != currentText)
-                    {
-                        CurrentLyric = currentText;
-                    }
+                    return;
                 }
+
+                ApplyCurrentLyric(lyrics, newIndex);
             }, System.Windows.Threading.DispatcherPriority.Render);
         }
 
-        private async System.Threading.Tasks.Task FetchLyricsAsync(int currentRequestId, string tTitle, string tArtist, string tAlbum)
+        private async System.Threading.Tasks.Task FetchOrApplyCachedLyricsAsync(
+            LyricsRequestSnapshot request,
+            bool applyDelay)
         {
-            if (currentRequestId != _lyricsRequestId)
+            if (!IsLyricsRequestCurrent(request))
             {
                 return;
             }
 
-            if (!SettingsService.Load().ShowLyrics)
+            LyricsResult? cachedResult;
+            lock (_lyricsRequestLock)
+            {
+                _lyricsCache.TryGetValue(request.CacheKey, out cachedResult);
+            }
+            if (cachedResult is not null)
+            {
+                QueueLyricsResult(request, cachedResult);
+                return;
+            }
+
+            if (applyDelay)
+            {
+                await _lyricsRequestDelay();
+            }
+            if (!IsLyricsRequestCurrent(request))
             {
                 return;
             }
 
-            var result = await _lyricsService.GetLyricsAsync(tTitle, tArtist, tAlbum, _lastDurationSeconds);
-            
-            if (currentRequestId != _lyricsRequestId)
+            LyricsResult result = await _lyricsService.GetLyricsAsync(
+                request.Track.Title,
+                request.Track.Artist,
+                request.Track.Album,
+                request.DurationSeconds);
+            if (IsLyricsRequestCurrent(request))
             {
-                return;
-            }
-
-            _currentLyrics = result.Lyrics;
-            RebuildLyricsList();
-
-            string cacheKey = $"{tTitle}|{tArtist}";
-            _lyricsCache[cacheKey] = result;
-
-            if (_currentLyrics == null || _currentLyrics.Count == 0)
-            {
-                _ = System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    if (result.Error == LyricsResultError.NotFound)
-                    {
-                        CurrentLyric = LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LyricsNotFound);
-                    }
-                    else if (result.Error == LyricsResultError.NetworkError)
-                    {
-                        CurrentLyric = LocalizationService.GetText(SettingsService.Load().Language, LocalizationKey.LyricsNetworkError);
-                    }
-                    else
-                    {
-                        CurrentLyric = "";
-                    }
-                });
-            }
-            else
-            {
-                UpdateCurrentLyric(_lastPosition);
+                QueueLyricsResult(request, result);
             }
         }
+
+        private LyricsRequestSnapshot CreateRequestForCurrentTrack()
+        {
+            lock (_lyricsRequestLock)
+            {
+                _lyricsRequestId++;
+                var track = new LyricsTrackIdentity(
+                    _currentTrackName,
+                    _currentArtistName,
+                    _currentAlbumName);
+                return new LyricsRequestSnapshot(
+                    _lyricsRequestId,
+                    track,
+                    _lastDurationSeconds,
+                    new LyricsCacheKey(
+                        track.Title,
+                        track.Artist,
+                        track.Album,
+                        Math.Round(_lastDurationSeconds)));
+            }
+        }
+
+        private void InvalidateLyricsRequests()
+        {
+            lock (_lyricsRequestLock)
+            {
+                _lyricsRequestId++;
+            }
+        }
+
+        private bool IsLyricsRequestCurrent(LyricsRequestSnapshot request)
+        {
+            if (!ShowLyrics)
+            {
+                return false;
+            }
+
+            lock (_lyricsRequestLock)
+            {
+                return request.Generation == _lyricsRequestId
+                    && request.Track.Matches(
+                        _currentTrackName,
+                        _currentArtistName,
+                        _currentAlbumName);
+            }
+        }
+
+        private bool IsTrackCurrent(LyricsTrackIdentity track)
+        {
+            lock (_lyricsRequestLock)
+            {
+                return track.Matches(
+                    _currentTrackName,
+                    _currentArtistName,
+                    _currentAlbumName);
+            }
+        }
+
+        private void QueueTrackState(
+            LyricsTrackIdentity track,
+            BitmapImage? albumArt)
+        {
+            _ = _dispatcher.InvokeAsync(() =>
+            {
+                if (!IsTrackCurrent(track))
+                {
+                    return;
+                }
+
+                Title = string.IsNullOrEmpty(track.Title) ? "Unknown" : track.Title;
+                Artist = string.IsNullOrEmpty(track.Artist) ? "Unknown" : track.Artist;
+                AlbumArt = albumArt;
+            });
+        }
+
+        private void QueueLoadingState(LyricsRequestSnapshot request)
+        {
+            _ = _dispatcher.InvokeAsync(() =>
+            {
+                if (!IsLyricsRequestCurrent(request))
+                {
+                    return;
+                }
+
+                ClearLyricsState();
+                CurrentLyric = LocalizationService.GetText(
+                    SettingsService.Load().Language,
+                    LocalizationKey.LoadingLyrics);
+            });
+        }
+
+        private void QueueLyricsResult(
+            LyricsRequestSnapshot request,
+            LyricsResult result)
+        {
+            _ = _dispatcher.InvokeAsync(() =>
+            {
+                if (!IsLyricsRequestCurrent(request))
+                {
+                    return;
+                }
+
+                lock (_lyricsRequestLock)
+                {
+                    _lyricsCache[request.CacheKey] = result;
+                }
+
+                _currentLyricsRequest = request;
+                _currentLyrics = result.Lyrics;
+                RebuildLyricsList(result.Lyrics);
+                if (result.Lyrics is { Count: > 0 } lyrics)
+                {
+                    ApplyCurrentLyric(lyrics, FindCurrentLyricIndex(lyrics, _lastPosition));
+                    return;
+                }
+
+                CurrentLyric = result.Error switch
+                {
+                    LyricsResultError.NotFound => LocalizationService.GetText(
+                        SettingsService.Load().Language,
+                        LocalizationKey.LyricsNotFound),
+                    LyricsResultError.NetworkError => LocalizationService.GetText(
+                        SettingsService.Load().Language,
+                        LocalizationKey.LyricsNetworkError),
+                    _ => string.Empty
+                };
+            });
+        }
+
+        private void RebuildLyricsList(
+            System.Collections.Generic.IReadOnlyList<LyricLine>? lyrics)
+        {
+            LyricsList.Clear();
+            CurrentLyricIndex = -1;
+            if (lyrics is null)
+            {
+                return;
+            }
+
+            foreach (LyricLine line in lyrics)
+            {
+                LyricsList.Add(new LyricLineViewModel(line));
+            }
+        }
+
+        private static int FindCurrentLyricIndex(
+            System.Collections.Generic.IReadOnlyList<LyricLine> lyrics,
+            TimeSpan position)
+        {
+            int newIndex = -1;
+            for (int i = 0; i < lyrics.Count; i++)
+            {
+                if (position < lyrics[i].StartTime)
+                {
+                    break;
+                }
+
+                newIndex = i;
+            }
+
+            return newIndex;
+        }
+
+        private void ApplyCurrentLyric(
+            System.Collections.Generic.IReadOnlyList<LyricLine> lyrics,
+            int newIndex)
+        {
+            if (newIndex != _currentLyricIndex)
+            {
+                if (_currentLyricIndex >= 0 && _currentLyricIndex < LyricsList.Count)
+                {
+                    LyricsList[_currentLyricIndex].IsCurrent = false;
+                }
+
+                CurrentLyricIndex = newIndex;
+                if (_currentLyricIndex >= 0 && _currentLyricIndex < LyricsList.Count)
+                {
+                    LyricsList[_currentLyricIndex].IsCurrent = true;
+                }
+            }
+
+            CurrentLyric = _currentLyricIndex >= 0 && _currentLyricIndex < lyrics.Count
+                ? lyrics[_currentLyricIndex].Text
+                : string.Empty;
+        }
+
+        private void ClearLyricsState()
+        {
+            _currentLyricsRequest = null;
+            _currentLyrics = null;
+            LyricsList.Clear();
+            CurrentLyricIndex = -1;
+            CurrentLyric = string.Empty;
+        }
+
+        private void RunOnDispatcher(Action action)
+        {
+            if (_dispatcher.CheckAccess())
+            {
+                action();
+                return;
+            }
+
+            _dispatcher.Invoke(action);
+        }
+
+        private readonly record struct LyricsTrackIdentity(
+            string Title,
+            string Artist,
+            string Album)
+        {
+            internal bool Matches(string title, string artist, string album) =>
+                string.Equals(Title, title, StringComparison.Ordinal)
+                && string.Equals(Artist, artist, StringComparison.Ordinal)
+                && string.Equals(Album, album, StringComparison.Ordinal);
+        }
+
+        private readonly record struct LyricsCacheKey(
+            string Title,
+            string Artist,
+            string Album,
+            double DurationSeconds);
+
+        private readonly record struct LyricsRequestSnapshot(
+            int Generation,
+            LyricsTrackIdentity Track,
+            double DurationSeconds,
+            LyricsCacheKey CacheKey);
     }
 
     public class DotItem : ViewModelBase
