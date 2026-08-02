@@ -17,6 +17,7 @@ namespace NoraBar.Services
         private GlobalSystemMediaTransportControlsSessionManager? _sessionManager;
         private GlobalSystemMediaTransportControlsSession? _currentSession;
         private IReadOnlyList<GlobalSystemMediaTransportControlsSession> _sessions = new List<GlobalSystemMediaTransportControlsSession>();
+        private readonly MediaUpdateRequestTracker _mediaUpdateRequests = new();
 
         public event EventHandler<MediaInfoChangedEventArgs>? MediaInfoChanged;
         public event EventHandler<PlaybackStateChangedEventArgs>? PlaybackStateChanged;
@@ -129,6 +130,7 @@ namespace NoraBar.Services
 
         private void UpdateCurrentSession(GlobalSystemMediaTransportControlsSession? session)
         {
+            _mediaUpdateRequests.InvalidatePendingRequests();
             if (_currentSession != null)
             {
                 _currentSession.MediaPropertiesChanged -= CurrentSession_MediaPropertiesChanged;
@@ -161,12 +163,15 @@ namespace NoraBar.Services
 
         private async Task UpdateMediaPropertiesAsync()
         {
-            if (_currentSession == null) return;
+            GlobalSystemMediaTransportControlsSession? session = _currentSession;
+            if (session == null) return;
+
+            MediaUpdateRequest request = _mediaUpdateRequests.Capture();
 
             try
             {
-                var properties = await _currentSession.TryGetMediaPropertiesAsync();
-                if (properties == null) return;
+                var properties = await session.TryGetMediaPropertiesAsync();
+                if (properties == null || !IsCurrentMediaUpdate(session, request)) return;
 
                 BitmapImage? albumArt = null;
                 if (properties.Thumbnail != null)
@@ -198,6 +203,8 @@ namespace NoraBar.Services
                     }
                 }
 
+                if (!IsCurrentMediaUpdate(session, request)) return;
+
                 MediaInfoChanged?.Invoke(this, new MediaInfoChangedEventArgs
                 {
                     Title = properties.Title,
@@ -211,6 +218,12 @@ namespace NoraBar.Services
                 // Ignored
             }
         }
+
+        private bool IsCurrentMediaUpdate(
+            GlobalSystemMediaTransportControlsSession session,
+            MediaUpdateRequest request) =>
+            ReferenceEquals(session, _currentSession)
+            && _mediaUpdateRequests.IsCurrent(request);
 
         private static async Task<MemoryStream?> CopyThumbnailToMemoryAsync(Stream source)
         {
