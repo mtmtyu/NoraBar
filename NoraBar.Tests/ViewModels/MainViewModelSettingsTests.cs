@@ -10,28 +10,54 @@ namespace NoraBar.Tests.ViewModels;
 
 public class MainViewModelSettingsTests : IDisposable
 {
+    private readonly string _tempDirectoryPath;
+    private readonly FileSettingsStore _settingsStore;
+
     public MainViewModelSettingsTests()
     {
-        SettingsService.OverrideSettingsDirectoryPath = System.IO.Path.Combine(
+        _tempDirectoryPath = System.IO.Path.Combine(
             System.IO.Path.GetTempPath(),
             "NoraBar_TestSettings_" + System.Guid.NewGuid().ToString("N"));
+        _settingsStore = new FileSettingsStore(
+            _tempDirectoryPath,
+            System.IO.Path.Combine(_tempDirectoryPath, "legacy-settings.json"),
+            enableFirstRunStartup: false);
     }
 
     public void Dispose()
     {
-        string? tempDir = SettingsService.OverrideSettingsDirectoryPath;
-        SettingsService.OverrideSettingsDirectoryPath = null;
-        if (tempDir != null && System.IO.Directory.Exists(tempDir))
+        if (System.IO.Directory.Exists(_tempDirectoryPath))
         {
             try
             {
-                System.IO.Directory.Delete(tempDir, true);
+                System.IO.Directory.Delete(_tempDirectoryPath, true);
             }
             catch
             {
                 // Ignore cleanup errors
             }
         }
+    }
+
+    [Fact]
+    public void Constructor_LoadsOnlyFromInjectedTemporaryStore()
+    {
+        _settingsStore.Save(new UserSettings
+        {
+            Language = AppLanguage.English,
+            ShowProgressBar = false,
+            ShowLyrics = true
+        });
+
+        MainViewModel viewModel = CreateViewModel();
+
+        Assert.StartsWith(
+            _tempDirectoryPath,
+            _settingsStore.SettingsFilePath,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(AppLanguage.English, viewModel.SelectedLanguage);
+        Assert.False(viewModel.ShowProgressBar);
+        Assert.True(viewModel.ShowLyrics);
     }
 
     [Fact]
@@ -180,7 +206,7 @@ public class MainViewModelSettingsTests : IDisposable
     [Fact]
     public void IsWidgetEditMode_TogglesStateAndClearsIsPositionEditMode()
     {
-        var viewModel = new MainViewModel();
+        MainViewModel viewModel = CreateViewModel();
         viewModel.IsPositionEditMode = true;
 
         Assert.True(viewModel.IsPositionEditMode);
@@ -195,7 +221,7 @@ public class MainViewModelSettingsTests : IDisposable
     [Fact]
     public void ActiveHomeWidgets_ReordersWidgetsCorrectly()
     {
-        var viewModel = new MainViewModel();
+        MainViewModel viewModel = CreateViewModel();
         var initial = viewModel.ActiveHomeWidgets.ToList();
         Assert.True(initial.Count >= 2);
         var item0 = initial[0];
@@ -211,8 +237,8 @@ public class MainViewModelSettingsTests : IDisposable
     [Fact]
     public void AvailableTimeZones_IsSharedAndReadOnlyAcrossViewModels()
     {
-        var first = new MainViewModel();
-        var second = new MainViewModel();
+        MainViewModel first = CreateViewModel();
+        MainViewModel second = CreateViewModel();
 
         Assert.Same(first.AvailableTimeZones, second.AvailableTimeZones);
         Assert.IsAssignableFrom<System.Collections.ObjectModel.ReadOnlyCollection<MainViewModel.TimeZoneOption>>(
@@ -242,7 +268,7 @@ public class MainViewModelSettingsTests : IDisposable
             AppLanguage.Japanese,
             () => { });
 
-        var viewModel = new MainViewModel();
+        MainViewModel viewModel = CreateViewModel();
         viewModel.AttachHudNavigation(navigation);
 
         Assert.Equal(BuiltInHudIds.Music, router.CurrentHudId);
@@ -277,7 +303,7 @@ public class MainViewModelSettingsTests : IDisposable
             AppLanguage.Japanese,
             () => { });
 
-        var viewModel = new MainViewModel();
+        MainViewModel viewModel = CreateViewModel();
         viewModel.AttachHudNavigation(navigation);
 
         Assert.Equal(BuiltInHudIds.Music, router.CurrentHudId);
@@ -294,7 +320,7 @@ public class MainViewModelSettingsTests : IDisposable
     [Fact]
     public void ReorderWorldClock_MovesWorldClockEntriesCorrectly()
     {
-        var viewModel = new MainViewModel();
+        MainViewModel viewModel = CreateViewModel();
         viewModel.WorldClockEntries.Clear();
         var item1 = new WorldClockEntryViewModel("NYC", "UTC", () => { });
         var item2 = new WorldClockEntryViewModel("LON", "UTC", () => { });
@@ -310,7 +336,7 @@ public class MainViewModelSettingsTests : IDisposable
     [Fact]
     public void AddWorldClock_UsesSelectedTimeZoneLabel_NotNew()
     {
-        var viewModel = new MainViewModel();
+        MainViewModel viewModel = CreateViewModel();
         viewModel.WorldClockEntries.Clear();
 
         viewModel.AddWorldClockCommand.Execute(null);
@@ -357,4 +383,6 @@ public class MainViewModelSettingsTests : IDisposable
         Assert.Equal("PST", WorldClockEntryViewModel.GetDefaultLabelForTimeZone("Pacific Standard Time"));
         Assert.Equal("GMT", WorldClockEntryViewModel.GetDefaultLabelForTimeZone("GMT Standard Time"));
     }
+
+    private MainViewModel CreateViewModel() => new(_settingsStore);
 }

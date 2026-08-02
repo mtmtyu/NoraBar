@@ -12,6 +12,7 @@ namespace NoraBar.ViewModels
     public class MainViewModel : ViewModelBase
     {
         private readonly UserSettings _settings;
+        private readonly ISettingsStore _settingsStore;
         private static readonly Lazy<IReadOnlyList<TimeZoneOption>> CachedTimeZones = new(
             static () => Array.AsReadOnly(
                 TimeZoneInfo.GetSystemTimeZones()
@@ -610,13 +611,28 @@ namespace NoraBar.ViewModels
         public ICommand CloseResetDialogCommand { get; }
         public ICommand RestartVisualizerCommand { get; }
 
-        public MusicViewModel Music { get; } = new MusicViewModel();
+        public MusicViewModel Music { get; }
 
         public ICommand SetVariantCommand { get; }
 
         public MainViewModel()
+            : this(SettingsService.Store, startRuntimeServices: true)
         {
-            _settings = SettingsService.Load();
+        }
+
+        internal MainViewModel(ISettingsStore settingsStore)
+            : this(settingsStore, startRuntimeServices: false)
+        {
+        }
+
+        private MainViewModel(
+            ISettingsStore settingsStore,
+            bool startRuntimeServices)
+        {
+            ArgumentNullException.ThrowIfNull(settingsStore);
+            _settingsStore = settingsStore;
+            _settings = settingsStore.Load();
+            Music = new MusicViewModel(_settings.ShowLyrics, startRuntimeServices);
             _currentVariant = _settings.Variant;
             _showProgressBar = _settings.ShowProgressBar;
             _showLyrics = _settings.ShowLyrics;
@@ -834,7 +850,7 @@ namespace NoraBar.ViewModels
             _settings.HudNavigationPlacement = HudNavigationPlacement;
             HomeHudSettingsJson.Write(_settings, GetHomeHudSettings());
 
-            SettingsService.Save(_settings);
+            _settingsStore.Save(_settings);
         }
 
         public string AddWidgetsHeaderText => T(LocalizationKey.AddWidgetsHeader);

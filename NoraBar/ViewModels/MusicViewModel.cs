@@ -164,11 +164,23 @@ namespace NoraBar.ViewModels
         private int _lyricsRequestId;
 
         public MusicViewModel()
+            : this(SettingsService.Load().ShowLyrics)
+        {
+        }
+
+        internal MusicViewModel(bool initialShowLyrics)
+            : this(initialShowLyrics, startRuntimeServices: true)
+        {
+        }
+
+        internal MusicViewModel(
+            bool initialShowLyrics,
+            bool startRuntimeServices)
             : this(
                 new LyricsService(),
                 static () => System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(2)),
-                startRuntimeServices: true,
-                initialShowLyrics: SettingsService.Load().ShowLyrics)
+                startRuntimeServices,
+                initialShowLyrics: initialShowLyrics)
         {
         }
 
@@ -183,7 +195,8 @@ namespace NoraBar.ViewModels
             _lyricsService = lyricsService;
             _lyricsRequestDelay = lyricsRequestDelay;
             _dispatcher = startRuntimeServices
-                ? System.Windows.Application.Current.Dispatcher
+                ? System.Windows.Application.Current?.Dispatcher
+                    ?? System.Windows.Threading.Dispatcher.CurrentDispatcher
                 : System.Windows.Threading.Dispatcher.CurrentDispatcher;
             _showLyrics = initialShowLyrics;
 
@@ -203,7 +216,7 @@ namespace NoraBar.ViewModels
                 await ProcessMediaInfoChangedAsync(e);
             _mediaService.PlaybackStateChanged += (s, e) =>
             {
-                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                _dispatcher.Invoke(() =>
                 {
                     IsPlaying = e.IsPlaying;
                 });
@@ -214,7 +227,7 @@ namespace NoraBar.ViewModels
 
             _mediaService.SessionsInfoChanged += (s, e) =>
             {
-                System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                _dispatcher.InvokeAsync(() =>
                 {
                     HasActiveSession = e.SessionCount > 0;
                     HasMultipleSessions = e.SessionCount > 1;
