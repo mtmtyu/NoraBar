@@ -191,6 +191,27 @@ public sealed class MusicViewModelTests
         });
     }
 
+    [Fact]
+    public void CurrentLyricCallback_BecomingStaleAfterTrackChange_DoesNotChangeSelection()
+    {
+        RunLyricsTest((viewModel, service, cancellationToken) =>
+        {
+            CompleteTrack(viewModel, service, "Track A", "first", cancellationToken, "stale second");
+            viewModel.ProcessMediaTimelineChanged(TimeSpan.FromSeconds(6), TimeSpan.FromMinutes(3));
+
+            TaskCompletionSource<LyricsResult> trackB = service.EnqueueRequest();
+            Task trackBUpdate = viewModel.ProcessMediaInfoChangedAsync(MediaInfo("Track B"));
+            DrainDispatcher(cancellationToken);
+
+            Assert.Equal(-1, viewModel.CurrentLyricIndex);
+            Assert.DoesNotContain("stale second", viewModel.CurrentLyric, StringComparison.Ordinal);
+
+            trackB.SetResult(Success("current Track B line"));
+            PumpUntil(trackBUpdate, cancellationToken);
+            DrainDispatcher(cancellationToken);
+        });
+    }
+
     private static void RunLyricsTest(Action<MusicViewModel, ControlledLyricsService, CancellationToken> action)
     {
         StaTestRunner.Run(cancellationToken => RunWithApplication(() =>
