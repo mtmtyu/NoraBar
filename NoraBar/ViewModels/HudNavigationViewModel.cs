@@ -11,6 +11,7 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
     private readonly HudRouter _router;
     private readonly UserSettings _settings;
     private readonly Action _saveSettings;
+    private readonly HashSet<string> _registeredHudIds;
     private readonly SemaphoreSlim _configurationGate = new(1, 1);
     private AppLanguage _language;
     private string _defaultHudId;
@@ -33,6 +34,9 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
         _saveSettings = saveSettings;
         _language = language;
         _defaultHudId = settings.DefaultHudId;
+        _registeredHudIds = modules
+            .Select(module => module.Id)
+            .ToHashSet(StringComparer.Ordinal);
 
         var modulesById = modules.ToDictionary(module => module.Id, StringComparer.Ordinal);
         var orderedModules = new List<IHudModule>();
@@ -148,19 +152,21 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
             }
 
             item.SetEnabled(enabled);
-            string[] enabledIds = Items
+            string[] registeredEnabledIds = Items
                 .Where(candidate => candidate.IsEnabled)
                 .Select(candidate => candidate.Id)
                 .ToArray();
-            string defaultHudId = enabledIds.Contains(_defaultHudId, StringComparer.Ordinal)
+            string[] persistedEnabledIds = MergeEnabledHudIds(registeredEnabledIds);
+            string defaultHudId = !_registeredHudIds.Contains(_defaultHudId)
+                || registeredEnabledIds.Contains(_defaultHudId, StringComparer.Ordinal)
                 ? _defaultHudId
-                : enabledIds[0];
+                : registeredEnabledIds[0];
 
             try
             {
                 await _router.ApplyConfigurationAsync(
                     defaultHudId,
-                    enabledIds,
+                    persistedEnabledIds,
                     CancellationToken.None);
             }
             catch
@@ -171,7 +177,7 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
 
             _defaultHudId = defaultHudId;
             _settings.DefaultHudId = defaultHudId;
-            _settings.EnabledHudModuleIds = [.. enabledIds];
+            _settings.EnabledHudModuleIds = [.. persistedEnabledIds];
             _saveSettings();
             NotifyConfigurationChanged();
         }
@@ -209,15 +215,16 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
             }
 
             Items.Move(oldIndex, newIndex);
-            string[] enabledIds = Items
+            string[] registeredEnabledIds = Items
                 .Where(item => item.IsEnabled)
                 .Select(item => item.Id)
                 .ToArray();
+            string[] persistedEnabledIds = MergeEnabledHudIds(registeredEnabledIds);
             try
             {
                 await _router.ApplyConfigurationAsync(
                     _defaultHudId,
-                    enabledIds,
+                    persistedEnabledIds,
                     CancellationToken.None);
             }
             catch (Exception applyException)
@@ -236,7 +243,7 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
 
                 throw;
             }
-            _settings.EnabledHudModuleIds = [.. enabledIds];
+            _settings.EnabledHudModuleIds = [.. persistedEnabledIds];
             _saveSettings();
             NotifyConfigurationChanged();
         }
@@ -257,15 +264,16 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
         try
         {
             Items.Move(oldIndex, newIndex);
-            string[] enabledIds = Items
+            string[] registeredEnabledIds = Items
                 .Where(item => item.IsEnabled)
                 .Select(item => item.Id)
                 .ToArray();
+            string[] persistedEnabledIds = MergeEnabledHudIds(registeredEnabledIds);
             try
             {
                 await _router.ApplyConfigurationAsync(
                     _defaultHudId,
-                    enabledIds,
+                    persistedEnabledIds,
                     CancellationToken.None);
             }
             catch (Exception applyException)
@@ -284,7 +292,7 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
 
                 throw;
             }
-            _settings.EnabledHudModuleIds = [.. enabledIds];
+            _settings.EnabledHudModuleIds = [.. persistedEnabledIds];
             _saveSettings();
             NotifyConfigurationChanged();
         }
@@ -450,6 +458,27 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
 
     private HudNavigationItemViewModel GetItem(string hudId) =>
         Items.First(item => string.Equals(item.Id, hudId, StringComparison.Ordinal));
+
+    private string[] MergeEnabledHudIds(
+        IReadOnlyList<string> registeredEnabledIds)
+    {
+        var remainingRegisteredIds = new Queue<string>(registeredEnabledIds);
+        var mergedIds = new List<string>(_settings.EnabledHudModuleIds.Count);
+        foreach (string configuredId in _settings.EnabledHudModuleIds)
+        {
+            if (!_registeredHudIds.Contains(configuredId))
+            {
+                mergedIds.Add(configuredId);
+            }
+            else if (remainingRegisteredIds.TryDequeue(out string? replacementId))
+            {
+                mergedIds.Add(replacementId);
+            }
+        }
+
+        mergedIds.AddRange(remainingRegisteredIds);
+        return mergedIds.ToArray();
+    }
 
     private void RestoreConfiguration(
         IReadOnlyList<HudNavigationItemViewModel> originalOrder,

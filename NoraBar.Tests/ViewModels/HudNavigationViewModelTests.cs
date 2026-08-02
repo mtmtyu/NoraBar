@@ -75,6 +75,64 @@ public sealed class HudNavigationViewModelTests
     }
 
     [Fact]
+    public async Task MoveAsync_PreservesUnregisteredEnabledHudIdsAndDefault()
+    {
+        const string unregisteredHudId = "com.example.weather";
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var home = new FakeHudModule(BuiltInHudIds.Home);
+        HudRouter router = CreateRouter(music, home);
+        await router.InitializeAsync(CancellationToken.None);
+        var settings = new UserSettings
+        {
+            DefaultHudId = unregisteredHudId,
+            EnabledHudModuleIds =
+                [BuiltInHudIds.Music, unregisteredHudId, BuiltInHudIds.Home]
+        };
+        var navigation = new HudNavigationViewModel(
+            router,
+            [music, home],
+            settings,
+            AppLanguage.English,
+            () => { });
+
+        await navigation.MoveAsync(BuiltInHudIds.Home, -1);
+
+        Assert.Equal(
+            [BuiltInHudIds.Home, unregisteredHudId, BuiltInHudIds.Music],
+            settings.EnabledHudModuleIds);
+        Assert.Equal(unregisteredHudId, settings.DefaultHudId);
+    }
+
+    [Fact]
+    public async Task SetEnabledAsync_PreservesUnregisteredConfiguration()
+    {
+        const string unregisteredHudId = "com.example.weather";
+        var music = new FakeHudModule(BuiltInHudIds.Music);
+        var home = new FakeHudModule(BuiltInHudIds.Home);
+        HudRouter router = CreateRouter(music, home);
+        await router.InitializeAsync(CancellationToken.None);
+        var settings = new UserSettings
+        {
+            DefaultHudId = unregisteredHudId,
+            EnabledHudModuleIds =
+                [BuiltInHudIds.Music, unregisteredHudId, BuiltInHudIds.Home]
+        };
+        var navigation = new HudNavigationViewModel(
+            router,
+            [music, home],
+            settings,
+            AppLanguage.English,
+            () => { });
+
+        await navigation.SetEnabledAsync(BuiltInHudIds.Music, false);
+
+        Assert.Equal(
+            [BuiltInHudIds.Home, unregisteredHudId],
+            settings.EnabledHudModuleIds);
+        Assert.Equal(unregisteredHudId, settings.DefaultHudId);
+    }
+
+    [Fact]
     public async Task SetEnabledAsync_RejectingLastModuleRefreshesBindingValue()
     {
         var music = new FakeHudModule(BuiltInHudIds.Music);
