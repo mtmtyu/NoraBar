@@ -72,11 +72,18 @@ public sealed class WrapPanelAnimatedReorderHelperTests
             var item2 = new FrameworkElement { Width = 120, Height = 40 };
             var originalTransform1 = new RotateTransform(10);
             var originalTransform2 = new ScaleTransform(1.5, 1.5);
+            var originalOrigin1 = new Point(0.2, 0.3);
+            var originalOrigin2 = new Point(0.7, 0.8);
             item1.RenderTransform = originalTransform1;
             item2.RenderTransform = originalTransform2;
+            item1.RenderTransformOrigin = originalOrigin1;
+            item2.RenderTransformOrigin = originalOrigin2;
             panel.Children.Add(item1);
             panel.Children.Add(item2);
-            var helper = new WrapPanelAnimatedReorderHelper(panel, (_, _) => { });
+            var commits = new List<(int From, int To)>();
+            var helper = new WrapPanelAnimatedReorderHelper(
+                panel,
+                (from, to) => commits.Add((from, to)));
 
             helper.StartDrag(item1, new Point(10, 10), index: 0);
             
@@ -88,6 +95,9 @@ public sealed class WrapPanelAnimatedReorderHelperTests
 
             Assert.Same(originalTransform1, item1.RenderTransform);
             Assert.Same(originalTransform2, item2.RenderTransform);
+            Assert.Equal(originalOrigin1, item1.RenderTransformOrigin);
+            Assert.Equal(originalOrigin2, item2.RenderTransformOrigin);
+            Assert.Empty(commits);
         });
     }
 
@@ -101,8 +111,12 @@ public sealed class WrapPanelAnimatedReorderHelperTests
             var item2 = new FrameworkElement { Width = 120, Height = 40 };
             var originalTransform1 = new RotateTransform(10);
             var originalTransform2 = new ScaleTransform(1.5, 1.5);
+            var originalOrigin1 = new Point(0.15, 0.25);
+            var originalOrigin2 = new Point(0.65, 0.75);
             item1.RenderTransform = originalTransform1;
             item2.RenderTransform = originalTransform2;
+            item1.RenderTransformOrigin = originalOrigin1;
+            item2.RenderTransformOrigin = originalOrigin2;
             panel.Children.Add(item1);
             panel.Children.Add(item2);
             var helper = new WrapPanelAnimatedReorderHelper(panel, (_, _) => { });
@@ -115,6 +129,117 @@ public sealed class WrapPanelAnimatedReorderHelperTests
 
             Assert.Same(originalTransform1, item1.RenderTransform);
             Assert.Same(originalTransform2, item2.RenderTransform);
+            Assert.Equal(originalOrigin1, item1.RenderTransformOrigin);
+            Assert.Equal(originalOrigin2, item2.RenderTransformOrigin);
+        });
+    }
+
+    [Fact]
+    public void EndDrag_AfterCommittedMove_RestoresExactTransformsAndOrigins()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var panel = new HomeWidgetPanel();
+            var draggedTransform = new TransformGroup
+            {
+                Children =
+                {
+                    new RotateTransform(12),
+                    new ScaleTransform(0.9, 1.1)
+                }
+            };
+            draggedTransform.Freeze();
+            var sharedTransform = new TranslateTransform(4, 7);
+            sharedTransform.Freeze();
+            var dragged = CreateItem(draggedTransform, new Point(0.2, 0.3));
+            var second = CreateItem(sharedTransform, new Point(0.4, 0.5));
+            var third = CreateItem(sharedTransform, new Point(0.6, 0.7));
+            panel.Children.Add(dragged);
+            panel.Children.Add(second);
+            panel.Children.Add(third);
+            var commits = new List<(int From, int To)>();
+            var helper = new WrapPanelAnimatedReorderHelper(
+                panel,
+                (from, to) => commits.Add((from, to)));
+            Window hostWindow = CreateHostWindow(panel);
+
+            try
+            {
+                hostWindow.Show();
+                hostWindow.UpdateLayout();
+
+                helper.StartDrag(dragged, new Point(10, 20), index: 0);
+                helper.UpdateDrag(new Point(130, 20));
+                helper.EndDrag();
+
+                Assert.Equal([(0, 1)], commits);
+                Assert.Same(draggedTransform, dragged.RenderTransform);
+                Assert.Same(sharedTransform, second.RenderTransform);
+                Assert.Same(sharedTransform, third.RenderTransform);
+                Assert.Equal(new Point(0.2, 0.3), dragged.RenderTransformOrigin);
+                Assert.Equal(new Point(0.4, 0.5), second.RenderTransformOrigin);
+                Assert.Equal(new Point(0.6, 0.7), third.RenderTransformOrigin);
+                Assert.True(draggedTransform.IsFrozen);
+                Assert.True(sharedTransform.IsFrozen);
+            }
+            finally
+            {
+                hostWindow.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void EndDrag_RepeatedCommittedMoves_DoNotAccumulateTemporaryTransforms()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var panel = new HomeWidgetPanel();
+            var firstTransform = new RotateTransform(8);
+            var secondTransform = new TransformGroup
+            {
+                Children =
+                {
+                    new ScaleTransform(1.1, 0.9),
+                    new TranslateTransform(3, 5)
+                }
+            };
+            var first = CreateItem(firstTransform, new Point(0.1, 0.2));
+            var second = CreateItem(secondTransform, new Point(0.8, 0.9));
+            panel.Children.Add(first);
+            panel.Children.Add(second);
+            var commits = new List<(int From, int To)>();
+            var helper = new WrapPanelAnimatedReorderHelper(
+                panel,
+                (from, to) => commits.Add((from, to)));
+            Window hostWindow = CreateHostWindow(panel);
+
+            try
+            {
+                hostWindow.Show();
+                hostWindow.UpdateLayout();
+
+                helper.StartDrag(first, new Point(10, 20), index: 0);
+                helper.UpdateDrag(new Point(130, 20));
+                helper.EndDrag();
+                Assert.Same(firstTransform, first.RenderTransform);
+                Assert.Same(secondTransform, second.RenderTransform);
+
+                helper.StartDrag(second, new Point(130, 20), index: 1);
+                helper.UpdateDrag(new Point(1, 20));
+                helper.EndDrag();
+
+                Assert.Equal([(0, 1), (1, 0)], commits);
+                Assert.Same(firstTransform, first.RenderTransform);
+                Assert.Same(secondTransform, second.RenderTransform);
+                Assert.Equal(new Point(0.1, 0.2), first.RenderTransformOrigin);
+                Assert.Equal(new Point(0.8, 0.9), second.RenderTransformOrigin);
+                Assert.Equal(2, secondTransform.Children.Count);
+            }
+            finally
+            {
+                hostWindow.Close();
+            }
         });
     }
 
@@ -193,4 +318,26 @@ public sealed class WrapPanelAnimatedReorderHelperTests
         Dispatcher.PushFrame(frame);
         timer.Stop();
     }
+
+    private static FrameworkElement CreateItem(
+        Transform transform,
+        Point transformOrigin) => new()
+    {
+        Width = 120,
+        Height = 40,
+        RenderTransform = transform,
+        RenderTransformOrigin = transformOrigin
+    };
+
+    private static Window CreateHostWindow(HomeWidgetPanel panel) => new()
+    {
+        Width = 600,
+        Height = 100,
+        Left = -10000,
+        Top = -10000,
+        ShowInTaskbar = false,
+        WindowStyle = WindowStyle.None,
+        Content = panel
+    };
+
 }

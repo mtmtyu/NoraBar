@@ -31,7 +31,8 @@ public sealed class WrapPanelAnimatedReorderHelper
     private Effect? _originalEffect;
     private int _originalZIndex;
 
-    private static readonly IEasingFunction EaseOut = new CubicEase { EasingMode = EasingMode.EaseOut };
+    private readonly IEasingFunction _easeOut =
+        new CubicEase { EasingMode = EasingMode.EaseOut };
 
     public WrapPanelAnimatedReorderHelper(Panel containerPanel, Action<int, int> onReorderCommitted)
     {
@@ -261,8 +262,8 @@ public sealed class WrapPanelAnimatedReorderHelper
             double targetShiftY = targetPos.Y - originPos.Y;
 
             TranslateTransform tt = _itemTranslates[i];
-            DoubleAnimation animX = new(tt.X, targetShiftX, TimeSpan.FromMilliseconds(150)) { EasingFunction = EaseOut };
-            DoubleAnimation animY = new(tt.Y, targetShiftY, TimeSpan.FromMilliseconds(150)) { EasingFunction = EaseOut };
+            DoubleAnimation animX = new(tt.X, targetShiftX, TimeSpan.FromMilliseconds(150)) { EasingFunction = _easeOut };
+            DoubleAnimation animY = new(tt.Y, targetShiftY, TimeSpan.FromMilliseconds(150)) { EasingFunction = _easeOut };
 
             tt.BeginAnimation(TranslateTransform.XProperty, animX);
             tt.BeginAnimation(TranslateTransform.YProperty, animY);
