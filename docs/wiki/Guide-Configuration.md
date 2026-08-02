@@ -99,9 +99,9 @@ Resets the audio visualizer. If the waveform visualizer stops reacting or fails 
 
 ### Home HUD
 
-#### Design
+#### Widget Layout
 
-Choose Activity Modules, Classic System Overlay, Fusion Balanced, or Fusion Expressive. Fusion Balanced is the default.
+Open the widget editor to add, remove, and reorder clock, world-clock, and media widgets. The width and height controls define the widget viewport and wrapping area.
 
 #### Time Format
 
@@ -109,7 +109,7 @@ Use the Windows system format, force a 12-hour clock, or force a 24-hour clock. 
 
 #### World Clocks
 
-Home has two clock slots. Set an independent label and Windows time zone for each slot. The defaults are New York (`Eastern Standard Time`) and London (`GMT Standard Time`).
+Home supports up to three world clocks. Set an independent label and Windows time zone for each entry, then reorder them as needed. The defaults are local time, New York (`Eastern Standard Time`), and London (`GMT Standard Time`).
 
 
 ## About

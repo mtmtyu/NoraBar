@@ -2,24 +2,16 @@ using System.Collections.Generic;
 using NoraBar.Hud;
 using NoraBar.Hud.Home;
 using NoraBar.Hud.Home.Widgets;
-using NoraBar.Models;
 using Xunit;
 
 namespace NoraBar.Tests.Hud;
 
 public sealed class HomeHudLayoutTests
 {
-    [Theory]
-    [InlineData(HomeHudDesignVariant.ActivityModules, 800, 84)]
-    [InlineData(HomeHudDesignVariant.ClassicSystemOverlay, 720, 120)]
-    [InlineData(HomeHudDesignVariant.FusionBalanced, 700, 88)]
-    [InlineData(HomeHudDesignVariant.FusionExpressive, 740, 108)]
-    public void Calculate_ReturnsStableDesignSize(
-        HomeHudDesignVariant variant,
-        double width,
-        double height)
+    [Fact]
+    public void Calculate_WithoutWidgets_ReturnsDynamicLayoutBaseSize()
     {
-        Assert.Equal(new HudSize(width, height), HomeHudLayout.Calculate(variant));
+        Assert.Equal(new HudSize(700, 88), HomeHudLayout.Calculate());
     }
 
     [Fact]
@@ -32,7 +24,6 @@ public sealed class HomeHudLayoutTests
         };
 
         HudSize size = HomeHudLayout.Calculate(
-            HomeHudDesignVariant.FusionBalanced,
             widgets);
 
         Assert.Equal(800, size.Width);
@@ -50,7 +41,6 @@ public sealed class HomeHudLayoutTests
         };
 
         HudSize size = HomeHudLayout.Calculate(
-            HomeHudDesignVariant.FusionBalanced,
             widgets,
             maxWidgetWidth: 600,
             maxWidgetHeight: 500);
@@ -70,7 +60,6 @@ public sealed class HomeHudLayoutTests
         };
 
         HudSize withOneLarge = HomeHudLayout.Calculate(
-            HomeHudDesignVariant.FusionBalanced,
             widgets,
             maxWidgetWidth: 500,
             maxWidgetHeight: 800);
@@ -81,7 +70,6 @@ public sealed class HomeHudLayoutTests
             HomeWidgetStyle.MediaArtworkHoverLarge));
 
         HudSize withTwoLarge = HomeHudLayout.Calculate(
-            HomeHudDesignVariant.FusionBalanced,
             widgets,
             maxWidgetWidth: 500,
             maxWidgetHeight: 800);
@@ -102,7 +90,6 @@ public sealed class HomeHudLayoutTests
         };
 
         HudSize size = HomeHudLayout.Calculate(
-            HomeHudDesignVariant.FusionBalanced,
             widgets,
             maxWidgetWidth: 650,
             maxWidgetHeight: 250);

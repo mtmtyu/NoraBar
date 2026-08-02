@@ -1,5 +1,4 @@
 using System.Windows;
-using NoraBar.Models;
 using NoraBar.Services;
 using NoraBar.ViewModels;
 
@@ -126,9 +125,9 @@ internal static class HomeHudPreviewFactory
 
     internal static HomeHudPreview Create(
         IHomeHudPresentationSource source,
-        Func<HomeHudDesignVariant, FrameworkElement> createView,
+        Func<FrameworkElement> createView,
         Action<FrameworkElement, object> assignDataContext,
-        Func<HomeHudDesignVariant, IReadOnlyList<Widgets.HomeWidgetConfig>?, double, double, HudSize> calculateLayout,
+        Func<IReadOnlyList<Widgets.HomeWidgetConfig>?, double, double, HudSize> calculateLayout,
         Func<FrameworkElement, HudSize, IDisposable, HomeHudPreview> createPreview)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -141,10 +140,9 @@ internal static class HomeHudPreviewFactory
         try
         {
             source.Initialize();
-            view = createView(source.DesignVariant);
+            view = createView();
             assignDataContext(view, source.ViewDataContext);
             HudSize preferredSize = calculateLayout(
-                source.DesignVariant,
                 source.ActiveWidgets,
                 source.MaxWidgetWidth,
                 source.MaxWidgetHeight);

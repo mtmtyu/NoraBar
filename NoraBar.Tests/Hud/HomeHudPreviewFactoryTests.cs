@@ -32,7 +32,7 @@ public sealed class HomeHudPreviewFactoryTests
             var failure = new InvalidOperationException("view");
 
             Exception exception = Assert.Throws<InvalidOperationException>(() =>
-                CreatePreview(source, _ => throw failure));
+                CreatePreview(source, () => throw failure));
 
             Assert.Same(failure, exception);
             Assert.Equal(1, source.InitializeCount);
@@ -51,7 +51,7 @@ public sealed class HomeHudPreviewFactoryTests
             var failure = new InvalidOperationException("data context");
 
             Exception exception = Assert.Throws<InvalidOperationException>(() =>
-                CreatePreview(source, _ => view, (_, _) => throw failure));
+                CreatePreview(source, () => view, (_, _) => throw failure));
 
             Assert.Same(failure, exception);
             Assert.Equal(1, view.DisposeCount);
@@ -72,8 +72,8 @@ public sealed class HomeHudPreviewFactoryTests
             Exception exception = Assert.Throws<InvalidOperationException>(() =>
                 CreatePreview(
                     source,
-                    _ => view,
-                    calculateLayout: (_, _, _, _) => throw failure));
+                    () => view,
+                    calculateLayout: (_, _, _) => throw failure));
 
             Assert.Same(failure, exception);
             Assert.Equal(1, view.DisposeCount);
@@ -94,7 +94,7 @@ public sealed class HomeHudPreviewFactoryTests
             Exception exception = Assert.Throws<InvalidOperationException>(() =>
                 CreatePreview(
                     source,
-                    _ => view,
+                    () => view,
                     createPreview: (_, _, _) => throw failure));
 
             Assert.Same(failure, exception);
@@ -118,7 +118,7 @@ public sealed class HomeHudPreviewFactoryTests
             AggregateException exception = Assert.Throws<AggregateException>(() =>
                 CreatePreview(
                     source,
-                    _ => view,
+                    () => view,
                     createPreview: (_, _, _) => throw creationFailure));
 
             Assert.Equal(
@@ -129,16 +129,16 @@ public sealed class HomeHudPreviewFactoryTests
 
     private static HomeHudPreview CreatePreview(
         TrackingSource source,
-        Func<HomeHudDesignVariant, FrameworkElement> createView,
+        Func<FrameworkElement> createView,
         Action<FrameworkElement, object>? assignDataContext = null,
-        Func<HomeHudDesignVariant, IReadOnlyList<HomeWidgetConfig>?, double, double, HudSize>? calculateLayout = null,
+        Func<IReadOnlyList<HomeWidgetConfig>?, double, double, HudSize>? calculateLayout = null,
         Func<FrameworkElement, HudSize, IDisposable, HomeHudPreview>? createPreview = null)
     {
         return HomeHudPreviewFactory.Create(
             source,
             createView,
             assignDataContext ?? ((view, dataContext) => view.DataContext = dataContext),
-            calculateLayout ?? ((_, _, _, _) => new HudSize(100, 100)),
+            calculateLayout ?? ((_, _, _) => new HudSize(100, 100)),
             createPreview ?? ((view, size, owner) =>
                 new HomeHudPreview(view, size, owner)));
     }

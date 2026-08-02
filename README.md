@@ -43,8 +43,8 @@ NoraBar is a WPF application for Windows desktop. It usually waits as a thin 2px
   - `Productivity Command Island`: a wider style that gives album art and progress more room.
 
 - **Home HUD**
-  - Combines local time, date, two configurable world clocks, current media, and playback controls.
-  - Includes Activity Modules, Classic System Overlay, Fusion Balanced, and Fusion Expressive designs.
+  - Combines local time, date, up to three configurable world clocks, current media, and playback controls.
+  - Uses a dynamic widget layout where clock, world-clock, and media widgets can be added, removed, reordered, and resized.
   - Supports system, 12-hour, and 24-hour clock formats.
 
 - **Switchable HUD navigation**

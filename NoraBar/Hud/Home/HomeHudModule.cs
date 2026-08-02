@@ -18,7 +18,7 @@ internal sealed class HomeHudModule : IHudModule
     private readonly Func<HomeHudDesignVariant, FrameworkElement> _createView;
     private readonly TimeSpan _viewDisposalTimeout;
     private readonly Action<Exception> _reportLateCleanupFailure;
-    private readonly Dictionary<HomeHudDesignVariant, FrameworkElement> _views = [];
+    private FrameworkElement? _view;
     private Dispatcher? _viewDispatcher;
     private Task? _disposeTask;
     private Task? _finalCleanupTask;
@@ -28,7 +28,9 @@ internal sealed class HomeHudModule : IHudModule
     private bool _isDisposed;
 
     internal HomeHudModule(MainViewModel viewModel)
-        : this(new HomeHudViewModel(viewModel), HomeHudViewFactory.Create)
+        : this(
+            new HomeHudViewModel(viewModel),
+            _ => HomeHudViewFactory.Create())
     {
     }
 
@@ -126,10 +128,10 @@ internal sealed class HomeHudModule : IHudModule
             EnsureViewDispatcher(dispatcher);
 
             variant = ResolveVariant(_source.DesignVariant);
-            if (_views.TryGetValue(variant, out FrameworkElement? cached))
+            if (_view is not null)
             {
-                cached.DataContext = _source.ViewDataContext;
-                return cached;
+                _view.DataContext = _source.ViewDataContext;
+                return _view;
             }
         }
 
@@ -155,14 +157,14 @@ internal sealed class HomeHudModule : IHudModule
                 rejectionException = new InvalidOperationException(
                     "ホームHUDのViewは生成元のDispatcherから取得してください。");
             }
-            else if (_views.TryGetValue(variant, out FrameworkElement? cached))
+            else if (_view is not null)
             {
-                selected = cached;
+                selected = _view;
             }
             else
             {
                 _viewDispatcher = dispatcher;
-                _views.Add(variant, created);
+                _view = created;
                 selected = created;
             }
         }
@@ -187,7 +189,6 @@ internal sealed class HomeHudModule : IHudModule
         {
             ThrowIfUnavailable();
             return HomeHudLayout.Calculate(
-                ResolveVariant(_source.DesignVariant),
                 _source.ActiveWidgets,
                 _source.MaxWidgetWidth,
                 _source.MaxWidgetHeight);
@@ -209,8 +210,8 @@ internal sealed class HomeHudModule : IHudModule
             }
 
             _isDisposing = true;
-            views = _views.Values.ToArray();
-            _views.Clear();
+            views = _view is null ? [] : [_view];
+            _view = null;
             dispatcher = _viewDispatcher;
             _viewDispatcher = null;
             completionSource = new TaskCompletionSource<object?>(

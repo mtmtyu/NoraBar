@@ -10,7 +10,7 @@ namespace NoraBar.Tests.Hud;
 public sealed class HomeHudModuleTests
 {
     [Fact]
-    public void GetView_CachesOneViewPerDesign()
+    public void GetView_ReusesSingleDynamicViewWhenLegacyDesignChanges()
     {
         StaTestRunner.Run(() =>
         {
@@ -28,10 +28,8 @@ public sealed class HomeHudModuleTests
             FrameworkElement third = module.GetView(new HudViewContext(HudPresentationState.Expanded));
 
             Assert.Same(first, second);
-            Assert.NotSame(first, third);
-            Assert.Equal(
-                [HomeHudDesignVariant.FusionBalanced, HomeHudDesignVariant.FusionExpressive],
-                created);
+            Assert.Same(first, third);
+            Assert.Equal([HomeHudDesignVariant.FusionBalanced], created);
         });
     }
 
@@ -291,24 +289,17 @@ public sealed class HomeHudModuleTests
             {
                 DisposeException = new InvalidOperationException("view")
             };
-            var otherView = new DisposableFrameworkElement();
             var module = new HomeHudModule(
                 source,
-                variant => variant == HomeHudDesignVariant.FusionBalanced
-                    ? throwingView
-                    : otherView);
+                _ => throwingView);
             module.InitializeAsync(CancellationToken.None).AsTask().GetAwaiter().GetResult();
             module.ActivateAsync(CancellationToken.None).AsTask().GetAwaiter().GetResult();
             module.GetView(new HudViewContext(HudPresentationState.Expanded));
-            source.DesignVariant = HomeHudDesignVariant.FusionExpressive;
-            module.GetView(new HudViewContext(HudPresentationState.Expanded));
-
             AggregateException exception = Assert.Throws<AggregateException>(
                 () => module.DisposeAsync().AsTask().GetAwaiter().GetResult());
 
             Assert.Equal(4, exception.InnerExceptions.Count);
             Assert.Equal(1, throwingView.DisposeCount);
-            Assert.Equal(1, otherView.DisposeCount);
             Assert.Equal(1, source.DisposeCount);
             Assert.Throws<ObjectDisposedException>(
                 () => module.GetPreferredSize(
