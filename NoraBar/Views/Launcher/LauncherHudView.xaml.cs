@@ -9,6 +9,8 @@ namespace NoraBar.Views.Launcher;
 
 public partial class LauncherHudView : UserControl
 {
+    private const double CollapsedHeightThreshold = 20;
+
     public LauncherHudView()
     {
         InitializeComponent();
@@ -108,7 +110,11 @@ public partial class LauncherHudView : UserControl
 
     private void Root_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        if (e.NewSize.Height < 20) ViewModel?.NotifyCollapsed();
+        if (e.PreviousSize.Height >= CollapsedHeightThreshold
+            && e.NewSize.Height < CollapsedHeightThreshold)
+        {
+            ViewModel?.NotifyCollapsed();
+        }
     }
 
     private void Root_PreviewTextInput(object sender, TextCompositionEventArgs e)

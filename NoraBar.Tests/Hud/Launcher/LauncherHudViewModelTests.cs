@@ -2,6 +2,8 @@ using NoraBar.Hud;
 using NoraBar.Hud.Launcher;
 using NoraBar.Services;
 using NoraBar.ViewModels;
+using NoraBar.Views.Launcher;
+using System.Windows;
 using Xunit;
 
 namespace NoraBar.Tests.Hud.Launcher;
@@ -57,6 +59,53 @@ public sealed class LauncherHudViewModelTests
             Assert.Contains(nameof(LauncherHudViewModel.IsExpanded), changedProperties);
 
             viewModel.Dispose();
+        });
+    }
+
+    [Fact]
+    public void InitialSmallSizeChange_DoesNotDemoteExpandedContentToPeek()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var catalog = new FakeCatalog();
+            var usageStore = new FakeUsageStore();
+            var windowTracker = new FakeWindowTracker();
+            var settings = new LauncherSettingsViewModel(
+                new UserSettings(),
+                () => { },
+                catalog,
+                usageStore);
+            var viewModel = new LauncherHudViewModel(
+                settings,
+                new LauncherRuntime(new FakeLauncherPlatform()),
+                catalog,
+                windowTracker,
+                usageStore,
+                new LauncherIconCache(),
+                System.Windows.Threading.Dispatcher.CurrentDispatcher);
+            viewModel.Initialize();
+            viewModel.SetPresentationState(HudPresentationState.Expanded);
+            var view = new LauncherHudView { DataContext = viewModel };
+            var host = new Window
+            {
+                Content = view,
+                Width = 760,
+                Height = 10,
+                ShowInTaskbar = false,
+                WindowStyle = WindowStyle.None
+            };
+            try
+            {
+                host.Show();
+                host.UpdateLayout();
+                Assert.True(viewModel.IsExpanded);
+            }
+            finally
+            {
+                host.Content = null;
+                host.Close();
+                viewModel.Dispose();
+            }
         });
     }
 
