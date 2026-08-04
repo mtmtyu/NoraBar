@@ -92,6 +92,7 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
             {
                 OnPropertyChanged(nameof(IsMusicSettingsSelected));
                 OnPropertyChanged(nameof(IsHomeSettingsSelected));
+                OnPropertyChanged(nameof(IsLauncherSettingsSelected));
             }
         }
     }
@@ -101,6 +102,9 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
 
     public bool IsHomeSettingsSelected =>
         string.Equals(SelectedSettingsHudId, BuiltInHudIds.Home, StringComparison.Ordinal);
+
+    public bool IsLauncherSettingsSelected =>
+        string.Equals(SelectedSettingsHudId, BuiltInHudIds.Launcher, StringComparison.Ordinal);
 
     internal async Task NavigateToAsync(string hudId)
     {
@@ -313,7 +317,9 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
                 item => item.IsEnabled,
                 StringComparer.Ordinal);
             string originalDefaultHudId = _defaultHudId;
-            string[] defaultIds = [BuiltInHudIds.Music, BuiltInHudIds.Home];
+            string[] defaultIds = new[] { BuiltInHudIds.Music, BuiltInHudIds.Home, BuiltInHudIds.Launcher }
+                .Where(id => Items.Any(item => string.Equals(item.Id, id, StringComparison.Ordinal)))
+                .ToArray();
             for (int targetIndex = 0; targetIndex < defaultIds.Length; targetIndex++)
             {
                 int currentIndex = Items
@@ -519,6 +525,7 @@ public sealed class HudNavigationViewModel : ViewModelBase, IDisposable
         {
             BuiltInHudIds.Music => LocalizationService.GetText(language, LocalizationKey.MusicHudName),
             BuiltInHudIds.Home => LocalizationService.GetText(language, LocalizationKey.HomeHudName),
+            BuiltInHudIds.Launcher => LocalizationService.GetText(language, LocalizationKey.LauncherHudName),
             _ => hudId
         };
     }

@@ -4,6 +4,9 @@ using System.Windows;
 using NoraBar.Hud;
 using NoraBar.Hud.Music;
 using NoraBar.Hud.Home;
+using NoraBar.Hud.Launcher;
+using NoraBar.Views.Launcher;
+using System.Windows.Interop;
 using NoraBar.Services;
 using NoraBar.ViewModels;
 
@@ -23,6 +26,9 @@ public partial class App : Application
     private MainViewModel? _viewModel;
     private MusicHudModule? _musicHudModule;
     private HomeHudModule? _homeHudModule;
+    private LauncherHudModule? _launcherHudModule;
+    private LauncherSettingsViewModel? _launcherSettings;
+    private LauncherGlobalHotkeys? _launcherHotkeys;
     private HudNavigationViewModel? _hudNavigation;
     private HudRegistry? _hudRegistry;
     private HudRouter? _hudRouter;
@@ -52,9 +58,31 @@ public partial class App : Application
                 _viewModel = new MainViewModel();
                 _musicHudModule = new MusicHudModule(_viewModel);
                 _homeHudModule = new HomeHudModule(_viewModel);
+                var launcherWindowTracker = new WindowsLauncherWindowTracker();
+                var launcherCatalog = new LauncherApplicationCatalog();
+                var launcherUsageStore = new LauncherUsageStore();
+                var launcherPlatform = new WindowsLauncherPlatform(launcherWindowTracker);
+                _launcherSettings = new LauncherSettingsViewModel(
+                    _viewModel.SettingsSnapshot,
+                    () => SettingsService.Save(_viewModel.SettingsSnapshot),
+                    launcherCatalog,
+                    launcherUsageStore);
+                _viewModel.AttachLauncherSettings(_launcherSettings);
+                var launcherSource = new LauncherHudViewModel(
+                    _launcherSettings,
+                    new LauncherRuntime(launcherPlatform),
+                    launcherCatalog,
+                    launcherWindowTracker,
+                    launcherUsageStore,
+                    new LauncherIconCache(),
+                    Dispatcher);
+                _launcherHudModule = new LauncherHudModule(launcherSource, LauncherHudViewFactory.Create);
+                _launcherSettings.EditRequested += LauncherSettings_EditRequested;
+                _launcherSettings.ShortcutsChanged += LauncherSettings_ShortcutsChanged;
                 _hudRegistry = new HudRegistry();
                 _hudRegistry.Register(_musicHudModule);
                 _hudRegistry.Register(_homeHudModule);
+                _hudRegistry.Register(_launcherHudModule);
 
                 UserSettings settings = _viewModel.SettingsSnapshot;
                 _hudRouter = new HudRouter(
@@ -70,6 +98,7 @@ public partial class App : Application
                 _viewModel.AttachHudNavigation(_hudNavigation);
 
                 _mainWindow = new MainWindow(_viewModel, _hudRouter, RequestShutdownAsync);
+                _mainWindow.SourceInitialized += MainWindow_SourceInitialized;
                 MainWindow = _mainWindow;
 
                 await _hudRouter.InitializeAsync(CancellationToken.None);
@@ -95,6 +124,67 @@ public partial class App : Application
             await startupFailureTask;
         }
     }
+
+    private void MainWindow_SourceInitialized(object? sender, EventArgs e)
+    {
+        if (_mainWindow is null || PresentationSource.FromVisual(_mainWindow) is not HwndSource source)
+        {
+            return;
+        }
+        _launcherHotkeys = new LauncherGlobalHotkeys(source);
+        _launcherHotkeys.OpenRequested += LauncherHotkeys_OpenRequested;
+        _launcherHotkeys.SearchRequested += LauncherHotkeys_SearchRequested;
+        LauncherHudSettings settings = LauncherHudSettingsJson.Read(_viewModel!.SettingsSnapshot);
+        if (!_launcherHotkeys.TryReplace(settings.OpenShortcut, settings.SearchShortcut, out string? error))
+        {
+            _launcherSettings?.ReportShortcutError(LocalizeLauncherShortcutError(error));
+        }
+    }
+
+    private void LauncherSettings_EditRequested(object? sender, LauncherSettingsSelectionEventArgs e) =>
+        _mainWindow?.Dispatcher.Invoke(() => _mainWindow.OpenHudSettings(BuiltInHudIds.Launcher));
+
+    private void LauncherSettings_ShortcutsChanged(object? sender, LauncherShortcutsChangedEventArgs e)
+    {
+        if (_launcherHotkeys is not null
+            && !_launcherHotkeys.TryReplace(e.Open, e.Search, out string? error))
+        {
+            e.Accepted = false;
+            e.Error = LocalizeLauncherShortcutError(error);
+        }
+    }
+
+    private string? LocalizeLauncherShortcutError(string? error)
+    {
+        LauncherLocalization? strings = _launcherSettings?.Strings;
+        if (strings is null) return error;
+        return error switch
+        {
+            "Global shortcuts require at least one modifier." => strings.GlobalShortcutNeedsModifier,
+            "The shortcut key is invalid." => strings.GlobalShortcutKeyInvalid,
+            "The shortcut is already registered by another application." => strings.GlobalShortcutConflict,
+            _ => error
+        };
+    }
+
+    private void LauncherHotkeys_OpenRequested(object? sender, EventArgs e) => ObserveHotkey(OpenLauncherFromHotkeyAsync(false));
+    private void LauncherHotkeys_SearchRequested(object? sender, EventArgs e) => ObserveHotkey(OpenLauncherFromHotkeyAsync(true));
+
+    private async Task OpenLauncherFromHotkeyAsync(bool focusSearch)
+    {
+        if (_mainWindow is null || !await _mainWindow.TryNavigateAndExpandAsync(BuiltInHudIds.Launcher)) return;
+        if (focusSearch && _launcherHudModule?.CachedView is LauncherHudView view)
+        {
+            view.FocusSearch();
+        }
+    }
+
+    private static void ObserveHotkey(Task task) =>
+        _ = task.ContinueWith(
+            completed => Trace.TraceError(completed.Exception?.GetBaseException().ToString()),
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted,
+            TaskScheduler.Default);
 
     internal static bool ShouldShowMainWindow(
         bool startupCompletionAcquired,
@@ -146,6 +236,24 @@ public partial class App : Application
         if (_mainWindow is not null)
         {
             Capture(_mainWindow.DetachHudRouter, exceptions);
+            Capture(_mainWindow.SuspendSettingsPreview, exceptions);
+        }
+
+        if (_mainWindow is not null)
+        {
+            _mainWindow.SourceInitialized -= MainWindow_SourceInitialized;
+        }
+        if (_launcherSettings is not null)
+        {
+            _launcherSettings.EditRequested -= LauncherSettings_EditRequested;
+            _launcherSettings.ShortcutsChanged -= LauncherSettings_ShortcutsChanged;
+        }
+        if (_launcherHotkeys is not null)
+        {
+            _launcherHotkeys.OpenRequested -= LauncherHotkeys_OpenRequested;
+            _launcherHotkeys.SearchRequested -= LauncherHotkeys_SearchRequested;
+            Capture(_launcherHotkeys.Dispose, exceptions);
+            _launcherHotkeys = null;
         }
 
         Capture(() => _hudNavigation?.Dispose(), exceptions);

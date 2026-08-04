@@ -16,7 +16,7 @@ public sealed class HudNavigationViewModelTests
         var home = new FakeHudModule(BuiltInHudIds.Home);
         HudRouter router = CreateRouter(music, home);
         await router.InitializeAsync(CancellationToken.None);
-        var settings = new UserSettings();
+        var settings = new UserSettings { EnabledHudModuleIds = [BuiltInHudIds.Music, BuiltInHudIds.Home] };
         var navigation = new HudNavigationViewModel(
             router,
             [music, home],
@@ -38,7 +38,7 @@ public sealed class HudNavigationViewModelTests
         var home = new FakeHudModule(BuiltInHudIds.Home);
         HudRouter router = CreateRouter(music, home);
         await router.InitializeAsync(CancellationToken.None);
-        var settings = new UserSettings();
+        var settings = new UserSettings { EnabledHudModuleIds = [BuiltInHudIds.Music, BuiltInHudIds.Home] };
         var navigation = new HudNavigationViewModel(
             router,
             [music, home],
@@ -60,7 +60,7 @@ public sealed class HudNavigationViewModelTests
         var home = new FakeHudModule(BuiltInHudIds.Home);
         HudRouter router = CreateRouter(music, home);
         await router.InitializeAsync(CancellationToken.None);
-        var settings = new UserSettings();
+        var settings = new UserSettings { EnabledHudModuleIds = [BuiltInHudIds.Music, BuiltInHudIds.Home] };
         var navigation = new HudNavigationViewModel(
             router,
             [music, home],
@@ -142,7 +142,7 @@ public sealed class HudNavigationViewModelTests
         var navigation = new HudNavigationViewModel(
             router,
             [music, home],
-            new UserSettings(),
+            new UserSettings { EnabledHudModuleIds = [BuiltInHudIds.Music, BuiltInHudIds.Home] },
             AppLanguage.Japanese,
             () => { });
         await navigation.SetEnabledAsync(BuiltInHudIds.Music, false);
@@ -169,7 +169,7 @@ public sealed class HudNavigationViewModelTests
         var home = new FakeHudModule(BuiltInHudIds.Home);
         HudRouter router = CreateRouter(music, home);
         await router.InitializeAsync(CancellationToken.None);
-        var settings = new UserSettings();
+        var settings = new UserSettings { EnabledHudModuleIds = [BuiltInHudIds.Music, BuiltInHudIds.Home] };
         var navigation = new HudNavigationViewModel(
             router,
             [music, home],
@@ -195,7 +195,7 @@ public sealed class HudNavigationViewModelTests
         var home = new FakeHudModule(BuiltInHudIds.Home);
         HudRouter router = CreateRouter(music, home);
         await router.InitializeAsync(CancellationToken.None);
-        var settings = new UserSettings();
+        var settings = new UserSettings { EnabledHudModuleIds = [BuiltInHudIds.Music, BuiltInHudIds.Home] };
         int saveCount = 0;
         var navigation = new HudNavigationViewModel(
             router, [music, home], settings, AppLanguage.English, () => saveCount++);
@@ -216,7 +216,7 @@ public sealed class HudNavigationViewModelTests
         var home = new FakeHudModule(BuiltInHudIds.Home);
         HudRouter router = CreateRouter(music, home);
         await router.InitializeAsync(CancellationToken.None);
-        var settings = new UserSettings();
+        var settings = new UserSettings { EnabledHudModuleIds = [BuiltInHudIds.Music, BuiltInHudIds.Home] };
         int saveCount = 0;
         var navigation = new HudNavigationViewModel(
             router, [music, home], settings, AppLanguage.English, () => saveCount++);
@@ -236,7 +236,7 @@ public sealed class HudNavigationViewModelTests
         var home = new FakeHudModule(BuiltInHudIds.Home);
         HudRouter router = CreateRouter(music, home);
         await router.InitializeAsync(CancellationToken.None);
-        var settings = new UserSettings();
+        var settings = new UserSettings { EnabledHudModuleIds = [BuiltInHudIds.Music, BuiltInHudIds.Home] };
         int saveCount = 0;
         var navigation = new HudNavigationViewModel(
             router, [music, home], settings, AppLanguage.English, () => saveCount++);

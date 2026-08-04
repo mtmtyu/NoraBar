@@ -6,6 +6,7 @@ using System.Windows.Input;
 using NoraBar.Hud.Music;
 using NoraBar.Hud;
 using NoraBar.Hud.Home;
+using NoraBar.Hud.Launcher;
 using NoraBar.Services;
 using NoraBar.Views.Home;
 using NoraBar.ViewModels;
@@ -17,6 +18,7 @@ namespace NoraBar.Views
     {
         private MainViewModel? _viewModel;
         private readonly HomePreviewSession _homePreviewSession = new();
+        private readonly LauncherPreviewSession _launcherPreviewSession = new();
         private bool _isCloseAnimationCompleted = false;
         private bool _isClosingApp = false;
         private readonly AnimatedReorderHelper _hudModulesReorderHelper;
@@ -288,8 +290,17 @@ namespace NoraBar.Views
         internal void SuspendPreview()
         {
             _homePreviewSession.Suspend(
-                () => PreviewHost.Content = null,
+                () => { },
                 ReportCleanupFailure);
+            try
+            {
+                _launcherPreviewSession.Suspend(() => PreviewHost.Content = null);
+            }
+            catch (Exception exception)
+            {
+                ReportCleanupFailure(exception);
+                PreviewHost.Content = null;
+            }
         }
 
         private void UpdatePreview()
@@ -317,6 +328,23 @@ namespace NoraBar.Views
                     },
                     () => PreviewHost.Content = null,
                     ReportCleanupFailure);
+                return;
+            }
+
+            if (string.Equals(
+                    _viewModel.HudNavigation?.SelectedSettingsHudId,
+                    BuiltInHudIds.Launcher,
+                    StringComparison.Ordinal)
+                && _viewModel.LauncherSettings is LauncherSettingsViewModel launcherSettings)
+            {
+                _launcherPreviewSession.Show(
+                    () => LauncherHudPreviewFactory.Create(launcherSettings),
+                    preview =>
+                    {
+                        PreviewHost.Content = preview.View;
+                        PreviewHost.Width = preview.PreferredSize.Width;
+                        PreviewHost.Height = preview.PreferredSize.Height;
+                    });
                 return;
             }
 

@@ -6,6 +6,7 @@
         xmlns:models="clr-namespace:NoraBar.Models"
         xmlns:converters="clr-namespace:NoraBar.Converters"
         xmlns:materialIcons="clr-namespace:Material.Icons.WPF;assembly=Material.Icons.WPF"
+        xmlns:launcherViews="clr-namespace:NoraBar.Views.Launcher"
         mc:Ignorable="d"
         Title="{Binding SettingsWindowTitle}" Height="600" Width="1000"
         WindowStartupLocation="CenterScreen"
@@ -1311,6 +1312,20 @@
                                         </Button>
                                     </StackPanel>
                                 </Border>
+                            </StackPanel>
+
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HudNavigation.IsLauncherSettingsSelected}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <launcherViews:LauncherSettingsView DataContext="{Binding LauncherSettings}"/>
                             </StackPanel>
 
                         </StackPanel>

@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Windows.Input;
 using NoraBar.Hud;
 using NoraBar.Hud.Home;
+using NoraBar.Hud.Launcher;
 using NoraBar.Models;
 using NoraBar.Services;
 
@@ -23,6 +24,8 @@ namespace NoraBar.ViewModels
         internal UserSettings SettingsSnapshot => _settings;
 
         public HudNavigationViewModel? HudNavigation { get; private set; }
+        private LauncherSettingsViewModel? _launcherSettings;
+        public object? LauncherSettings => _launcherSettings;
 
         public sealed class LanguageOption
         {
@@ -814,6 +817,7 @@ namespace NoraBar.ViewModels
                 WindowTop = 0;
                 IsPositionEditMode = false;
                 ResetKnownSettings(_settings);
+                _launcherSettings?.ReloadFromSettings();
 
                 if (HudNavigation is not null)
                 {
@@ -947,9 +951,10 @@ namespace NoraBar.ViewModels
             var defaults = new UserSettings();
             settings.SchemaVersion = UserSettings.CurrentSchemaVersion;
             settings.DefaultHudId = BuiltInHudIds.Music;
-            settings.EnabledHudModuleIds = [BuiltInHudIds.Music, BuiltInHudIds.Home];
+            settings.EnabledHudModuleIds = [BuiltInHudIds.Music, BuiltInHudIds.Home, BuiltInHudIds.Launcher];
             settings.HudNavigationPlacement = defaults.HudNavigationPlacement;
             HomeHudSettingsJson.Write(settings, HomeHudSettings.Default);
+            LauncherHudSettingsJson.Write(settings, LauncherHudSettings.Default);
             UpdateKnownSettings(
                 settings,
                 defaults.Variant,
@@ -1165,6 +1170,12 @@ namespace NoraBar.ViewModels
                 _ => throw new ArgumentOutOfRangeException(nameof(format))
             };
 
+        internal void AttachLauncherSettings(LauncherSettingsViewModel launcherSettings)
+        {
+            _launcherSettings = launcherSettings;
+            OnPropertyChanged(nameof(LauncherSettings));
+        }
+
         internal void AttachHudNavigation(HudNavigationViewModel navigation)
         {
             ArgumentNullException.ThrowIfNull(navigation);
@@ -1175,6 +1186,7 @@ namespace NoraBar.ViewModels
         private void RefreshLocalizedText()
         {
             HudNavigation?.RefreshLocalizedText(SelectedLanguage);
+            _launcherSettings?.RefreshLocalizedText();
 
             OnPropertyChanged(nameof(SettingsWindowTitle));
             OnPropertyChanged(nameof(AppSubtitleText));

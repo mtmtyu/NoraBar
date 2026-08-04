@@ -166,6 +166,8 @@ public partial class MainWindow : Window
         _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
     }
 
+    internal void SuspendSettingsPreview() => _settingsWindow?.SuspendPreview();
+
     internal void ReleaseShellResources()
     {
         if (Interlocked.Exchange(ref _shellResourcesReleased, 1) != 0)
@@ -466,6 +468,30 @@ public partial class MainWindow : Window
         };
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow.ShowWindow();
+    }
+
+    internal void OpenHudSettings(string hudId)
+    {
+        if (_viewModel.HudNavigation is not null)
+        {
+            _viewModel.HudNavigation.SelectedSettingsHudId = hudId;
+        }
+        OpenSettings();
+    }
+
+    internal async Task<bool> TryNavigateAndExpandAsync(string hudId)
+    {
+        if (IsShutdownRequested
+            || (_viewModel.DisableExpandOnFullscreen && FullscreenDetector.IsFullscreenAppActive(this)))
+        {
+            return false;
+        }
+        if (_viewModel.HudNavigation is not null)
+        {
+            await _viewModel.HudNavigation.NavigateToAsync(hudId);
+        }
+        _hudRouter.SetPresentationState(HudPresentationState.Expanded);
+        return true;
     }
 
     private void UpdateLocalizedShellText()
