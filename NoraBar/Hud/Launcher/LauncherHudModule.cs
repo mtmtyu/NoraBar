@@ -89,8 +89,14 @@ internal sealed class LauncherHudModule : IHudModule
         return _view;
     }
 
-    public HudSize GetPreferredSize(HudViewContext context) =>
-        LauncherHudLayout.Calculate(context.PresentationState);
+    public HudSize GetPreferredSize(HudViewContext context)
+    {
+        if (_source is ILauncherHudStateSink stateSink)
+        {
+            stateSink.SetPresentationState(context.PresentationState);
+        }
+        return LauncherHudLayout.Calculate(context.PresentationState);
+    }
 
     public async ValueTask DisposeAsync()
     {

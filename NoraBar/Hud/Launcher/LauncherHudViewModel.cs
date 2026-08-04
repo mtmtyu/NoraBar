@@ -150,18 +150,18 @@ internal sealed class LauncherHudViewModel : ViewModelBase, ILauncherHudPresenta
     public void SetPresentationState(HudPresentationState state)
     {
         bool wasExpanded = IsExpanded;
-        IsExpanded = state is HudPresentationState.Expanded or HudPresentationState.Pinned;
+        bool isExpanded = state is HudPresentationState.Expanded or HudPresentationState.Pinned;
+        IsExpanded = isExpanded;
         if (state == HudPresentationState.Collapsed)
         {
             SearchQuery = string.Empty;
             _manualPageSelected = false;
             ApplyRules();
         }
-        else if (IsExpanded && !wasExpanded && !_manualPageSelected)
+        else if (isExpanded && (!wasExpanded || !_manualPageSelected))
         {
             ApplyRules();
         }
-        PresentationInvalidated?.Invoke(this, EventArgs.Empty);
     }
 
     internal async Task ActivateAsync(LauncherItemViewModel item, bool requestNewInstance)
@@ -181,9 +181,7 @@ internal sealed class LauncherHudViewModel : ViewModelBase, ILauncherHudPresenta
 
     internal void NotifyCollapsed()
     {
-        _manualPageSelected = false;
-        SearchQuery = string.Empty;
-        ApplyRules();
+        SetPresentationState(HudPresentationState.Collapsed);
     }
 
     internal void MoveSearchSelection(int offset)

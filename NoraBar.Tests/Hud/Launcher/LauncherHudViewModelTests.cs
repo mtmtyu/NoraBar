@@ -1,0 +1,110 @@
+using NoraBar.Hud;
+using NoraBar.Hud.Launcher;
+using NoraBar.Services;
+using NoraBar.ViewModels;
+using Xunit;
+
+namespace NoraBar.Tests.Hud.Launcher;
+
+public sealed class LauncherHudViewModelTests
+{
+    [Fact]
+    public void SetPresentationState_TransitionsIsExpandedAndFiresPropertyChanged()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var catalog = new FakeCatalog();
+            var usageStore = new FakeUsageStore();
+            var windowTracker = new FakeWindowTracker();
+            var runtime = new LauncherRuntime(new FakeLauncherPlatform());
+            var settings = new LauncherSettingsViewModel(
+                new UserSettings(),
+                () => { },
+                catalog,
+                usageStore);
+            var iconCache = new LauncherIconCache();
+
+            var viewModel = new LauncherHudViewModel(
+                settings,
+                runtime,
+                catalog,
+                windowTracker,
+                usageStore,
+                iconCache,
+                System.Windows.Threading.Dispatcher.CurrentDispatcher);
+
+            viewModel.Initialize();
+
+            var changedProperties = new List<string?>();
+            viewModel.PropertyChanged += (_, e) => changedProperties.Add(e.PropertyName);
+
+            // Initially expanded
+            viewModel.SetPresentationState(HudPresentationState.Expanded);
+            Assert.True(viewModel.IsExpanded);
+
+            changedProperties.Clear();
+
+            // Collapse notification should set IsExpanded to false
+            viewModel.NotifyCollapsed();
+            Assert.False(viewModel.IsExpanded);
+            Assert.Contains(nameof(LauncherHudViewModel.IsExpanded), changedProperties);
+
+            changedProperties.Clear();
+
+            // Expand again should set IsExpanded to true and raise PropertyChanged
+            viewModel.SetPresentationState(HudPresentationState.Expanded);
+            Assert.True(viewModel.IsExpanded);
+            Assert.Contains(nameof(LauncherHudViewModel.IsExpanded), changedProperties);
+
+            viewModel.Dispose();
+        });
+    }
+
+    private sealed class FakeLauncherPlatform : ILauncherPlatform
+    {
+        public ValueTask<IReadOnlyList<LauncherWindow>> GetWindowsAsync(LauncherItem item, CancellationToken cancellationToken) =>
+            ValueTask.FromResult<IReadOnlyList<LauncherWindow>>([]);
+
+        public ValueTask LaunchAsync(LauncherLaunchRequest request, CancellationToken cancellationToken) =>
+            ValueTask.CompletedTask;
+
+        public ValueTask FocusWindowAsync(LauncherWindow window, CancellationToken cancellationToken) =>
+            ValueTask.CompletedTask;
+
+        public ValueTask CloseWindowAsync(LauncherWindow window, CancellationToken cancellationToken) =>
+            ValueTask.CompletedTask;
+
+        public ValueTask ForceQuitAsync(int processId, CancellationToken cancellationToken) =>
+            ValueTask.CompletedTask;
+
+        public bool IsTargetAvailable(string target) => true;
+    }
+
+    private sealed class FakeCatalog : ILauncherApplicationCatalog
+    {
+        public Task<IReadOnlyList<LauncherItem>> GetInstalledApplicationsAsync(CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<LauncherItem>>([]);
+        public Task<IReadOnlyList<LauncherItem>> GetRunningApplicationsAsync(CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<LauncherItem>>([]);
+        public void Dispose() { }
+    }
+
+    private sealed class FakeWindowTracker : ILauncherWindowTracker
+    {
+        public string? ForegroundApplicationId => null;
+        public event EventHandler? InventoryInvalidated { add { } remove { } }
+        public DateTimeOffset GetLastActivated(nint handle) => DateTimeOffset.MinValue;
+        public void Start() { }
+        public void Stop() { }
+        public void Dispose() { }
+    }
+
+    private sealed class FakeUsageStore : ILauncherUsageStore
+    {
+        public IReadOnlyList<LauncherUsageEntry> Snapshot => [];
+        public void RecordLaunch(string applicationId, string? contextApplicationId, DateTimeOffset timestamp) { }
+        public void RecordForegroundDuration(string applicationId, TimeSpan duration) { }
+        public Task ClearAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public void Dispose() { }
+    }
+}
