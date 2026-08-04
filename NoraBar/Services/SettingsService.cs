@@ -15,11 +15,12 @@ namespace NoraBar.Services
         public int SchemaVersion { get; set; } = CurrentSchemaVersion;
         public string DefaultHudId { get; set; } = BuiltInHudIds.Music;
         public List<string> EnabledHudModuleIds { get; set; } =
-            [BuiltInHudIds.Music, BuiltInHudIds.Home];
+            [BuiltInHudIds.Music, BuiltInHudIds.Home, BuiltInHudIds.Launcher];
         public Dictionary<string, JsonElement> Modules { get; set; } = new(StringComparer.Ordinal);
         public HudNavigationPlacement HudNavigationPlacement { get; set; } =
             HudNavigationPlacement.RightRail;
         public bool HomeHudIntroductionCompleted { get; set; } = true;
+        public bool LauncherHudIntroductionCompleted { get; set; } = true;
 
         [JsonExtensionData]
         public Dictionary<string, JsonElement> AdditionalProperties { get; set; } = new(StringComparer.Ordinal);

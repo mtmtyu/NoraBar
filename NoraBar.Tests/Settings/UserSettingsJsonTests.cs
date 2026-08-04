@@ -27,6 +27,7 @@ public class UserSettingsJsonTests
               },
               "HudNavigationPlacement": 0,
               "HomeHudIntroductionCompleted": true,
+              "LauncherHudIntroductionCompleted": true,
               "Variant": 2,
               "ShowProgressBar": false,
               "Language": {{(int)expectedLanguage}},
@@ -96,7 +97,7 @@ public class UserSettingsJsonTests
 
         Assert.Equal(UserSettings.CurrentSchemaVersion, result.SchemaVersion);
         Assert.Equal("music", result.DefaultHudId);
-        Assert.Equal(new[] { BuiltInHudIds.Music, BuiltInHudIds.Home }, result.EnabledHudModuleIds);
+        Assert.Equal(new[] { BuiltInHudIds.Music, BuiltInHudIds.Home, BuiltInHudIds.Launcher }, result.EnabledHudModuleIds);
         Assert.Equal(DesignVariant.ProductivityCommandIsland, result.Variant);
         Assert.False(result.ShowProgressBar);
         Assert.True(result.ShowLyrics);
@@ -122,7 +123,7 @@ public class UserSettingsJsonTests
         UserSettings result = UserSettingsJson.DeserializeOrDefault(UserSettingsJson.Serialize(loaded));
 
         Assert.Equal("com.example.weather", result.DefaultHudId);
-        Assert.Equal(new[] { "com.example.weather", BuiltInHudIds.Home }, result.EnabledHudModuleIds);
+        Assert.Equal(new[] { "com.example.weather", BuiltInHudIds.Home, BuiltInHudIds.Launcher }, result.EnabledHudModuleIds);
         Assert.Equal("Tokyo", result.Modules["com.example.weather"].GetProperty("city").GetString());
         Assert.True(result.AdditionalProperties["FutureSetting"].GetProperty("enabled").GetBoolean());
     }
@@ -133,7 +134,7 @@ public class UserSettingsJsonTests
         UserSettings result = UserSettingsJson.DeserializeOrDefault("{ broken");
 
         Assert.Equal("music", result.DefaultHudId);
-        Assert.Equal(new[] { BuiltInHudIds.Music, BuiltInHudIds.Home }, result.EnabledHudModuleIds);
+        Assert.Equal(new[] { BuiltInHudIds.Music, BuiltInHudIds.Home, BuiltInHudIds.Launcher }, result.EnabledHudModuleIds);
     }
 
     [Fact]
@@ -195,7 +196,7 @@ public class UserSettingsJsonTests
 
         Assert.Equal(BuiltInHudIds.Music, result.DefaultHudId);
         Assert.Equal(
-            ["com.example.weather", BuiltInHudIds.Music, BuiltInHudIds.Home],
+            ["com.example.weather", BuiltInHudIds.Music, BuiltInHudIds.Home, BuiltInHudIds.Launcher],
             result.EnabledHudModuleIds);
     }
 
