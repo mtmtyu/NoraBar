@@ -1,6 +1,7 @@
 # NoraBar Wiki
 ## English
 - [[Home]]
+- [[Launcher]]
 
 ### Use
 - [[Guide-Getting-Started]]
@@ -13,6 +14,7 @@
 
 ## 日本語
 - [[ホーム|ホーム]]
+- [[ランチャー|ランチャー]]
 
 ### 使う
 - [[はじめ方|はじめ方]]

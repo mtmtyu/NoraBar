@@ -10,7 +10,7 @@ In this initial release, I have focused primarily on music control features. Whi
 
 A small, switchable HUD that quietly appears at the very top of your screen.
 
-NoraBar is a WPF application for Windows desktop. It usually waits as a thin 2px strip at the top edge of the screen, then opens when you move the mouse near it. Switch between the focused Music HUD and an at-a-glance Home HUD without leaving the top edge of your workspace.
+NoraBar is a WPF application for Windows desktop. It usually waits as a thin 2px strip at the top edge of the screen, then opens when you move the mouse near it. Switch among the focused Music HUD, an at-a-glance Home HUD, and a compact Launcher HUD without leaving the top edge of your workspace.
 
 ## Features
 
@@ -46,6 +46,11 @@ NoraBar is a WPF application for Windows desktop. It usually waits as a thin 2px
   - Combines local time, date, up to three configurable world clocks, current media, and playback controls.
   - Uses a dynamic widget layout where clock, world-clock, and media widgets can be added, removed, reordered, and resized.
   - Supports system, 12-hour, and 24-hour clock formats.
+
+- **Launcher HUD**
+  - Organizes Win32 apps, Store apps, files, folders, and HTTP/HTTPS URLs into ordered pages and groups.
+  - Searches registered and installed apps, focuses existing windows, and supports local Smart suggestions and context Rules.
+  - Keeps usage history local, supports optional global shortcuts, and exposes all structural editing in Settings.
 
 - **Switchable HUD navigation**
   - Choose a right-side icon rail or top icon-and-name tabs.
@@ -96,7 +101,7 @@ Settings are saved to `%AppData%\NoraBar\settings.json`.
 
 ## Wiki
 
-More detailed usage and design notes are available in the Wiki.
+More detailed usage and design notes are available in the Wiki, including the [Launcher guide](docs/wiki/Launcher.md).
 
 - [Wiki Home](docs/wiki/Home.md)
 - [Getting Started](docs/wiki/Guide-Getting-Started.md)

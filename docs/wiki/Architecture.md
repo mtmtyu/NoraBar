@@ -190,6 +190,15 @@ registry.Register(new ClockHudModule());
 
 `BuiltInHudIds.Clock`, `ClockHudModule`, and its view are illustrative only and are not implemented in Phase 0.
 
+## Launcher HUD ownership
+
+`BuiltInHudIds.Launcher` is the third built-in module. `App.OnStartup` owns construction of `LauncherSettingsViewModel`, `LauncherHudViewModel`, `LauncherHudModule`, the Windows platform boundary, application catalog, WinEvent tracker, usage store, icon cache, and global-hotkey registrar. The registry disposes the module; the module disposes its presentation source; the source stops and disposes hooks, catalog cancellation, timers, and local usage persistence. Settings preview uses a separate inert view model and never owns or invokes the live runtime.
+
+Launcher configuration is stored as a versioned payload in `UserSettings.Modules["launcher"]`. The writer overlays known fields onto the existing JSON object so unknown module data survives. A separate introduction marker adds Launcher once for v1.1.0 users without overriding a later manual disable. Runtime fallback and Rules never rewrite pinned configuration.
+
+Windows-specific code stays behind `ILauncherPlatform`, `ILauncherWindowTracker`, and `ILauncherApplicationCatalog`. Shell discovery runs lazily on an STA worker. WinEvent hooks drive debounced running-window refreshes; callback delegates remain rooted and disposal waits for in-flight callbacks after unhooking. The bounded icon cache returns frozen images, while local usage is throttled to `%LocalAppData%\NoraBar\Launcher\usage.json`. Global shortcuts are registered against the main HWND and are removed before the HWND is destroyed.
+
+`MainWindow` remains module-agnostic. Its only Launcher-adjacent APIs accept an ordinal HUD ID for opening Settings or navigating with the existing fullscreen expansion policy. Pages, groups, search, Smart scoring, Rules, execution, and window commands remain under `Hud/Launcher` and `Views/Launcher`.
 ## Phase 0 External Plug-in Boundary
 
 ```text
@@ -197,11 +206,11 @@ external plug-in loading (future)
   → IHudModule → HudRegistry → HudRouter → MainWindow
 ```
 
-The implemented boundary stops at `IHudModule`, Registry, Router, and the generic host. An external DLL loader, assembly scanning, directory watching, isolated loading, signing and trust management, and a plug-in store are not implemented. Phase 0 does not provide a separate SDK or external binary compatibility guarantee. Live activities and automatic context-based switching remain out of scope.
+The implemented boundary stops at `IHudModule`, Registry, Router, and the generic host. An external DLL loader, assembly scanning, directory watching, isolated loading, signing and trust management, and a plug-in store are not implemented. Phase 0 does not provide a separate SDK or external binary compatibility guarantee. External plug-in context switching remains out of scope; Launcher Rules are an in-process feature of the built-in module.
 
 ## Existing ViewModels and Services
 
-`MainViewModel` holds settings and shell state and remains the music view compatibility DataContext. `HudNavigationViewModel` coordinates enabled order, startup selection, settings selection, and navigation commands. `HomeHudViewModel` adapts music state and clock data for Home views. `MusicViewModel` provides track, playback, lyrics, waveform, and controls. `MediaControlService` handles Windows media sessions, `AudioVisualizerService` performs audio analysis, `LyricsService` supplies lyrics, `SettingsService` persists settings, `StartupService` handles auto-start, and `LocalizationService` manages language strings.
+`MainViewModel` holds settings and shell state and remains the music view compatibility DataContext. `HudNavigationViewModel` coordinates enabled order, startup selection, settings selection, and navigation commands. `HomeHudViewModel` adapts music state and clock data for Home views. `LauncherSettingsViewModel` owns user configuration editing and `LauncherHudViewModel` owns Launcher runtime presentation. `MusicViewModel` provides track, playback, lyrics, waveform, and controls. `MediaControlService` handles Windows media sessions, `AudioVisualizerService` performs audio analysis, `LyricsService` supplies lyrics, `SettingsService` persists settings, `StartupService` handles auto-start, and `LocalizationService` manages language strings.
 
 ## Japanese Version
 
