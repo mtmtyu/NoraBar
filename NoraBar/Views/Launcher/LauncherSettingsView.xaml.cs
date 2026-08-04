@@ -163,6 +163,7 @@ public partial class LauncherSettingsView : UserControl
         panel.Children.Add(new TextBlock { Text = ViewModel?.Strings.Name }); panel.Children.Add(name);
         panel.Children.Add(new TextBlock { Text = ViewModel?.Strings.Target }); panel.Children.Add(target);
         panel.Children.Add(new TextBlock { Text = ViewModel?.Strings.Arguments }); panel.Children.Add(arguments); panel.Children.Add(admin);
+        StyleDialogPanel(panel);
         AddDialogButtons(window, panel);
         window.Content = panel;
         return window.ShowDialog() == true && !string.IsNullOrWhiteSpace(name.Text) && !string.IsNullOrWhiteSpace(target.Text)
@@ -186,6 +187,7 @@ public partial class LauncherSettingsView : UserControl
         panel.Children.Add(new TextBlock { Text = ViewModel?.Strings.Weekdays }); panel.Children.Add(weekdays);
         panel.Children.Add(new TextBlock { Text = ViewModel?.Strings.TimeRange }); panel.Children.Add(time);
         panel.Children.Add(new TextBlock { Text = ViewModel?.Strings.ForegroundIdentity }); panel.Children.Add(foreground); panel.Children.Add(enabled);
+        StyleDialogPanel(panel);
         AddDialogButtons(window, panel); window.Content = panel;
         if (window.ShowDialog() != true || target.SelectedValue is not string pageId || !int.TryParse(priority.Text, out int parsedPriority)) return null;
         if (!TryParseWeekdays(weekdays.Text, out IReadOnlyList<DayOfWeek>? parsedDays)
@@ -201,12 +203,36 @@ public partial class LauncherSettingsView : UserControl
     private LauncherItem? ShowApplicationPicker(IReadOnlyList<LauncherItem> items, string title)
     {
         var list = new ListBox { ItemsSource = items, DisplayMemberPath = "DisplayName", Margin = new Thickness(16), Height = 350 };
+        StyleDialogElement(list);
         var window = CreateDialog(title, 500, 480);
         var panel = new DockPanel();
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(16) };
-        var add = new Button { Content = Strings.Add, IsDefault = true, MinWidth = 80, Margin = new Thickness(4) };
+        var add = new Button
+        {
+            Content = Strings.Add,
+            IsDefault = true,
+            MinWidth = 80,
+            Height = 30,
+            Margin = new Thickness(4),
+            Background = FindResource("AccentBrush") as System.Windows.Media.Brush ?? (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#0078D4")!,
+            Foreground = System.Windows.Media.Brushes.White,
+            BorderThickness = new Thickness(0.0),
+            Cursor = Cursors.Hand
+        };
         add.Click += (_, _) => window.DialogResult = true;
-        var cancel = new Button { Content = Strings.Cancel, IsCancel = true, MinWidth = 80, Margin = new Thickness(4) };
+        var cancel = new Button
+        {
+            Content = Strings.Cancel,
+            IsCancel = true,
+            MinWidth = 80,
+            Height = 30,
+            Margin = new Thickness(4),
+            Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#1AFFFFFF")!,
+            Foreground = System.Windows.Media.Brushes.White,
+            BorderBrush = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#20FFFFFF")!,
+            BorderThickness = new Thickness(1.0),
+            Cursor = Cursors.Hand
+        };
         buttons.Children.Add(add); buttons.Children.Add(cancel); DockPanel.SetDock(buttons, Dock.Bottom); panel.Children.Add(buttons); panel.Children.Add(list); window.Content = panel;
         return window.ShowDialog() == true ? list.SelectedItem as LauncherItem : null;
     }
@@ -215,7 +241,9 @@ public partial class LauncherSettingsView : UserControl
     {
         var box = new TextBox { Text = initial, Margin = new Thickness(0, 6, 0, 12) };
         var window = CreateDialog(title, 380, 180);
-        var panel = new StackPanel { Margin = new Thickness(18) }; panel.Children.Add(new TextBlock { Text = label }); panel.Children.Add(box); AddDialogButtons(window, panel); window.Content = panel;
+        var panel = new StackPanel { Margin = new Thickness(18) }; panel.Children.Add(new TextBlock { Text = label }); panel.Children.Add(box);
+        StyleDialogPanel(panel);
+        AddDialogButtons(window, panel); window.Content = panel;
         box.SelectAll(); box.Focus();
         return window.ShowDialog() == true && !string.IsNullOrWhiteSpace(box.Text) ? box.Text.Trim() : null;
     }
@@ -224,14 +252,84 @@ public partial class LauncherSettingsView : UserControl
     {
         Title = title, Width = width, Height = height, WindowStartupLocation = WindowStartupLocation.CenterOwner,
         Owner = Application.Current.Windows.OfType<Window>().FirstOrDefault(window => window.IsActive),
-        Background = System.Windows.Media.Brushes.White, Foreground = System.Windows.Media.Brushes.Black, ResizeMode = ResizeMode.NoResize
+        Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#1F1F1F")!,
+        Foreground = System.Windows.Media.Brushes.White,
+        FontFamily = new System.Windows.Media.FontFamily("Segoe UI, Yu Gothic UI, Meiryo"),
+        ResizeMode = ResizeMode.NoResize
     };
+
+    private void StyleDialogElement(FrameworkElement element)
+    {
+        if (element is TextBlock tb)
+        {
+            tb.Foreground = System.Windows.Media.Brushes.White;
+            tb.FontSize = 12;
+        }
+        else if (element is TextBox txt)
+        {
+            txt.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#1AFFFFFF")!;
+            txt.Foreground = System.Windows.Media.Brushes.White;
+            txt.CaretBrush = System.Windows.Media.Brushes.White;
+            txt.BorderBrush = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#20FFFFFF")!;
+            txt.Padding = new Thickness(8, 4, 8, 4);
+        }
+        else if (element is ComboBox cb)
+        {
+            cb.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#1AFFFFFF")!;
+            cb.Foreground = System.Windows.Media.Brushes.White;
+            cb.BorderBrush = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#20FFFFFF")!;
+        }
+        else if (element is CheckBox chk)
+        {
+            chk.Foreground = System.Windows.Media.Brushes.White;
+        }
+        else if (element is ListBox lb)
+        {
+            lb.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#0AFFFFFF")!;
+            lb.Foreground = System.Windows.Media.Brushes.White;
+            lb.BorderBrush = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#20FFFFFF")!;
+        }
+    }
+
+    private void StyleDialogPanel(Panel panel)
+    {
+        foreach (UIElement child in panel.Children)
+        {
+            if (child is FrameworkElement fe) StyleDialogElement(fe);
+            if (child is Panel subPanel) StyleDialogPanel(subPanel);
+        }
+    }
 
     private void AddDialogButtons(Window window, Panel panel)
     {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-        var ok = new Button { Content = Strings.Ok, IsDefault = true, MinWidth = 80, Margin = new Thickness(4) }; ok.Click += (_, _) => window.DialogResult = true;
-        var cancel = new Button { Content = Strings.Cancel, IsCancel = true, MinWidth = 80, Margin = new Thickness(4) };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 16, 0, 0) };
+        var ok = new Button
+        {
+            Content = Strings.Ok,
+            IsDefault = true,
+            MinWidth = 80,
+            Height = 30,
+            Margin = new Thickness(4),
+            Background = FindResource("AccentBrush") as System.Windows.Media.Brush ?? (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#0078D4")!,
+            Foreground = System.Windows.Media.Brushes.White,
+            BorderThickness = new Thickness(0.0),
+            Cursor = Cursors.Hand
+        };
+        ok.Click += (_, _) => window.DialogResult = true;
+
+        var cancel = new Button
+        {
+            Content = Strings.Cancel,
+            IsCancel = true,
+            MinWidth = 80,
+            Height = 30,
+            Margin = new Thickness(4),
+            Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#1AFFFFFF")!,
+            Foreground = System.Windows.Media.Brushes.White,
+            BorderBrush = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#20FFFFFF")!,
+            BorderThickness = new Thickness(1.0),
+            Cursor = Cursors.Hand
+        };
         row.Children.Add(ok); row.Children.Add(cancel); panel.Children.Add(row);
     }
 
