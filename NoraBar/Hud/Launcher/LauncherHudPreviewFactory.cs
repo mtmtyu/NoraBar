@@ -80,7 +80,7 @@ internal sealed class LauncherPreviewViewModel
     public LauncherLocalization Strings { get; }
     public bool IsExpanded => true;
     public bool IsSearchMode => false;
-    public string SearchQuery => string.Empty;
+    public string SearchQuery { get; set; } = string.Empty;
     public ObservableCollection<LauncherPageEditorViewModel> Pages { get; }
     public LauncherPageEditorViewModel? CurrentPage { get; }
     public ObservableCollection<LauncherGroupViewModel> Groups { get; }
