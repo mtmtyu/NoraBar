@@ -7,114 +7,220 @@
              PreviewKeyDown="Root_PreviewKeyDown"
              SizeChanged="Root_SizeChanged">
     <UserControl.Resources>
-        <Style x:Key="LauncherTile" TargetType="Button">
-            <Setter Property="Width" Value="84"/>
-            <Setter Property="Height" Value="76"/>
-            <Setter Property="Margin" Value="3"/>
-            <Setter Property="Padding" Value="6"/>
-            <Setter Property="Background" Value="#0DFFFFFF"/>
-            <Setter Property="BorderBrush" Value="#18FFFFFF"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="ToolTip" Value="{Binding Tooltip}"/>
-            <Setter Property="AutomationProperties.Name" Value="{Binding DisplayName}"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#20FFFFFF"/>
-                    <Setter Property="BorderBrush" Value="#38FFFFFF"/>
-                </Trigger>
-                <DataTrigger Binding="{Binding IsMissing}" Value="True">
-                    <Setter Property="Opacity" Value="0.45"/>
-                    <Setter Property="Cursor" Value="Arrow"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                    <Setter Property="Background" Value="#304C8DFF"/>
-                    <Setter Property="BorderBrush" Value="#806EA5FF"/>
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../../Resources/Colors.xaml"/>
+                <ResourceDictionary Source="../../Resources/Styles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
 
-        <DataTemplate x:Key="LauncherItemTemplate">
-            <Button Style="{StaticResource LauncherTile}"
-                    Click="Item_Click" Loaded="Item_Loaded"
-                    ContextMenuOpening="Item_ContextMenuOpening">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="42"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    <Grid Width="40" Height="40" HorizontalAlignment="Center">
-                        <Border CornerRadius="8" Background="#12FFFFFF"/>
-                        <Image Source="{Binding Icon}" Width="32" Height="32" Stretch="Uniform"/>
-                        <materialIcons:MaterialIcon Kind="ApplicationOutline" Width="24" Height="24" Foreground="#9FFFFFFF">
-                            <materialIcons:MaterialIcon.Style>
-                                <Style TargetType="materialIcons:MaterialIcon">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Icon}" Value="{x:Null}">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </materialIcons:MaterialIcon.Style>
-                        </materialIcons:MaterialIcon>
-                        <Ellipse Width="8" Height="8" Fill="#61D68A" Stroke="#D010171C" StrokeThickness="1"
-                                 HorizontalAlignment="Right" VerticalAlignment="Bottom">
-                            <Ellipse.Style>
-                                <Style TargetType="Ellipse">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsRunning}" Value="True">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Ellipse.Style>
-                        </Ellipse>
-                        <materialIcons:MaterialIcon Kind="AlertCircleOutline" Width="14" Height="14" Foreground="#FFB86C"
-                                                    HorizontalAlignment="Right" VerticalAlignment="Top">
-                            <materialIcons:MaterialIcon.Style>
-                                <Style TargetType="materialIcons:MaterialIcon">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsMissing}" Value="True">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </materialIcons:MaterialIcon.Style>
-                        </materialIcons:MaterialIcon>
+            <!-- Launcher Tile Style with Glassmorphic Card & Micro-animations -->
+            <Style x:Key="LauncherTile" TargetType="Button">
+                <Setter Property="Width" Value="80"/>
+                <Setter Property="Height" Value="76"/>
+                <Setter Property="Margin" Value="3"/>
+                <Setter Property="Padding" Value="4"/>
+                <Setter Property="Background" Value="#16FFFFFF"/>
+                <Setter Property="BorderBrush" Value="#24FFFFFF"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="ToolTip" Value="{Binding Tooltip}"/>
+                <Setter Property="AutomationProperties.Name" Value="{Binding DisplayName}"/>
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="TileBorder"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="12"
+                                    RenderTransformOrigin="0.5,0.5"
+                                    SnapsToDevicePixels="True">
+                                <Border.RenderTransform>
+                                    <TransformGroup>
+                                        <ScaleTransform x:Name="TileScale" ScaleX="1.0" ScaleY="1.0"/>
+                                        <TranslateTransform x:Name="TileTranslation" Y="0"/>
+                                    </TransformGroup>
+                                </Border.RenderTransform>
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="TileBorder" Property="Background" Value="#28FFFFFF"/>
+                                    <Setter TargetName="TileBorder" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                    <Trigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetName="TileScale" Storyboard.TargetProperty="ScaleX" To="1.04" Duration="0:0:0.15">
+                                                    <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <DoubleAnimation Storyboard.TargetName="TileScale" Storyboard.TargetProperty="ScaleY" To="1.04" Duration="0:0:0.15">
+                                                    <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <DoubleAnimation Storyboard.TargetName="TileTranslation" Storyboard.TargetProperty="Y" To="-2" Duration="0:0:0.15">
+                                                    <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.EnterActions>
+                                    <Trigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetName="TileScale" Storyboard.TargetProperty="ScaleX" To="1.0" Duration="0:0:0.15">
+                                                    <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <DoubleAnimation Storyboard.TargetName="TileScale" Storyboard.TargetProperty="ScaleY" To="1.0" Duration="0:0:0.15">
+                                                    <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <DoubleAnimation Storyboard.TargetName="TileTranslation" Storyboard.TargetProperty="Y" To="0" Duration="0:0:0.15">
+                                                    <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.ExitActions>
+                                </Trigger>
+                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                    <Setter TargetName="TileBorder" Property="Background" Value="#300078D4"/>
+                                    <Setter TargetName="TileBorder" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsMissing}" Value="True">
+                                    <Setter TargetName="TileBorder" Property="Opacity" Value="0.5"/>
+                                    <Setter Property="Cursor" Value="Arrow"/>
+                                </DataTrigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Launcher Item DataTemplate -->
+            <DataTemplate x:Key="LauncherItemTemplate">
+                <Button Style="{StaticResource LauncherTile}"
+                        Click="Item_Click" Loaded="Item_Loaded"
+                        ContextMenuOpening="Item_ContextMenuOpening">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="40"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <!-- Icon Container -->
+                        <Grid Width="40" Height="40" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Border CornerRadius="10" Background="#12FFFFFF"/>
+                            <Image Source="{Binding Icon}" Width="30" Height="30" Stretch="Uniform"/>
+                            <materialIcons:MaterialIcon Kind="ApplicationOutline" Width="22" Height="22" Foreground="{DynamicResource TextSecondaryBrush}">
+                                <materialIcons:MaterialIcon.Style>
+                                    <Style TargetType="materialIcons:MaterialIcon">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Icon}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </materialIcons:MaterialIcon.Style>
+                            </materialIcons:MaterialIcon>
+                            
+                            <!-- Running Dot Badge -->
+                            <Ellipse Width="8" Height="8" Fill="{DynamicResource SuccessBrush}" Stroke="#D010171C" StrokeThickness="1"
+                                     HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-1,-1">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+
+                            <!-- Missing Warning Badge -->
+                            <materialIcons:MaterialIcon Kind="AlertCircleOutline" Width="14" Height="14" Foreground="{DynamicResource WarningBrush}"
+                                                        HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-1,-1,0">
+                                <materialIcons:MaterialIcon.Style>
+                                    <Style TargetType="materialIcons:MaterialIcon">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsMissing}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </materialIcons:MaterialIcon.Style>
+                            </materialIcons:MaterialIcon>
+                        </Grid>
+
+                        <TextBlock Grid.Row="1" Text="{Binding DisplayName}" FontSize="11" FontWeight="Medium"
+                                   Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"
+                                   TextAlignment="Center" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="72" Margin="0,2,0,0"/>
                     </Grid>
-                    <TextBlock Grid.Row="1" Text="{Binding DisplayName}" FontSize="10" TextTrimming="CharacterEllipsis"
-                               TextAlignment="Center" VerticalAlignment="Center" MaxWidth="72"/>
-                </Grid>
-            </Button>
-        </DataTemplate>
+                </Button>
+            </DataTemplate>
+
+            <!-- Pill Navigation Button Style -->
+            <Style x:Key="NavPillButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="#12FFFFFF"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Padding" Value="12,5"/>
+                <Setter Property="Margin" Value="0,0,5,0"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="FontWeight" Value="Medium"/>
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="PillBorder" Background="{TemplateBinding Background}" CornerRadius="12" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="PillBorder" Property="Background" Value="#20FFFFFF"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </ResourceDictionary>
     </UserControl.Resources>
 
-    <Border Background="#F0101216" CornerRadius="14" BorderBrush="#24FFFFFF" BorderThickness="1" Padding="10">
+    <!-- Main Island Container -->
+    <Border Style="{DynamicResource IslandBorderStyle}" Background="#050506" Padding="12">
         <Grid>
+            <!-- Peek View (Collapsed) -->
             <ItemsControl ItemsSource="{Binding PeekItems}" ItemTemplate="{StaticResource LauncherItemTemplate}">
                 <ItemsControl.Style>
                     <Style TargetType="ItemsControl">
                         <Setter Property="Visibility" Value="Visible"/>
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsExpanded}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                            <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
                         </Style.Triggers>
                     </Style>
                 </ItemsControl.Style>
                 <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal" HorizontalAlignment="Center"/></ItemsPanelTemplate>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"/>
+                    </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
             </ItemsControl>
 
+            <!-- Expanded View -->
             <Grid>
                 <Grid.Style>
                     <Style TargetType="Grid">
                         <Setter Property="Visibility" Value="Collapsed"/>
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsExpanded}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                            <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
                         </Style.Triggers>
                     </Style>
                 </Grid.Style>
@@ -124,30 +230,61 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <DockPanel Margin="2,0,2,8">
-                    <TextBlock Text="{Binding Strings.Launcher}" Foreground="White" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                    <ItemsControl ItemsSource="{Binding Pages}" Margin="18,0,0,0">
-                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <!-- Header & Navigation Bar -->
+                <DockPanel Margin="4,2,4,10">
+                    <TextBlock Text="{Binding Strings.Launcher}" Foreground="{DynamicResource TextPrimaryBrush}"
+                               FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <ItemsControl ItemsSource="{Binding Pages}" Margin="16,0,0,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Button Content="{Binding DisplayName}" Tag="{Binding}" Click="Page_Click" Margin="0,0,5,0"
-                                        Padding="10,5" Background="#14FFFFFF" Foreground="#DFFFFFFF" BorderThickness="0"
-                                        AutomationProperties.Name="{Binding DisplayName}"/>
+                                <Button Content="{Binding DisplayName}" Tag="{Binding}" Click="Page_Click"
+                                        AutomationProperties.Name="{Binding DisplayName}">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource NavPillButtonStyle}">
+                                            <Style.Triggers>
+                                                <!-- Active Page Highlight -->
+                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                                    <Setter Property="Foreground" Value="White"/>
+                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </DockPanel>
 
-                <Border Grid.Row="1" Background="#14FFFFFF" CornerRadius="8" Margin="2,0,2,8" Padding="8,5">
+                <!-- Search Input Bar -->
+                <Border Grid.Row="1" x:Name="SearchBorder" Background="#14FFFFFF" CornerRadius="10"
+                        BorderBrush="#20FFFFFF" BorderThickness="1" Margin="4,0,4,10" Padding="10,6">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Style.Triggers>
+                                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                    <Setter Property="Background" Value="#20FFFFFF"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
                     <DockPanel>
-                        <materialIcons:MaterialIcon Kind="Magnify" Width="18" Height="18" Foreground="#9FFFFFFF" Margin="0,0,6,0"/>
+                        <materialIcons:MaterialIcon Kind="Magnify" Width="18" Height="18" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,8,0"/>
                         <TextBox x:Name="SearchBox" Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
-                                 Background="Transparent" BorderThickness="0" Foreground="White" CaretBrush="White"
+                                 Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextPrimaryBrush}" CaretBrush="White"
                                  FontSize="13" ToolTip="{Binding Strings.SearchTooltip}"
                                  AutomationProperties.Name="{Binding Strings.SearchTooltip}"/>
                     </DockPanel>
                 </Border>
 
+                <!-- Grid & Search Results Area -->
                 <Grid Grid.Row="2">
                     <ListBox ItemsSource="{Binding VisibleRows}"
                              Background="Transparent" BorderThickness="0"
@@ -157,7 +294,9 @@
                              VirtualizingPanel.IsVirtualizing="True"
                              VirtualizingPanel.VirtualizationMode="Recycling">
                         <ListBox.ItemsPanel>
-                            <ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel/>
+                            </ItemsPanelTemplate>
                         </ListBox.ItemsPanel>
                         <ListBox.ItemContainerStyle>
                             <Style TargetType="ListBoxItem">
@@ -169,9 +308,9 @@
                         </ListBox.ItemContainerStyle>
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <StackPanel Margin="0,0,0,3">
-                                    <TextBlock Text="{Binding GroupDisplayName}" Foreground="#AFFFFFFF" FontSize="11"
-                                               FontWeight="SemiBold" Margin="5,0,0,3">
+                                <StackPanel Margin="0,0,0,4">
+                                    <TextBlock Text="{Binding GroupDisplayName}" Foreground="{DynamicResource TextSecondaryBrush}"
+                                               FontSize="11" FontWeight="SemiBold" Margin="6,0,0,4">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Visibility" Value="Visible"/>
@@ -185,24 +324,36 @@
                                     </TextBlock>
                                     <ItemsControl ItemsSource="{Binding Items}" ItemTemplate="{StaticResource LauncherItemTemplate}">
                                         <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal"/>
+                                            </ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
                                     </ItemsControl>
                                 </StackPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
-                    <Border Background="#F0101216">
+
+                    <!-- Search Overlay View -->
+                    <Border Background="#050506">
                         <Border.Style>
                             <Style TargetType="Border">
                                 <Setter Property="Visibility" Value="Collapsed"/>
-                                <Style.Triggers><DataTrigger Binding="{Binding IsSearchMode}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSearchMode}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
                             </Style>
                         </Border.Style>
                         <ListBox ItemsSource="{Binding SearchResults}" ItemTemplate="{StaticResource LauncherItemTemplate}"
                                  Background="Transparent" BorderThickness="0" ScrollViewer.CanContentScroll="True"
                                  VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
-                            <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel/>
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
                         </ListBox>
                     </Border>
                 </Grid>
@@ -210,3 +361,4 @@
         </Grid>
     </Border>
 </UserControl>
+
