@@ -197,7 +197,7 @@ Document durable current behavior, not transient branch names, commit hashes, te
 
 - Work on a dedicated `codex/` branch unless the user specifies another non-default branch.
 - Keep commits small and aligned with one verified work unit.
-- Use Conventional Commits. Repository history may include a Japanese subject or a bilingual subject; follow the surrounding history and the user's requested language.
+- Use Conventional Commits. Always write commit messages in English.
 - Before committing, inspect `git status`, `git diff --check`, and the exact staged diff. Stage only intended files.
 - Never rewrite or discard unrelated user changes.
 - Do not push, create a pull request, or merge unless the user explicitly requests it.
