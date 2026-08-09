@@ -51,6 +51,14 @@ public partial class MainWindow : Window
     private int _shellResourcesReleased;
     private int _presentationRevision;
     private int _navigationInFlight;
+    private DateTime _suppressPointerLeaveCollapseUntil = DateTime.MinValue;
+
+    internal void SuppressPointerLeaveCollapse(TimeSpan duration)
+    {
+        _suppressPointerLeaveCollapseUntil = DateTime.UtcNow + duration;
+    }
+
+    internal bool IsPointerLeaveCollapseSuppressed => DateTime.UtcNow < _suppressPointerLeaveCollapseUntil;
 
     public MainWindow(
         MainViewModel viewModel,
@@ -283,6 +291,7 @@ public partial class MainWindow : Window
 
     private void HudRouter_PresentationChanged(object? sender, EventArgs e)
     {
+        SuppressPointerLeaveCollapse(TimeSpan.FromMilliseconds(500));
         if (Dispatcher.CheckAccess())
         {
             RefreshHudPresentation();
@@ -580,7 +589,7 @@ public partial class MainWindow : Window
 
     private void HudBorder_MouseLeave(object sender, MouseEventArgs e)
     {
-        if (IsShutdownRequested || _viewModel.IsPositionEditMode || _viewModel.IsWidgetEditMode)
+        if (IsShutdownRequested || _viewModel.IsPositionEditMode || _viewModel.IsWidgetEditMode || IsPointerLeaveCollapseSuppressed)
         {
             return;
         }
