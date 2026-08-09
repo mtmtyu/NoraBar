@@ -46,7 +46,7 @@ internal static class HudInteractiveSizePolicy
             : HorizontalAlignment.Center;
         contentHost.VerticalAlignment = targets.StretchesContentHeight
             ? VerticalAlignment.Stretch
-            : VerticalAlignment.Center;
+            : VerticalAlignment.Top;
         contentHost.HorizontalContentAlignment = HorizontalAlignment.Stretch;
         contentHost.VerticalContentAlignment = VerticalAlignment.Stretch;
     }
@@ -56,13 +56,6 @@ internal static class HudInteractiveSizePolicy
         HudSize currentSize,
         bool isPointerOver)
     {
-        if (!isPointerOver)
-        {
-            return desiredSize;
-        }
-
-        return new HudSize(
-            Math.Max(desiredSize.Width, currentSize.Width),
-            Math.Max(desiredSize.Height, currentSize.Height));
+        return desiredSize;
     }
 }

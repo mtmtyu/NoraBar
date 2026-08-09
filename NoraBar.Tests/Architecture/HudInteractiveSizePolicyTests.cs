@@ -8,7 +8,7 @@ namespace NoraBar.Tests.Architecture;
 public sealed class HudInteractiveSizePolicyTests
 {
     [Fact]
-    public void ResolveTargets_PreservesInteractiveAreaWithCenteredContent()
+    public void ResolveTargets_UsesDesiredContainerSizeWhenPointerIsOver()
     {
         var preferredContentSize = new HudSize(450, 80);
         var desiredContainerSize = new HudSize(498, 80);
@@ -20,7 +20,7 @@ public sealed class HudInteractiveSizePolicyTests
             currentContainerSize,
             isPointerOver: true);
 
-        Assert.Equal(currentContainerSize, result.ContainerSize);
+        Assert.Equal(desiredContainerSize, result.ContainerSize);
         Assert.Equal(preferredContentSize, result.ContentSize);
         Assert.False(result.StretchesContentWidth);
         Assert.False(result.StretchesContentHeight);
@@ -72,7 +72,7 @@ public sealed class HudInteractiveSizePolicyTests
     }
 
     [Fact]
-    public void ApplyContentLayout_KeepsPreferredDimensionsWhenContainerIsRetained()
+    public void ApplyContentLayout_KeepsPreferredDimensionsAndAlignsTopWhenContainerIsRetained()
     {
         StaTestRunner.Run(() =>
         {
@@ -88,12 +88,12 @@ public sealed class HudInteractiveSizePolicyTests
             Assert.Equal(450, contentHost.Width);
             Assert.Equal(80, contentHost.Height);
             Assert.Equal(HorizontalAlignment.Center, contentHost.HorizontalAlignment);
-            Assert.Equal(VerticalAlignment.Center, contentHost.VerticalAlignment);
+            Assert.Equal(VerticalAlignment.Top, contentHost.VerticalAlignment);
         });
     }
 
     [Fact]
-    public void ResolveTarget_PreservesCurrentSizeWhenPointerIsOverAndDesiredSizeShrinks()
+    public void ResolveTarget_ReturnsDesiredSizeWhenPointerIsOverAndDesiredSizeShrinks()
     {
         var desiredSize = new HudSize(498, 80);
         var currentSize = new HudSize(848, 120);
@@ -103,7 +103,7 @@ public sealed class HudInteractiveSizePolicyTests
             currentSize,
             isPointerOver: true);
 
-        Assert.Equal(currentSize, result);
+        Assert.Equal(desiredSize, result);
     }
 
     [Fact]
