@@ -109,6 +109,47 @@ public sealed class LauncherHudViewModelTests
         });
     }
 
+    [Fact]
+    public void InitializeAndRebuild_DoesNotDuplicateVisibleRows()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var catalog = new FakeCatalog();
+            var usageStore = new FakeUsageStore();
+            var windowTracker = new FakeWindowTracker();
+            var settings = new LauncherSettingsViewModel(
+                new UserSettings(),
+                () => { },
+                catalog,
+                usageStore);
+            settings.Pages.First().Groups.First().Items.Add(LauncherItemEditorViewModel.FromModel(
+                new LauncherItem("app-1", "App 1", LauncherItemKind.Win32Application, "app.exe"),
+                () => { }));
+
+            var viewModel = new LauncherHudViewModel(
+                settings,
+                new LauncherRuntime(new FakeLauncherPlatform()),
+                catalog,
+                windowTracker,
+                usageStore,
+                new LauncherIconCache(),
+                System.Windows.Threading.Dispatcher.CurrentDispatcher);
+
+            viewModel.Initialize();
+            int initialRowCount = viewModel.VisibleRows.Count;
+            Assert.Equal(1, initialRowCount);
+
+            var page2 = LauncherPageEditorViewModel.FromModel(new LauncherPage("page-2", "Page 2", []), () => { });
+            viewModel.Pages.Add(page2);
+            viewModel.CurrentPage = page2;
+            viewModel.CurrentPage = viewModel.Pages.First();
+
+            Assert.Equal(initialRowCount, viewModel.VisibleRows.Count);
+
+            viewModel.Dispose();
+        });
+    }
+
     private sealed class FakeLauncherPlatform : ILauncherPlatform
     {
         public ValueTask<IReadOnlyList<LauncherWindow>> GetWindowsAsync(LauncherItem item, CancellationToken cancellationToken) =>

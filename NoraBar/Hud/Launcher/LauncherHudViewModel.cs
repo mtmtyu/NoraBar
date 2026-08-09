@@ -230,6 +230,7 @@ internal sealed class LauncherHudViewModel : ViewModelBase, ILauncherHudPresenta
     {
         Groups.Clear();
         PeekItems.Clear();
+        VisibleRows.Clear();
         LauncherPageEditorViewModel? page = CurrentPage ?? Pages.FirstOrDefault();
         if (page is null) return;
         var visibleIds = new HashSet<string>(StringComparer.Ordinal);
