@@ -13,6 +13,14 @@ public partial class LauncherEditorWindow : Window
     public LauncherEditorWindow()
     {
         InitializeComponent();
+        try
+        {
+            Icon = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/Assets/AppIcon.ico", UriKind.Absolute));
+        }
+        catch
+        {
+            // Ignore in unit test context
+        }
     }
 
     private LauncherSettingsViewModel? ViewModel => DataContext as LauncherSettingsViewModel;

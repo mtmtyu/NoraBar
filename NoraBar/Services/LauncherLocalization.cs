@@ -45,6 +45,13 @@ internal sealed class LauncherLocalization
     public string Browse => Pick("参照…", "Browse…");
     public string SpecificBrowser => Pick("指定ブラウザー", "Specific browser");
     public string RunAsAdministrator => Pick("管理者として実行", "Run as administrator");
+    public string VisualLauncherEditorTitle => Pick("NoraBar — ビジュアル ランチャー エディター", "NoraBar — Visual Launcher Editor");
+    public string VisualEditorDescription => Pick("専用のビジュアルエディターを開いて、ページ・グループ・アイテムをドラッグ＆ドロップで見たまま編集します。", "Open a dedicated visual editor to view and edit pages, groups, and items via drag-and-drop.");
+    public string OpenVisualEditor => Pick("🚀 ビジュアルエディターを開く", "🚀 Open Visual Editor");
+    public string SmartLauncher => Pick("Smart ランチャー", "Smart Launcher");
+    public string InspectorNoSelectionHint => Pick("アイテムを選択すると、ここでプロパティを詳細編集できます。", "Select an item to edit its detailed properties here.");
+    public string AddPageAction => Pick("＋ ページ追加", "＋ Add Page");
+    public string DefaultItemIcon => "📦";
     public string Smart => "Smart";
     public string EnableSmart => Pick("ローカル Smart 候補を有効化", "Enable local Smart suggestions");
     public string SmartPrivacy => Pick("候補は端末内の使用時刻、頻度、前面表示時間、時間帯、アプリの文脈だけを使用します。データは送信されません。", "Suggestions use only local recency, frequency, foreground duration, time-of-day and application context. No data is transmitted.");

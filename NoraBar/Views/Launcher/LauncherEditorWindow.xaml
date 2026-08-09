@@ -5,14 +5,13 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:launcher="clr-namespace:NoraBar.Hud.Launcher"
         mc:Ignorable="d"
-        Title="NoraBar - Visual Launcher Editor"
+        Title="{Binding Strings.VisualLauncherEditorTitle}"
         Height="640" Width="960"
         WindowStartupLocation="CenterOwner"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
-        FontFamily="Segoe UI, Yu Gothic UI, Meiryo"
-        Icon="/Assets/AppIcon.ico">
+        FontFamily="Segoe UI, Yu Gothic UI, Meiryo">
 
     <Window.Resources>
         <SolidColorBrush x:Key="AccentBrush" Color="#0078D4" />
@@ -260,7 +259,7 @@
 
                     <StackPanel Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Center">
                         <Image Source="/Assets/AppIcon.ico" Width="16" Height="16" Margin="0,0,8,0"/>
-                        <TextBlock Text="NoraBar — Visual Launcher Editor" Foreground="{StaticResource TextPrimary}" FontWeight="SemiBold" FontSize="13"/>
+                        <TextBlock Text="{Binding Strings.VisualLauncherEditorTitle}" Foreground="{StaticResource TextPrimary}" FontWeight="SemiBold" FontSize="13"/>
                     </StackPanel>
 
                     <TextBlock Grid.Column="1" Text="{Binding Strings.ItemsDropHint}" Foreground="{StaticResource TextSecondary}" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -276,7 +275,7 @@
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="{Binding Strings.PageName}" Foreground="{StaticResource TextSecondary}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
                         <TextBox Text="{Binding SelectedPage.DisplayName, UpdateSourceTrigger=PropertyChanged}" Width="130" Margin="0,0,10,0"/>
-                        <Button Content="＋ Page" Click="AddPage_Click" Style="{StaticResource ModernButtonStyle}" Margin="0,0,4,0"/>
+                        <Button Content="{Binding Strings.AddPageAction}" Click="AddPage_Click" Style="{StaticResource ModernButtonStyle}" Margin="0,0,4,0"/>
                         <Button Content="−" ToolTip="{Binding Strings.RemovePage}" Click="RemovePage_Click" Style="{StaticResource SquareButtonStyle}" Margin="0,0,4,0"/>
                         <Button Content="↑" ToolTip="{Binding Strings.MovePageUp}" Click="MovePageUp_Click" Style="{StaticResource SquareButtonStyle}" Margin="0,0,4,0"/>
                         <Button Content="↓" ToolTip="{Binding Strings.MovePageDown}" Click="MovePageDown_Click" Style="{StaticResource SquareButtonStyle}"/>
@@ -359,7 +358,7 @@
                                                                     <RowDefinition Height="*"/>
                                                                     <RowDefinition Height="Auto"/>
                                                                 </Grid.RowDefinitions>
-                                                                <TextBlock Grid.Row="0" Text="📦" FontSize="26" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                <TextBlock Grid.Row="0" Text="{Binding DataContext.Strings.DefaultItemIcon, RelativeSource={RelativeSource AncestorType=Window}}" FontSize="26" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                                 <TextBlock Grid.Row="1" Text="{Binding DisplayName}" FontSize="10" Foreground="White" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" TextAlignment="Center"/>
                                                             </Grid>
                                                         </Border>
@@ -450,7 +449,7 @@
                                 </StackPanel>
 
                                 <!-- No Selection Hint -->
-                                <TextBlock Text="アイテムを選択すると、ここでプロパティを詳細編集できます。"
+                                <TextBlock Text="{Binding Strings.InspectorNoSelectionHint}"
                                            Foreground="{StaticResource TextSecondary}" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
