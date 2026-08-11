@@ -3,6 +3,8 @@ using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using NoraBar.Hud.Launcher;
 
 namespace NoraBar.Views.Launcher;
@@ -44,8 +46,41 @@ public partial class LauncherHudView : UserControl
     {
         if (sender is Button { Tag: LauncherPageEditorViewModel page } && ViewModel is not null)
         {
-            ViewModel.CurrentPage = page;
+            if (!ReferenceEquals(ViewModel.CurrentPage, page))
+            {
+                ViewModel.CurrentPage = page;
+                AnimatePageTransition();
+            }
         }
+    }
+
+    private void AnimatePageTransition()
+    {
+        var storyboard = new Storyboard();
+
+        var fadeAnim = new DoubleAnimation
+        {
+            From = 0.35,
+            To = 1.0,
+            Duration = TimeSpan.FromMilliseconds(200),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        Storyboard.SetTarget(fadeAnim, ContentAreaGrid);
+        Storyboard.SetTargetProperty(fadeAnim, new PropertyPath(OpacityProperty));
+
+        var slideAnim = new DoubleAnimation
+        {
+            From = 6.0,
+            To = 0.0,
+            Duration = TimeSpan.FromMilliseconds(200),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        Storyboard.SetTarget(slideAnim, ContentAreaTransform);
+        Storyboard.SetTargetProperty(slideAnim, new PropertyPath(TranslateTransform.YProperty));
+
+        storyboard.Children.Add(fadeAnim);
+        storyboard.Children.Add(slideAnim);
+        storyboard.Begin();
     }
 
     private void Item_ContextMenuOpening(object sender, ContextMenuEventArgs e)
