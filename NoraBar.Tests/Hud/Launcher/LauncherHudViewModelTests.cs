@@ -189,6 +189,60 @@ public sealed class LauncherHudViewModelTests
         });
     }
 
+    [Fact]
+    public void MoveSearchSelection_NavigatesWithGridOffsets()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var catalog = new FakeCatalog();
+            var usageStore = new FakeUsageStore();
+            var windowTracker = new FakeWindowTracker();
+            var settings = new LauncherSettingsViewModel(
+                new UserSettings(),
+                () => { },
+                catalog,
+                usageStore);
+            for (int i = 1; i <= 10; i++)
+            {
+                settings.Pages.First().Groups.First().Items.Add(LauncherItemEditorViewModel.FromModel(
+                    new LauncherItem($"app-{i}", $"App {i}", LauncherItemKind.Win32Application, $"app{i}.exe"),
+                    () => { }));
+            }
+
+            var viewModel = new LauncherHudViewModel(
+                settings,
+                new LauncherRuntime(new FakeLauncherPlatform()),
+                catalog,
+                windowTracker,
+                usageStore,
+                new LauncherIconCache(),
+                System.Windows.Threading.Dispatcher.CurrentDispatcher);
+
+            viewModel.Initialize();
+            viewModel.SearchQuery = "App";
+
+            Assert.Equal(10, viewModel.SearchResults.Count);
+            Assert.Equal(0, viewModel.SelectedSearchIndex);
+
+            // Move Right (+1)
+            viewModel.MoveSearchSelection(1);
+            Assert.Equal(1, viewModel.SelectedSearchIndex);
+
+            // Move Down (+ItemsPerRow = +7) -> 1 + 7 = 8
+            viewModel.MoveSearchSelection(LauncherHudViewModel.ItemsPerRow);
+            Assert.Equal(8, viewModel.SelectedSearchIndex);
+
+            // Move Up (-ItemsPerRow = -7) -> 8 - 7 = 1
+            viewModel.MoveSearchSelection(-LauncherHudViewModel.ItemsPerRow);
+            Assert.Equal(1, viewModel.SelectedSearchIndex);
+
+            // Move Left (-1) -> 1 - 1 = 0
+            viewModel.MoveSearchSelection(-1);
+            Assert.Equal(0, viewModel.SelectedSearchIndex);
+
+            viewModel.Dispose();
+        });
+    }
 
     private sealed class FakeLauncherPlatform : ILauncherPlatform
     {

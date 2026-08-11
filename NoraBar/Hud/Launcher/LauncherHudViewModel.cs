@@ -11,7 +11,7 @@ namespace NoraBar.Hud.Launcher;
 internal sealed class LauncherHudViewModel : ViewModelBase, ILauncherHudPresentationSource, ILauncherHudStateSink
 {
     private const int PeekItemLimit = 7;
-    private const int ItemsPerRow = 7;
+    internal const int ItemsPerRow = 7;
     private static readonly TimeSpan InventoryDebounce = TimeSpan.FromMilliseconds(150);
     private readonly LauncherSettingsViewModel _settings;
     private readonly LauncherRuntime _runtime;

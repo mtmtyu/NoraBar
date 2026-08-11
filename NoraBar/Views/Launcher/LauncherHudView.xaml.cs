@@ -166,8 +166,10 @@ public partial class LauncherHudView : UserControl
         if (ViewModel is null || !ViewModel.IsExpanded) return;
         switch (e.Key)
         {
-            case Key.Up: ViewModel.MoveSearchSelection(-1); e.Handled = true; break;
-            case Key.Down: ViewModel.MoveSearchSelection(1); e.Handled = true; break;
+            case Key.Left: ViewModel.MoveSearchSelection(-1); e.Handled = true; break;
+            case Key.Right: ViewModel.MoveSearchSelection(1); e.Handled = true; break;
+            case Key.Up: ViewModel.MoveSearchSelection(-LauncherHudViewModel.ItemsPerRow); e.Handled = true; break;
+            case Key.Down: ViewModel.MoveSearchSelection(LauncherHudViewModel.ItemsPerRow); e.Handled = true; break;
             case Key.Enter: Observe(ViewModel.ActivateSelectedSearchResultAsync()); e.Handled = true; break;
             case Key.Escape: ViewModel.SearchQuery = string.Empty; Focus(); e.Handled = true; break;
         }

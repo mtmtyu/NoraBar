@@ -7,6 +7,21 @@ internal static class StaTestRunner
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan TimeoutCleanupJoinTimeout = TimeSpan.FromSeconds(5);
 
+    static StaTestRunner()
+    {
+        lock (typeof(StaTestRunner))
+        {
+            foreach (Material.Icons.MaterialIconKind kind in Enum.GetValues<Material.Icons.MaterialIconKind>())
+            {
+                try
+                {
+                    _ = Material.Icons.MaterialIconDataProvider.Get<string>(kind);
+                }
+                catch { }
+            }
+        }
+    }
+
     internal static void Run(Action action)
     {
         ArgumentNullException.ThrowIfNull(action);
