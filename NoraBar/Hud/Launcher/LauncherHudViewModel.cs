@@ -226,8 +226,18 @@ internal sealed class LauncherHudViewModel : ViewModelBase, ILauncherHudPresenta
         catch (Exception exception) { Trace.TraceError(exception.ToString()); }
     }
 
+    private void UpdatePageSelectionStates()
+    {
+        LauncherPageEditorViewModel? active = CurrentPage ?? Pages.FirstOrDefault();
+        foreach (LauncherPageEditorViewModel page in Pages)
+        {
+            page.IsSelected = ReferenceEquals(page, active);
+        }
+    }
+
     private void RebuildVisibleItems()
     {
+        UpdatePageSelectionStates();
         Groups.Clear();
         PeekItems.Clear();
         VisibleRows.Clear();

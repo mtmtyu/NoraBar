@@ -286,6 +286,7 @@ internal sealed class LauncherPageEditorViewModel : ViewModelBase
 {
     private readonly Action _changed;
     private string _displayName;
+    private bool _isSelected;
     internal LauncherPageEditorViewModel(string id, string displayName, Action changed)
     {
         Id = id; _displayName = displayName; _changed = changed;
@@ -293,6 +294,7 @@ internal sealed class LauncherPageEditorViewModel : ViewModelBase
     }
     public string Id { get; }
     public string DisplayName { get => _displayName; set { if (SetProperty(ref _displayName, value)) _changed(); } }
+    public bool IsSelected { get => _isSelected; set => SetProperty(ref _isSelected, value); }
     public ObservableCollection<LauncherGroupEditorViewModel> Groups { get; }
     internal LauncherPage ToModel() => new(Id, DisplayName, Groups.Select(group => group.ToModel()).ToArray());
     internal static LauncherPageEditorViewModel FromModel(LauncherPage page, Action changed)

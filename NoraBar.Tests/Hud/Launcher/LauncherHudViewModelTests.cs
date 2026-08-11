@@ -150,6 +150,46 @@ public sealed class LauncherHudViewModelTests
         });
     }
 
+    [Fact]
+    public void CurrentPage_UpdatesIsSelectedOnPages()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var catalog = new FakeCatalog();
+            var usageStore = new FakeUsageStore();
+            var windowTracker = new FakeWindowTracker();
+            var settings = new LauncherSettingsViewModel(
+                new UserSettings(),
+                () => { },
+                catalog,
+                usageStore);
+            var viewModel = new LauncherHudViewModel(
+                settings,
+                new LauncherRuntime(new FakeLauncherPlatform()),
+                catalog,
+                windowTracker,
+                usageStore,
+                new LauncherIconCache(),
+                System.Windows.Threading.Dispatcher.CurrentDispatcher);
+
+            var page2 = LauncherPageEditorViewModel.FromModel(new LauncherPage("page-2", "Page 2", []), () => { });
+            viewModel.Pages.Add(page2);
+
+            viewModel.Initialize();
+
+            Assert.True(viewModel.Pages[0].IsSelected);
+            Assert.False(viewModel.Pages[1].IsSelected);
+
+            viewModel.CurrentPage = page2;
+
+            Assert.False(viewModel.Pages[0].IsSelected);
+            Assert.True(viewModel.Pages[1].IsSelected);
+
+            viewModel.Dispose();
+        });
+    }
+
+
     private sealed class FakeLauncherPlatform : ILauncherPlatform
     {
         public ValueTask<IReadOnlyList<LauncherWindow>> GetWindowsAsync(LauncherItem item, CancellationToken cancellationToken) =>
